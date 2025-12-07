@@ -4,6 +4,7 @@
  * Displays personal interests, favorites, and ethos.
  */
 
+/*
 class PersonalSection {
   constructor() {
     this.data = {
@@ -83,4 +84,5 @@ class PersonalSection {
 }
 
 export default PersonalSection;
+*/
 

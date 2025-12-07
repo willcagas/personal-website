@@ -10,7 +10,7 @@ import Hero from '../components/Hero.js';
 import AboutSection from '../components/AboutSection.js';
 import ProjectsSection from '../components/ProjectsSection.js';
 import ArchiveSection from '../components/ArchiveSection.js';
-import PersonalSection from '../components/PersonalSection.js';
+// import PersonalSection from '../components/PersonalSection.js';
 import Footer from '../components/Footer.js';
 import ThemeManager from './theme.js';
 
@@ -81,7 +81,7 @@ class App {
         about: new AboutSection(),
         projects: new ProjectsSection(),
         archive: new ArchiveSection(),
-        personal: new PersonalSection(),
+        // personal: new PersonalSection(),
         footer: new Footer()
       };
   }
@@ -145,10 +145,10 @@ class App {
     }
 
     // Render Personal
-    const personalRoot = document.getElementById('personal-root');
-    if (personalRoot) {
-      personalRoot.innerHTML = this.components.personal.render();
-    }
+    // const personalRoot = document.getElementById('personal-root');
+    // if (personalRoot) {
+    //   personalRoot.innerHTML = this.components.personal.render();
+    // }
 
     // Render Footer
     const footerRoot = document.getElementById('footer-root');

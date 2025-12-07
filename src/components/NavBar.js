@@ -11,8 +11,8 @@ class NavBar {
         { label: 'Home', href: '#home' },
         { label: 'About', href: '#about' },
         { label: 'Highlights', href: '#projects' },
-        { label: 'Archive', href: '#archive' },
-        { label: 'Personal', href: '#personal' }
+        { label: 'Archive', href: '#archive' }
+        // { label: 'Personal', href: '#personal' }
       ];
   }
 

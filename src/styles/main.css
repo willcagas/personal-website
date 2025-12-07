@@ -891,6 +891,7 @@ section {
    Personal Section
    ============================================ */
 
+/*
 .personal-section {
   padding: var(--section-padding-mobile) 0;
 }
@@ -1010,6 +1011,7 @@ section {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+*/
 
 /* ============================================
    Footer
