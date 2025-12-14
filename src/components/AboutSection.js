@@ -12,7 +12,6 @@ class AboutSection {
       content: `
         <p>I like to research and build AI that solves real-world problems.</p>
         <p>My work spans across health tech, applied AI research, web/mobile app development, hackathon organizing, education, game development, and more.</p>
-        <p>I'm also documenting my journey. Check it out <a href="https://www.instagram.com/willcagas.mov" target="_blank" rel="noopener noreferrer" class="link">@willcagas.mov</a>.</p>
         <p>If you're interested in tech, feel free to reach out!</p>
       `
     };
