@@ -570,6 +570,17 @@ section {
   margin-bottom: 0;
 }
 
+.about-content ul {
+  margin: 0;
+  padding-left: 2rem;
+  list-style-type: disc;
+}
+
+.about-content li {
+  margin-bottom: var(--spacing-xs);
+  padding-left: 0.5rem;
+}
+
 /* ============================================
    Projects Section - Simplified like zacharyyu.com
    ============================================ */
@@ -628,6 +639,7 @@ section {
   width: auto;
   vertical-align: middle;
   display: inline-block;
+  margin-left: 0.25rem;
 }
 
 .project-featured-link {

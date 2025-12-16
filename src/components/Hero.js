@@ -55,7 +55,7 @@ class Hero {
         <div class="container">
           <div class="hero-wrapper">
             <div class="hero-image-container">
-              <img src="/assets/pictures/profile.jpeg" alt="" class="hero-profile-image" onload="this.classList.add('loaded');" onerror="this.classList.add('loaded');">
+              <img src="/assets/pictures/profile.png" alt="" class="hero-profile-image" onload="this.classList.add('loaded');" onerror="this.classList.add('loaded');">
             </div>
             <div class="hero-content">
               <div class="hero-header">

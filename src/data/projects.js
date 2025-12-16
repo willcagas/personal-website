@@ -14,19 +14,19 @@
  */
 
 const projects = [
-  {
-    title: "(Incoming) TPM at WAT.ai",
-    date: "2025-01-01",
-    description: [
-      "Leading and building high-impact projects pushing the boundaries of AI at UWaterloo"
-    ],
-    tags: ["TPM", "AI", "Project Management"],
-    liveLink: "https://watai.ca/",
-    repoLink: null,
-    image: null,
-    logo: "/assets/pictures/watai.png",
-    featured: true
-  },
+  // {
+  //   title: "(Incoming) TPM at WAT.ai",
+  //   date: "2025-01-01",
+  //   description: [
+  //     "Leading and building high-impact projects pushing the boundaries of AI at UWaterloo"
+  //   ],
+  //   tags: ["TPM", "AI", "Project Management"],
+  //   liveLink: "https://watai.ca/",
+  //   repoLink: null,
+  //   image: null,
+  //   logo: "/assets/pictures/watai.png",
+  //   featured: true
+  // },
   {
     title: "AcneCura",
     date: "2024-01-15",
