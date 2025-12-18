@@ -9,7 +9,7 @@ class ArchiveSection {
     this.photos = [
       {
         image: "/assets/pictures/se-2030.JPG",
-        caption: "Most cracked builders in Canada (i.e. Waterloo SE 2030)",
+        caption: "Most cracked builders in Canada (i.e. Waterloo SE '30)",
         objectPosition: "0% 100%"
       },
       {

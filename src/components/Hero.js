@@ -15,6 +15,11 @@ class Hero {
       ctaLink: "#projects",
       socialLinks: [
         {
+          name: "Email",
+          url: "mailto:wcagas@uwaterloo.ca",
+          logo: "https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/gmail.svg"
+        },
+        {
           name: "LinkedIn",
           url: "https://www.linkedin.com/in/william-cagas/",
           logo: "https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/linkedin.svg"
@@ -38,11 +43,6 @@ class Hero {
           name: "Instagram",
           url: "https://instagram.com/williamcagas",
           logo: "https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/instagram.svg"
-        },
-        {
-          name: "Email",
-          url: "mailto:wcagas@uwaterloo.ca",
-          logo: "https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/gmail.svg"
         }
       ]
     };
@@ -55,7 +55,7 @@ class Hero {
         <div class="container">
           <div class="hero-wrapper">
             <div class="hero-image-container">
-              <img src="/assets/pictures/profile.png" alt="" class="hero-profile-image" onload="this.classList.add('loaded');" onerror="this.classList.add('loaded');">
+              <img src="/assets/pictures/profile.jpg" alt="" class="hero-profile-image" onload="this.classList.add('loaded');" onerror="this.classList.add('loaded');">
             </div>
             <div class="hero-content">
               <div class="hero-header">

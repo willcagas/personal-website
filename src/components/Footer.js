@@ -11,6 +11,11 @@ class Footer {
       copyright: `© ${new Date().getFullYear()} William Cagas`,
       socialLinks: [
         {
+          name: "Email",
+          url: "mailto:wcagas@uwaterloo.ca",
+          logo: "https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/gmail.svg"
+        },
+        {
           name: "LinkedIn",
           url: "https://www.linkedin.com/in/william-cagas/",
           logo: "https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/linkedin.svg"
@@ -35,11 +40,6 @@ class Footer {
           url: "https://instagram.com/williamcagas",
           logo: "https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/instagram.svg"
         },
-        {
-          name: "Email",
-          url: "mailto:wcagas@uwaterloo.ca",
-          logo: "https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/gmail.svg"
-        }
       ],
       cta: {
         text: "Looking to chat?",
