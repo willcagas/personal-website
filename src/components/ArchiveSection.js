@@ -141,6 +141,15 @@ class ArchiveSection {
               `).join('')}
             </div>
           </div>
+
+          <!-- Webring Widget -->
+          <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 4rem;">
+            <a href="https://se30webring.com?from=https://wcagas.com&dir=prev" style="text-decoration: none; color: #FFCE1A; font-size: 1.5rem; line-height: 1; display: flex; align-items: center;">←</a>
+            <a href="https://se30webring.com" target="_blank" style="text-decoration: none; display: flex; align-items: center;">
+              <img src="https://se30webring.com/assets/icon-yellow.svg" alt="SE '30 Webring" style="width: 32px; height: 32px;" />
+            </a>
+            <a href="https://se30webring.com?from=https://wcagas.com&dir=next" style="text-decoration: none; color: #FFCE1A; font-size: 1.5rem; line-height: 1; display: flex; align-items: center;">→</a>
+          </div>
         </div>
       </section>
     `;
