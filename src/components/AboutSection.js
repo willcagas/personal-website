@@ -18,13 +18,12 @@ class AboutSection {
           <li>(Soon!) Leading high-impact AI projects at UWaterloo's AI Team, <a href="https://watai.ca/" target="_blank" rel="noopener noreferrer" class="link">WAT.ai <img src="/assets/logos/watai.png" alt="WAT.ai" class="project-logo"></a></li>
           <li>Building B2C mobile apps including AI for acne at <a href="https://acnecura.io/" target="_blank" rel="noopener noreferrer" class="link">AcneCura <img src="/assets/logos/acnecura.png" alt="AcneCura" class="project-logo"></a></li>
           <li>Exploring AI x biomedical applications inlcuding medical imaging and CT-based oncology analysis</li>
+          <li>Creating a shared online space for the SE '30 cohort through the <a href="https://se30webring.com/" target="_blank" rel="noopener noreferrer" class="link">SE '30 Webring <img src="/assets/logos/se30webring.png" alt="SE '30 Webring" class="project-logo"></a></li>
           <li>Documenting tech and uni life on <a href="https://www.instagram.com/willcagas.mov" target="_blank" rel="noopener noreferrer" class="link">@willcagas.mov <img src="/assets/logos/instagram.jpg" alt="Instagram" class="project-logo"></a></li>
         </ul>
       `
     };
   }
-
-  // <li>Creating a shared online space for the SE '30 cohort through the <a href="https://se30webring.com/" target="_blank" rel="noopener noreferrer" class="link">SE '30 Webring <img src="/assets/logos/se30webring.png" alt="SE '30 Webring" class="project-logo"></a></li>
 
   render() {
     return `
