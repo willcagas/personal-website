@@ -11,7 +11,7 @@ class AboutSection {
       title: "About",
       content: `
         <p>I like to research and build AI that solves real-world problems.</p>
-        <p>My work spans across health tech, applied AI research, web/mobile app development, hackathon organizing, education, game development, and more.</p>
+        <p>My work spans across biomedical and health tech, applied AI research, web/mobile app dev, hackathon organizing, education, game dev, and more.</p>
         <p>If you're interested in tech or building something cool, feel free to reach out!</p>
         <p>I'm currently...</p>
         <ul>
