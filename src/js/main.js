@@ -28,7 +28,7 @@ class Content {
             "leading a team at ",
             {
               text: "WAT.ai",
-              url: "https://wat.ai",
+              url: "https://watai.ca",
               logo: "/assets/logos/watai.png"
             },
             " using AI to speed up regulatory approval of new and safer AI-discovered pesticides for farmers, at ",
