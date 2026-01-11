@@ -18,12 +18,6 @@ class Content {
       name: "William Cagas",
       currentRoles: [
         {
-          role: "software engineering at",
-          company: "University of Waterloo",
-          link: "https://uwaterloo.ca/",
-          logo: "/assets/logos/waterloo-logo.png"
-        },
-        {
           inlineLinks: [
             "leading a team at ",
             {
@@ -43,7 +37,13 @@ class Content {
       ],
       building: [
         {
-          text: "building a competitive platform for all university students - launching in 3 days!"
+          text: "building ",
+          link: {
+            text: "GooseTrials",
+            url: "https://goosetrials.com",
+            logo: "/assets/logos/goosetrials.png"
+          },
+          after: ", the ranked Human Benchmark for university students (~1000 unique players within 24 hours of launch!!) "
         },
         {
           text: "exploring AI x biomedical applications including medical imaging and CT-based oncology analysis"
@@ -101,7 +101,7 @@ class Content {
             url: "https://medgans.wcagas.com",
             logo: "/assets/logos/medgans.png"
           },
-          after: " with an oral presentation at ACCV 2024 and cited by 8 papers including ICCV and ACM"
+          after: " with an oral presentation at ACCV 2024 and cited by 8 papers including ICCV and publications"
         },
         {
           inlineLinks: [
@@ -157,6 +157,11 @@ class Content {
       ],
       archive: {
         photos: [
+          {
+            image: "/assets/pictures/goosetrials-launch.jpg",
+            caption: "Goose Trials launch at SE lounge",
+            objectPosition: "60% 40%"
+          },
           {
             image: "/assets/pictures/se-2030.JPG",
             caption: "Most cracked builders in Canada (i.e. Waterloo SE '30)",
