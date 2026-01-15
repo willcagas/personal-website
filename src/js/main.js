@@ -109,7 +109,7 @@ class Content {
           },
           subItems: [
             "oral presentation at GAISynMeD at ACCV 2024 in Hanoi, Vietnam",
-            "cited by 8 papers including ICCV and publications"
+            "cited by 8 papers including ICCV and ACM publications"
           ]
         },
         {
