@@ -84,12 +84,34 @@ h2 {
 }
 
 .about-list li {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   padding-left: 24px;
 }
 
 .about-list li::before {
   content: "•";
+  margin-left: -24px;
+  margin-right: 8px;
+  color: var(--color-text);
+}
+
+/* Sub-bullet points with arrows */
+.about-list li .sub-item,
+.role-item .sub-item,
+.project-item .sub-item {
+  display: block;
+  margin-top: 8px;
+  margin-bottom: 6px;
+  padding-left: 24px;
+  font-size: 0.95em;
+  color: var(--color-text);
+  font-style: italic;
+}
+
+.about-list li .sub-item::before,
+.role-item .sub-item::before,
+.project-item .sub-item::before {
+  content: "↳";
   margin-left: -24px;
   margin-right: 8px;
   color: var(--color-text);
@@ -125,6 +147,7 @@ a:hover {
 nav {
   margin-bottom: 32px;
   margin-top: 0;
+  width: 100%;
 }
 
 .nav-container {
@@ -133,6 +156,7 @@ nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
 }
 
 .nav-logo {
@@ -244,6 +268,8 @@ nav {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .profile-name {
@@ -258,6 +284,8 @@ nav {
   margin: 0 0 4px 0;
   line-height: 1.4;
   color: var(--color-text);
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .profile-location {
@@ -309,7 +337,7 @@ nav {
 }
 
 .role-item {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   padding-left: 24px;
 }
 
@@ -323,6 +351,10 @@ nav {
   color: var(--color-text);
 }
 
+.role-item .sub-item {
+  margin-top: 6px;
+}
+
 .role-icon {
   width: 16px;
   height: 16px;
@@ -331,7 +363,7 @@ nav {
 }
 
 .project-item {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   padding-left: 24px;
 }
 
@@ -339,6 +371,10 @@ nav {
   content: "•";
   margin-left: -24px;
   color: var(--color-text);
+}
+
+.project-item .sub-item {
+  margin-top: 6px;
 }
 
 .project-title {
@@ -459,6 +495,7 @@ footer {
 .archive-photos-carousel {
   position: relative;
   margin-bottom: 32px;
+  width: 100%;
 }
 
 .archive-photos-wrapper {
@@ -584,11 +621,11 @@ footer {
   }
   
   .carousel-btn-prev {
-    left: 8px;
+    left: 0;
   }
   
   .carousel-btn-next {
-    right: 8px;
+    right: 0;
   }
 }
 
@@ -596,11 +633,18 @@ footer {
 @media (max-width: 640px) {
   main {
     padding: 16px;
-    padding-top: 60px;
+    padding-top: 16px;
   }
   
   nav {
-    padding: 16px;
+    margin-bottom: 24px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  
+  .nav-container {
+    padding-bottom: 8px;
+    margin: 0;
   }
   
   .nav-links {
@@ -609,5 +653,103 @@ footer {
   
   h1 {
     font-size: 20px;
+  }
+  
+  /* Profile header: stack vertically on mobile */
+  .profile-header {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  
+  .profile-image-container {
+    width: 120px;
+    height: 120px;
+  }
+  
+  .profile-info {
+    width: 100%;
+    height: auto;
+    align-items: center;
+    text-align: center;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .profile-name {
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+  
+  .profile-university {
+    margin-bottom: 6px;
+    white-space: nowrap;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    word-break: keep-all;
+    padding: 0;
+    font-size: clamp(14px, 3.8vw, 16px);
+  }
+  
+  .profile-university .project-logo {
+    height: 1em;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+  
+  .profile-location {
+    margin-bottom: 16px;
+  }
+  
+  .profile-social {
+    justify-content: center;
+    margin-top: 0;
+  }
+  
+  /* Content sections */
+  .content-section {
+    margin-bottom: 24px;
+  }
+  
+  h2 {
+    margin-top: 24px;
+    margin-bottom: 12px;
+    font-size: 16px;
+  }
+  
+  /* Reduce font size for content sections on mobile */
+  .about-list li,
+  .role-item,
+  .project-item {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  .role-text {
+    font-size: 14px;
+  }
+  
+  /* Sub-items on mobile */
+  .about-list li .sub-item,
+  .role-item .sub-item,
+  .project-item .sub-item {
+    font-size: 13px;
+    margin-top: 4px;
+    margin-bottom: 3px;
+    font-style: italic;
+  }
+  
+  /* Footer adjustments */
+  .footer-content-wrapper {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .footer-social {
+    justify-content: center;
   }
 }

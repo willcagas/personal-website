@@ -25,13 +25,17 @@ class Content {
               url: "https://watai.ca",
               logo: "/assets/logos/watai.png"
             },
-            " using AI to speed up regulatory approval of new and safer AI-discovered pesticides for farmers, at ",
+            " building AI for pesticide regulatory approval, at ",
             {
               text: "Bindwell",
               url: "https://bindwell.ai/",
               logo: "/assets/logos/bindwell.png"
             },
             " (YC W25)"
+          ],
+          subItems: [
+            "building AI systems for regulatory reasoning and compliance automation",
+            "helping bring safer agricultural products to farmers faster"
           ]
         }
       ],
@@ -43,7 +47,11 @@ class Content {
             url: "https://goosetrials.com",
             logo: "/assets/logos/goosetrials.png"
           },
-          after: ", the ranked Human Benchmark for university students (~1000 unique players within 24 hours of launch!!) "
+          after: " as the ranked Human Benchmark for university students",
+          subItems: [
+            "~1000 unique players and 8000 games played within 24 hours of launch",
+            "(soon!) featured in UWaterloo's official student newspaper, Imprint"
+          ]
         },
         {
           text: "exploring AI x biomedical applications including medical imaging and CT-based oncology analysis"
@@ -55,7 +63,6 @@ class Content {
             url: "https://se30webring.com",
             logo: "/assets/logos/se30webring.png"
           },
-          after: " with a goal of having all ~120 of us in the webring!",
         },
         {
           text: "building AI for acne at ",
@@ -64,7 +71,10 @@ class Content {
             url: "https://acnecura.io",
             logo: "/assets/logos/acnecura.png"
           },
-          after: " with 300K organic views and featured in Global News"
+          subItems: [
+            "300K organic views across all social media",
+            "interviewed and featured on Global News and the Hamilton Spectator"
+          ]
         },
         {
           text: "documenting tech and uni life on ",
@@ -92,7 +102,11 @@ class Content {
             url: "https://hammerhacks2024.wcagas.com",
             logo: "/assets/logos/hammerhacks.png"
           },
-          after: " with 140+ participants, ~50 projects, and $12,000 in funding from McMaster Engineering, Hack Club, Inference Labs, and more"
+          subItems: [
+            "140+ participants",
+            "~50 projects",
+            "$12,000 in funding from McMaster Engineering, Hack Club, Inference Labs, and more"
+          ]
         },
         {
           text: "published ML research on ",
@@ -101,7 +115,10 @@ class Content {
             url: "https://medgans.wcagas.com",
             logo: "/assets/logos/medgans.png"
           },
-          after: " with an oral presentation at ACCV 2024 and cited by 8 papers including ICCV and publications"
+          subItems: [
+            "oral presentation at GAISynMeD at ACCV 2024 in Hanoi, Vietnam",
+            "cited by 8 papers including ICCV and publications"
+          ]
         },
         {
           inlineLinks: [
@@ -133,15 +150,21 @@ class Content {
             url: "https://www.roblox.com/games/6937615628/Sword-Power-Tycoon",
             logo: "/assets/logos/roblox-logo.png"
           },
-          after: " leading to 19M+ plays and 36K+ favourites on Roblox"
+          subItems: [
+            "19M+ plays",
+            "36K+ favourites on Roblox"
+          ]
         }
       ],
       previously: [
         {
-          role: "conducted collaborative ML research on DDPMs for clinical applications at",
+          role: "conducted short-term collaborative ML research on DDPMs at",
           company: "CMU Xu Lab",
           link: "https://xulabs.github.io/",
-          logo: "/assets/logos/cmu.png"
+          logo: "/assets/logos/cmu.png",
+          subItems: [
+            "accelerating clinical trials for rare diseases using DDPMs",
+          ]
         },
         {
           role: "taught CS106A and Python basics at",
@@ -371,7 +394,15 @@ class Content {
         <h2>about:</h2>
         <ul class="about-list">
           ${Array.isArray(this.data.about) 
-            ? this.data.about.map(item => `<li>${item}</li>`).join('')
+            ? this.data.about.map(item => {
+                if (typeof item === 'string') {
+                  return `<li>${item}</li>`;
+                } else if (item.text) {
+                  const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
+                  return `<li>${item.text}${subItems}</li>`;
+                }
+                return `<li>${item}</li>`;
+              }).join('')
             : `<li>${this.data.about}</li>`
           }
         </ul>
@@ -379,30 +410,42 @@ class Content {
 
       <section class="content-section">
         <h2>currently:</h2>
-        ${this.data.currentRoles.map(role => `
+        ${this.data.currentRoles.map(role => {
+          const subItems = role.subItems ? role.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
+          return `
           <div class="role-item">
-            <span class="role-text">${renderRoleText(role)}</span>
+            <span class="role-text">${renderRoleText(role)}</span>${subItems}
           </div>
-        `).join('')}
-        ${this.data.building.map(item => `
+        `;
+        }).join('')}
+        ${this.data.building.map(item => {
+          const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
+          return `
           <div class="project-item">
-            ${renderBuildingItem(item)}
+            ${renderBuildingItem(item)}${subItems}
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </section>
 
       <section class="content-section">
         <h2>previously:</h2>
-        ${this.data.previously.map(role => `
+        ${this.data.previously.map(role => {
+          const subItems = role.subItems ? role.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
+          return `
           <div class="role-item">
-            <span class="role-text">${renderRoleText(role)}</span>
+            <span class="role-text">${renderRoleText(role)}</span>${subItems}
           </div>
-        `).join('')}
-        ${this.data.completed.map(item => `
+        `;
+        }).join('')}
+        ${this.data.completed.map(item => {
+          const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
+          return `
           <div class="project-item">
-            ${renderBuildingItem(item)}
+            ${renderBuildingItem(item)}${subItems}
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </section>
 
       <section class="content-section">
