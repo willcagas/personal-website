@@ -41,7 +41,7 @@ class Content {
       ],
       building: [
         {
-          text: "building ",
+          text: "developing ",
           link: {
             text: "GooseTrials",
             url: "https://goosetrials.com",
@@ -55,14 +55,6 @@ class Content {
         },
         {
           text: "exploring AI x biomedical applications including medical imaging and CT-based oncology analysis"
-        },
-        {
-          text: "creating a shared online space for SE '30 through the ",
-          link: {
-            text: "SE '30 Webring",
-            url: "https://se30webring.com",
-            logo: "/assets/logos/se30webring.png"
-          },
         },
         {
           text: "building AI for acne at ",
