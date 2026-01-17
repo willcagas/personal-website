@@ -15,7 +15,8 @@ import ThemeManager from './theme.js';
 class Content {
   constructor() {
     this.data = {
-      name: "William Cagas",
+      name: "William Cagas 🪿",
+      navName: "William Cagas",
       currentRoles: [
         {
           inlineLinks: [
@@ -264,7 +265,7 @@ class Content {
     return `
       <nav>
         <div class="nav-container">
-          <a href="/" class="nav-logo">${this.data.name}</a>
+          <a href="/" class="nav-logo">${this.data.navName}</a>
           <div class="nav-links">
             <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme" type="button">
               <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -540,7 +541,7 @@ class Content {
             <a href="https://se30webring.com?from=https://wcagas.com&dir=next" style="text-decoration: none; color: #FFCE1A; font-size: 1.5rem; line-height: 1; display: flex; align-items: center;">→</a>
           </div>
         </div>
-        <p class="footer-copyright">© ${new Date().getFullYear()} ${this.data.name}</p>
+        <p class="footer-copyright">© ${new Date().getFullYear()} ${this.data.name} • <span id="visit-counter">0</span> views</p>
       </footer>
     `;
   }
