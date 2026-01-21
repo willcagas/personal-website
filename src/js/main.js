@@ -42,7 +42,7 @@ class Content {
       ],
       building: [
         {
-          text: "exploring AI x biomedical applications including medical imaging and CT-based oncology analysis"
+          text: "exploring multimodal AI systems for oncology workflows across imaging, clinical, and biological data"
         },
         {
           text: "building AI for acne at ",
