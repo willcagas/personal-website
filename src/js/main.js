@@ -170,7 +170,7 @@ class Content {
       ],
       about: [
         "passionate about researching and building AI that solves real-world problems",
-        "work spans biomedical and health tech, applied AI research, web/mobile app dev, hackathon organizing, education, game dev, and more",
+        "work spans applied AI, biomedical and health tech, ML research, web/mobile app dev, hackathon organizing, education, game dev, and more",
         "feel free to reach out if you're interested in tech or building something cool!"
       ],
       archive: {
