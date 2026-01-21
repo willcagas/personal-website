@@ -482,11 +482,6 @@ footer {
   color: var(--color-text-secondary);
 }
 
-#visit-counter {
-  font-weight: 500;
-  color: var(--color-text);
-}
-
 /* Archive Section */
 .archive-content {
   margin-bottom: 0;

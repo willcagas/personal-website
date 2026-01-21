@@ -16,7 +16,7 @@ class Content {
   constructor() {
     this.data = {
       name: "William Cagas 🪿",
-      navName: "William Cagas",
+      nameSimple: "William Cagas",
       currentRoles: [
         {
           inlineLinks: [
@@ -41,19 +41,6 @@ class Content {
         }
       ],
       building: [
-        {
-          text: "developing ",
-          link: {
-            text: "GooseTrials",
-            url: "https://goosetrials.com",
-            logo: "/assets/logos/goosetrials.png"
-          },
-          after: " as the ranked Human Benchmark for university students",
-          subItems: [
-            "~1000 unique players and 8000 games played within 24 hours of launch",
-            "(soon!) featured in UWaterloo's official student newspaper, Imprint"
-          ]
-        },
         {
           text: "exploring AI x biomedical applications including medical imaging and CT-based oncology analysis"
         },
@@ -150,6 +137,21 @@ class Content {
         }
       ],
       previously: [
+        {
+          inlineLinks: [
+            "developed ",
+            {
+              text: "GooseTrials",
+              url: "https://goosetrials.com",
+              logo: "/assets/logos/goosetrials.png"
+            },
+            " as the ranked Human Benchmark for university students"
+          ],
+          subItems: [
+            "~1000 unique players and 8000 games played within 24 hours of launch",
+            "(soon!) featured in UWaterloo's official student newspaper, Imprint"
+          ]
+        },
         {
           role: "conducted short-term collaborative ML research on DDPMs at",
           company: "CMU Xu Lab",
@@ -265,7 +267,7 @@ class Content {
     return `
       <nav>
         <div class="nav-container">
-          <a href="/" class="nav-logo">${this.data.navName}</a>
+          <a href="/" class="nav-logo">${this.data.nameSimple}</a>
           <div class="nav-links">
             <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme" type="button">
               <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -541,7 +543,7 @@ class Content {
             <a href="https://se30webring.com?from=https://wcagas.com&dir=next" style="text-decoration: none; color: #FFCE1A; font-size: 1.5rem; line-height: 1; display: flex; align-items: center;">→</a>
           </div>
         </div>
-        <p class="footer-copyright">© ${new Date().getFullYear()} ${this.data.name} • <span id="visit-counter">0</span> views</p>
+        <p class="footer-copyright">© ${new Date().getFullYear()} ${this.data.nameSimple}</p>
       </footer>
     `;
   }
