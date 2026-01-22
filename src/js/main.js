@@ -176,6 +176,10 @@ class Content {
       archive: {
         photos: [
           {
+            image: "/assets/pictures/uw-zfellows-meetup.jpeg",
+            caption: "UW x Z Fellows builder meetup"
+          },
+          {
             image: "/assets/pictures/goosetrials-launch.jpg",
             caption: "Goose Trials launch at SE lounge",
             objectPosition: "60% 40%"
