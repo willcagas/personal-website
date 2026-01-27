@@ -149,7 +149,7 @@ class Content {
           ],
           subItems: [
             "~1000 unique players and 8000 games played within 24 hours of launch",
-            "(soon!) featured in UWaterloo's official student newspaper, Imprint"
+            "featured in UWaterloo's official student newspaper, Imprint"
           ]
         },
         {
@@ -240,6 +240,23 @@ class Content {
           }
         ]
       },
+      press: [
+        {
+          outlet: "UW Imprint",
+          url: "https://uwimprint.ca/first-year-engineering-students-launch-goose-trials-a-competitive-game-platform/",
+          title: "First-year engineering students launch Goose Trials, a competitive game platform"
+        },
+        {
+          outlet: "Global News",
+          url: "https://globalnews.ca/video/11330376/hamilton-teen-develops-app-to-detect-diagnose-acne/",
+          title: "Hamilton teen develops app to detect, diagnose acne"
+        },
+        {
+          outlet: "The Hamilton Spectator",
+          url: "https://www.thespec.com/news/hamilton-region/hamilton-high-schooler-uses-tech-to-solve-problems-from-gaps-in-medical-data-to-teen/article_35dcda17-4b96-5079-90d5-84625c65f254.html",
+          title: "Hamilton high schooler uses tech to solve problems — from gaps in medical data to teen acne"
+        }
+      ],
       location: "Hamilton, ON, Canada",
       email: "wcagas@uwaterloo.ca",
       socialLinks: [
@@ -445,6 +462,20 @@ class Content {
           </div>
         `;
         }).join('')}
+      </section>
+
+      <section class="content-section">
+        <h2>press:</h2>
+        <ul class="press-list">
+          ${this.data.press.map(item => `
+            <li class="press-item">
+              <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="press-link">
+                <span class="press-outlet">${item.outlet}</span>
+                <span class="press-article">${item.title}</span>
+              </a>
+            </li>
+          `).join('')}
+        </ul>
       </section>
 
       <section class="content-section">

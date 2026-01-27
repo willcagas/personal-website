@@ -611,6 +611,57 @@ footer {
   line-height: 1.4;
 }
 
+/* Press Section */
+.press-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.press-item {
+  margin-bottom: 12px;
+  padding-left: 24px;
+}
+
+.press-item::before {
+  content: "•";
+  margin-left: -24px;
+  margin-right: 8px;
+  color: var(--color-text);
+}
+
+.press-link {
+  display: inline;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--color-link);
+  transition: border-style 0.2s ease;
+}
+
+.press-link:hover {
+  border-bottom-style: dashed;
+}
+
+.press-outlet {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.press-outlet::after {
+  content: " — ";
+  font-weight: 400;
+}
+
+.press-article {
+  color: var(--color-text);
+}
+
+@media (max-width: 640px) {
+  .press-item {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+}
+
 @media (max-width: 640px) {
   .archive-videos {
     grid-template-columns: 1fr;
