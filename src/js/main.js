@@ -252,6 +252,11 @@ class Content {
           title: "Hamilton teen develops app to detect, diagnose acne"
         },
         {
+          outlet: "HWCDSB",
+          url: "https://www.hwcdsb.ca/news/2024-2025/hammer_hacks_empowers_hamilton_youth_in_s_t_e_m",
+          title: "HammerHacks Empowers Hamilton Youth in STEM"
+        },
+        {
           outlet: "The Hamilton Spectator",
           url: "https://www.thespec.com/news/hamilton-region/hamilton-high-schooler-uses-tech-to-solve-problems-from-gaps-in-medical-data-to-teen/article_35dcda17-4b96-5079-90d5-84625c65f254.html",
           title: "Hamilton high schooler uses tech to solve problems — from gaps in medical data to teen acne"
