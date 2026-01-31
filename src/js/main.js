@@ -26,7 +26,7 @@ class Content {
               url: "https://watai.ca",
               logo: "/assets/logos/watai.png"
             },
-            " building AI for pesticide regulatory approval, at ",
+            " building AI for pesticide regulatory approval for ",
             {
               text: "Bindwell",
               url: "https://bindwell.ai/",
@@ -35,8 +35,7 @@ class Content {
             " (YC W25)"
           ],
           subItems: [
-            "building AI systems for regulatory reasoning and compliance automation",
-            "helping bring safer agricultural products to farmers faster"
+            "helping bring safer AI-discovered pesticides to farmers faster"
           ]
         }
       ],
@@ -83,15 +82,13 @@ class Content {
             logo: "/assets/logos/hammerhacks.png"
           },
           subItems: [
-            "140+ participants",
-            "~50 projects",
-            "$12,000 in funding from McMaster Engineering, Hack Club, Inference Labs, and more"
+            "140+ participants, ~50 projects, and $12,000 in funding from McMaster Engineering, Hack Club, Inference Labs, and more",
           ]
         },
         {
-          text: "published ML research on ",
+          text: "published an ML research paper on ",
           link: {
-            text: "medical imaging complexity and GAN performance",
+            text: "GANs for medical imaging",
             url: "https://medgans.wcagas.com",
             logo: "/assets/logos/medgans.png"
           },
@@ -108,7 +105,7 @@ class Content {
               url: "https://greenventure.ca/",
               logo: "/assets/logos/greenventure.png"
             },
-            " and at ",
+            " and ",
             {
               text: "Career Education Council",
               url: "https://cec-council.org/",
@@ -131,8 +128,7 @@ class Content {
             logo: "/assets/logos/roblox-logo.png"
           },
           subItems: [
-            "19M+ plays",
-            "36K+ favourites on Roblox"
+            "19M+ plays and 36K+ favourites on Roblox",
           ]
         }
       ],
@@ -153,7 +149,7 @@ class Content {
           ]
         },
         {
-          role: "conducted short-term collaborative ML research on DDPMs at",
+          role: "conducted short-term collaborative ML research at",
           company: "CMU Xu Lab",
           link: "https://xulabs.github.io/",
           logo: "/assets/logos/cmu.png",
