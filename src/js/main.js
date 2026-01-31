@@ -55,14 +55,6 @@ class Content {
             "interviewed and featured on Global News and the Hamilton Spectator"
           ]
         },
-        {
-          text: "documenting tech and uni life on ",
-          link: {
-            text: "@willcagas.mov",
-            url: "https://www.instagram.com/willcagas.mov",
-            logo: "/assets/logos/instagram.jpg"
-          }
-        },
       ],
       completed: [
         {
@@ -494,7 +486,9 @@ class Content {
               <div class="archive-photos-track" id="archive-photos-track">
                 ${this.data.archive.photos.map((photo, index) => `
                   <figure class="archive-photo-item">
-                    <img src="${photo.image}" alt="${photo.caption}" class="archive-photo" style="${photo.objectPosition ? `object-position: ${photo.objectPosition};` : ''}" loading="${index < 3 ? 'eager' : 'lazy'}">
+                    <div class="archive-photo-frame">
+                      <img src="${photo.image}" alt="${photo.caption}" class="archive-photo" style="${photo.objectPosition ? `object-position: ${photo.objectPosition};` : ''}" loading="${index < 3 ? 'eager' : 'lazy'}">
+                    </div>
                     <figcaption class="archive-photo-caption">${photo.caption}</figcaption>
                   </figure>
                 `).join('')}

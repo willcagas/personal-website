@@ -515,13 +515,22 @@ footer {
   min-width: 0;
 }
 
+/* Same aspect-ratio window on desktop and mobile so crop/framing is consistent */
+.archive-photo-frame {
+  width: 100%;
+  aspect-ratio: 255 / 200;
+  overflow: hidden;
+  border-radius: 4px;
+  background-color: var(--color-border);
+}
+
 .archive-photo {
   width: 100%;
-  height: 200px;
+  height: 100%;
   border-radius: 4px;
   display: block;
   object-fit: cover;
-  background-color: var(--color-bg-secondary);
+  object-position: center center;
 }
 
 .archive-photo-caption {
@@ -534,7 +543,7 @@ footer {
 
 .carousel-btn {
   position: absolute;
-  top: 100px;
+  top: 50%;
   transform: translateY(-50%);
   background: rgba(0, 0, 0, 0.5);
   border: none;
