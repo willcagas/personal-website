@@ -70,7 +70,7 @@ class Content {
           after: " <span class=\"sub-info\">(accelerating clinical trials for rare diseases using DDPMs)</span>"
         },
         {
-          text: "taught 2x of CS106A and Python basics at ",
+          text: "taught CS106A and Python basics 2x at ",
           link: {
             text: "Stanford Code in Place",
             url: "https://codeinplace.stanford.edu/",
