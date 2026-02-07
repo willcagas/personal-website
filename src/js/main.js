@@ -17,31 +17,28 @@ class Content {
     this.data = {
       name: "William Cagas 🪿",
       nameSimple: "William Cagas",
-      currentRoles: [
-        {
-          inlineLinks: [
-            "leading a team at ",
-            {
-              text: "WAT.ai",
-              url: "https://watai.ca",
-              logo: "/assets/logos/watai.png"
-            },
-            " building AI for pesticide regulatory approval for ",
-            {
-              text: "Bindwell",
-              url: "https://bindwell.ai/",
-              logo: "/assets/logos/bindwell.png"
-            },
-            " (YC W25)"
-          ],
-          subItems: [
-            "helping bring safer AI-discovered pesticides to farmers faster"
-          ]
-        }
+      aboutList: [
+        { text: "passionate about researching and building AI that solves real-world problems" },
+        { text: "feel free to reach out if you're interested in tech or building something cool!" }
       ],
-      building: [
+      currentList: [
         {
-          text: "exploring multimodal AI systems for oncology workflows across imaging, clinical, and biological data"
+          text: "leading a team at ",
+          link: {
+            text: "WAT.ai",
+            url: "https://watai.ca",
+            logo: "/assets/logos/watai.png"
+          },
+          after: " building AI for pesticide regulatory approval for ",
+          secondLink: {
+            text: "Bindwell",
+            url: "https://bindwell.ai/",
+            logo: "/assets/logos/bindwell.png"
+          },
+          after2: " (YC W25) <span class=\"sub-info\">(helping bring safer AI-discovered pesticides to farmers faster)</span>"
+        },
+        {
+          text: "exploring multimodal AI systems for oncology workflows"
         },
         {
           text: "building AI for acne at ",
@@ -50,21 +47,35 @@ class Content {
             url: "https://acnecura.io",
             logo: "/assets/logos/acnecura.png"
           },
-          subItems: [
-            "300K organic views across all social media",
-            "interviewed and featured on Global News and the Hamilton Spectator"
-          ]
-        },
+          after: " <span class=\"sub-info\">(300K organic views, interviewed on Global News)</span>"
+        }
       ],
-      completed: [
+      previousList: [
         {
-          text: "received a ",
+          text: "shipped ",
           link: {
-            text: "$20,000 scholarship",
-            url: "https://uwaterloo.ca/undergraduate-entrance-awards/awards/gloria-baylis-entrance-award",
-            logo: "/assets/logos/waterloo-logo.png"
+            text: "GooseTrials",
+            url: "https://goosetrials.com",
+            logo: "/assets/logos/goosetrials.png"
           },
-          after: " from UWaterloo for demonstrated interest in entrepreneurship"
+          after: ", the ranked Human Benchmark <span class=\"sub-info\">(~1000 unique players + 8000 games played in 24 hrs, featured in UWaterloo's newspaper)</span>"
+        },
+        {
+          text: "conducted collaborative ML research at ",
+          link: {
+            text: "CMU Xu Lab",
+            url: "https://xulabs.github.io/",
+            logo: "/assets/logos/cmu.png"
+          },
+          after: " <span class=\"sub-info\">(accelerating clinical trials for rare diseases using DDPMs)</span>"
+        },
+        {
+          text: "taught 2x of CS106A and Python basics at ",
+          link: {
+            text: "Stanford Code in Place",
+            url: "https://codeinplace.stanford.edu/",
+            logo: "/assets/logos/stanford-logo.jpg"
+          }
         },
         {
           text: "led and organized ",
@@ -73,9 +84,7 @@ class Content {
             url: "https://hammerhacks2024.wcagas.com",
             logo: "/assets/logos/hammerhacks.png"
           },
-          subItems: [
-            "140+ participants, ~50 projects, and $12,000 in funding from McMaster Engineering, Hack Club, Inference Labs, and more",
-          ]
+          after: " <span class=\"sub-info\">(140+ participants, ~50 projects, and $12,000 in funding from McMaster Engineering, Hack Club, and more)</span>"
         },
         {
           text: "published an ML research paper on ",
@@ -84,34 +93,9 @@ class Content {
             url: "https://medgans.wcagas.com",
             logo: "/assets/logos/medgans.png"
           },
-          subItems: [
-            "oral presentation at GAISynMeD at ACCV 2024 in Hanoi, Vietnam",
-            "cited by 8 papers including ICCV and ACM publications"
-          ]
+          after: " <span class=\"sub-info\">(oral presentation at ACCV 2024, cited 8× incl. ICCV, ACM)</span>"
         },
-        {
-          inlineLinks: [
-            "software developer at ",
-            {
-              text: "Green Venture",
-              url: "https://greenventure.ca/",
-              logo: "/assets/logos/greenventure.png"
-            },
-            " and ",
-            {
-              text: "Career Education Council",
-              url: "https://cec-council.org/",
-              logo: "/assets/logos/cec.png"
-            },
-            " x ",
-            {
-              text: "Apple",
-              url: "https://apple.com/",
-              logo: "/assets/logos/apple.png"
-            },
-            " building mobile apps"
-          ]
-        },
+        // Green Venture item removed as requested
         {
           text: "built sword and game mechanics for ",
           link: {
@@ -119,48 +103,10 @@ class Content {
             url: "https://www.roblox.com/games/6937615628/Sword-Power-Tycoon",
             logo: "/assets/logos/roblox-logo.png"
           },
-          subItems: [
-            "19M+ plays and 36K+ favourites on Roblox",
-          ]
+          after: " <span class=\"sub-info\">(19M+ plays, 36K+ favourites)</span>"
         }
       ],
-      previously: [
-        {
-          inlineLinks: [
-            "developed ",
-            {
-              text: "GooseTrials",
-              url: "https://goosetrials.com",
-              logo: "/assets/logos/goosetrials.png"
-            },
-            " as the ranked Human Benchmark for university students"
-          ],
-          subItems: [
-            "~1000 unique players and 8000 games played within 24 hours of launch",
-            "featured in UWaterloo's official student newspaper, Imprint"
-          ]
-        },
-        {
-          role: "conducted short-term collaborative ML research at",
-          company: "CMU Xu Lab",
-          link: "https://xulabs.github.io/",
-          logo: "/assets/logos/cmu.png",
-          subItems: [
-            "accelerating clinical trials for rare diseases using DDPMs",
-          ]
-        },
-        {
-          role: "taught CS106A and Python basics at",
-          company: "Stanford Code in Place",
-          link: "https://codeinplace.stanford.edu",
-          logo: "/assets/logos/stanford-logo.jpg"
-        }
-      ],
-      about: [
-        "passionate about researching and building AI that solves real-world problems",
-        "work spans applied AI/ML, bio/health tech, research, web/mobile app dev, hackathon organizing, education, game dev, and more",
-        "feel free to reach out if you're interested in tech or building something cool!"
-      ],
+      // Keep archive/press/socialLinks as is for now/footer
       archive: {
         photos: [
           {
@@ -306,58 +252,23 @@ class Content {
   }
 
   renderContent() {
-    const renderBuildingItem = (item) => {
-      // If item has inlineLinks array, render it as parts
-      if (item.inlineLinks && Array.isArray(item.inlineLinks)) {
-        return item.inlineLinks.map(part => {
-          if (typeof part === 'string') {
-            return part;
-          } else if (part.url) {
-            // It's a link object with text, url, and optional logo
-            const logoHtml = part.logo ? `<img src="${part.logo}" alt="${part.text}" class="project-logo">` : '';
-            return `<a href="${part.url}" target="_blank" rel="noopener noreferrer">${part.text}</a>${logoHtml}`;
-          }
-          return '';
-        }).join('');
-      }
+    const renderItem = (item) => {
+      let content = item.text || '';
       if (item.link) {
         const logoHtml = item.link.logo ? `<img src="${item.link.logo}" alt="${item.link.text}" class="project-logo">` : '';
-        return `${item.text}<a href="${item.link.url}" target="_blank" rel="noopener noreferrer">${item.link.text}</a>${logoHtml}${item.after || ''}`;
+        content += `<a href="${item.link.url}" target="_blank" rel="noopener noreferrer">${item.link.text}</a>${logoHtml}`;
       }
-      return item.text;
-    };
-
-    /**
-     * Renders role text with inline links and logos
-     * Supports both legacy format (role, company, link, logo) and inlineLinks format
-     * @param {Object} role - Role object with either inlineLinks array or legacy properties
-     * @returns {string} HTML string for the role text
-     */
-    const renderRoleText = (role) => {
-      // If role has inlineLinks array, render it as parts
-      if (role.inlineLinks && Array.isArray(role.inlineLinks)) {
-        return role.inlineLinks.map(part => {
-          if (typeof part === 'string') {
-            return part;
-          } else if (part.url) {
-            // It's a link object with text, url, and optional logo
-            const logoHtml = part.logo ? `<img src="${part.logo}" alt="${part.text}" class="project-logo">` : '';
-            return `<a href="${part.url}" target="_blank" rel="noopener noreferrer">${part.text}</a>${logoHtml}`;
-          }
-          return '';
-        }).join('');
+      if (item.after) {
+        content += item.after;
       }
-
-      // Legacy support: if role.logo2 exists, use special case
-      if (role.logo2) {
-        // Special case for WAT.ai × Bindwell with two logos
-        return `<a href="${role.link}" target="_blank" rel="noopener noreferrer">WAT.ai</a><img src="${role.logo}" alt="WAT.ai" class="project-logo"> × <a href="https://bindwell.ai/" target="_blank" rel="noopener noreferrer">Bindwell</a><img src="${role.logo2}" alt="Bindwell" class="project-logo"> (YC W25)`;
+      if (item.secondLink) {
+        const logo2Html = item.secondLink.logo ? `<img src="${item.secondLink.logo}" alt="${item.secondLink.text}" class="project-logo">` : '';
+        content += `<a href="${item.secondLink.url}" target="_blank" rel="noopener noreferrer">${item.secondLink.text}</a>${logo2Html}`;
       }
-
-      // Legacy support: render role text + company link with logo
-      const roleText = role.role ? role.role + ' ' : '';
-      const logoHtml = role.logo ? `<img src="${role.logo}" alt="${role.company}" class="project-logo">` : '';
-      return `${roleText}<a href="${role.link}" target="_blank" rel="noopener noreferrer">${role.company}</a>${logoHtml}`;
+      if (item.after2) {
+        content += item.after2;
+      }
+      return content;
     };
 
     return `
@@ -400,61 +311,37 @@ class Content {
             </div>
           </div>
         </div>
+      <section class="content-section">
         <h2>about:</h2>
-        <ul class="about-list">
-          ${Array.isArray(this.data.about)
-        ? this.data.about.map(item => {
-          if (typeof item === 'string') {
-            return `<li>${item}</li>`;
-          } else if (item.text) {
-            const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
-            return `<li>${item.text}${subItems}</li>`;
-          }
-          return `<li>${item}</li>`;
-        }).join('')
-        : `<li>${this.data.about}</li>`
-      }
-        </ul>
+        ${this.data.aboutList.map(item => `
+          <div class="role-item">
+            <span class="role-text">${renderItem(item)}</span>
+          </div>
+        `).join('')}
       </section>
 
       <section class="content-section">
         <h2>currently:</h2>
-        ${this.data.currentRoles.map(role => {
-        const subItems = role.subItems ? role.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
-        return `
+        ${this.data.currentList.map(item => {
+      const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
+      return `
           <div class="role-item">
-            <span class="role-text">${renderRoleText(role)}</span>${subItems}
+            <span class="role-text">${renderItem(item)}</span>${subItems}
           </div>
         `;
-      }).join('')}
-        ${this.data.building.map(item => {
-        const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
-        return `
-          <div class="project-item">
-            ${renderBuildingItem(item)}${subItems}
-          </div>
-        `;
-      }).join('')}
+    }).join('')}
       </section>
 
       <section class="content-section">
         <h2>previously:</h2>
-        ${this.data.previously.map(role => {
-        const subItems = role.subItems ? role.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
-        return `
+        ${this.data.previousList.map(item => {
+      const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
+      return `
           <div class="role-item">
-            <span class="role-text">${renderRoleText(role)}</span>${subItems}
+            <span class="role-text">${renderItem(item)}</span>${subItems}
           </div>
         `;
-      }).join('')}
-        ${this.data.completed.map(item => {
-        const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
-        return `
-          <div class="project-item">
-            ${renderBuildingItem(item)}${subItems}
-          </div>
-        `;
-      }).join('')}
+    }).join('')}
       </section>
 
       <section class="content-section">
@@ -546,15 +433,15 @@ class Content {
               <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/gmail.svg" alt="Email" class="social-logo">
             </a>
             ${this.data.socialLinks.map(link => {
-        const iconMap = {
-          'LinkedIn': 'linkedin',
-          'GitHub': 'github',
-          'Google Scholar': 'googlescholar',
-          'Twitter': 'x',
-          'Instagram': 'instagram'
-        };
-        const iconName = iconMap[link.name] || link.name.toLowerCase().replace(' ', '');
-        return `
+      const iconMap = {
+        'LinkedIn': 'linkedin',
+        'GitHub': 'github',
+        'Google Scholar': 'googlescholar',
+        'Twitter': 'x',
+        'Instagram': 'instagram'
+      };
+      const iconName = iconMap[link.name] || link.name.toLowerCase().replace(' ', '');
+      return `
               <a href="${link.url}" 
                  target="_blank" 
                  class="footer-social-link" 
@@ -563,7 +450,7 @@ class Content {
                 <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/${iconName}.svg" alt="${link.name}" class="social-logo">
               </a>
             `;
-      }).join('')}
+    }).join('')}
           </div>
           <div class="webring-widget">
             <a href="https://se30webring.com?from=https://wcagas.com&dir=prev" style="text-decoration: none; color: #FFCE1A; font-size: 1.5rem; line-height: 1; display: flex; align-items: center;">←</a>

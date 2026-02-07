@@ -10,15 +10,15 @@
   --color-text-secondary: #666666;
   --color-link: #1a1a1a;
   --color-border: #e5e5e5;
-  
+
   /* Y Combinator style font - system fonts */
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Arial, sans-serif;
-  
+
   --font-size-base: 16px;
   --font-size-small: 14px;
-  
+
   --line-height: 1.6;
-  
+
   --max-width: 800px;
   --padding: 24px;
 }
@@ -29,6 +29,40 @@
   --color-text-secondary: #999999;
   --color-link: #ffffff;
   --color-border: #333333;
+}
+
+/* Highlight style for numbers and key entities */
+/* Highlight style for numbers and key entities */
+.highlight {
+  background-color: #fef08a;
+  /* Regular highlighter yellow */
+  border: none;
+  padding: 0 4px;
+  border-radius: 4px;
+  color: inherit;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .highlight {
+  background-color: #713f12;
+  /* Darker yellow/brown for contrast on dark bg */
+  color: #fef08a;
+  /* Light text on dark highlight */
+  border: none;
+}
+
+a.highlight {
+  text-decoration: none;
+  border-bottom: none;
+}
+
+a.highlight:hover {
+  filter: brightness(0.9);
+}
+
+.sub-info {
+  color: var(--color-text-secondary);
+  font-weight: normal;
 }
 
 /* Base Styles */
@@ -337,7 +371,7 @@ nav {
 }
 
 .role-item {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   padding-left: 24px;
 }
 
@@ -352,7 +386,7 @@ nav {
 }
 
 .role-item .sub-item {
-  margin-top: 6px;
+  margin-top: 2px;
 }
 
 .role-icon {
@@ -391,7 +425,7 @@ nav {
   text-decoration: none;
 }
 
-a + .project-logo {
+a+.project-logo {
   margin-left: 0.25rem;
 }
 
@@ -596,7 +630,8 @@ footer {
 .archive-video-wrapper {
   position: relative;
   width: 100%;
-  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  padding-bottom: 56.25%;
+  /* 16:9 aspect ratio */
   height: 0;
   overflow: hidden;
   border-radius: 4px;
@@ -675,15 +710,15 @@ footer {
   .archive-videos {
     grid-template-columns: 1fr;
   }
-  
+
   .archive-photo-item {
     flex: 0 0 100%;
   }
-  
+
   .carousel-btn-prev {
     left: 0;
   }
-  
+
   .carousel-btn-next {
     right: 0;
   }
@@ -695,26 +730,26 @@ footer {
     padding: 16px;
     padding-top: 16px;
   }
-  
+
   nav {
     margin-bottom: 24px;
     margin-left: 0;
     margin-right: 0;
   }
-  
+
   .nav-container {
     padding-bottom: 8px;
     margin: 0;
   }
-  
+
   .nav-links {
     gap: 16px;
   }
-  
+
   h1 {
     font-size: 20px;
   }
-  
+
   /* Profile header: stack vertically on mobile */
   .profile-header {
     flex-direction: column;
@@ -722,12 +757,12 @@ footer {
     gap: 16px;
     margin-bottom: 24px;
   }
-  
+
   .profile-image-container {
     width: 120px;
     height: 120px;
   }
-  
+
   .profile-info {
     width: 100%;
     height: auto;
@@ -737,12 +772,12 @@ footer {
     padding: 0;
     margin: 0;
   }
-  
+
   .profile-name {
     font-size: 22px;
     margin-bottom: 8px;
   }
-  
+
   .profile-university {
     margin-bottom: 6px;
     white-space: nowrap;
@@ -753,33 +788,33 @@ footer {
     padding: 0;
     font-size: clamp(14px, 3.8vw, 16px);
   }
-  
+
   .profile-university .project-logo {
     height: 1em;
     vertical-align: middle;
     flex-shrink: 0;
   }
-  
+
   .profile-location {
     margin-bottom: 16px;
   }
-  
+
   .profile-social {
     justify-content: center;
     margin-top: 0;
   }
-  
+
   /* Content sections */
   .content-section {
     margin-bottom: 24px;
   }
-  
+
   h2 {
     margin-top: 24px;
     margin-bottom: 12px;
     font-size: 16px;
   }
-  
+
   /* Reduce font size for content sections on mobile */
   .about-list li,
   .role-item,
@@ -787,11 +822,11 @@ footer {
     font-size: 14px;
     line-height: 1.5;
   }
-  
+
   .role-text {
     font-size: 14px;
   }
-  
+
   /* Sub-items on mobile */
   .about-list li .sub-item,
   .role-item .sub-item,
@@ -801,14 +836,14 @@ footer {
     margin-bottom: 3px;
     font-style: italic;
   }
-  
+
   /* Footer adjustments */
   .footer-content-wrapper {
     flex-direction: column;
     align-items: center;
     gap: 16px;
   }
-  
+
   .footer-social {
     justify-content: center;
   }
