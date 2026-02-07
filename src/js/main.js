@@ -111,7 +111,7 @@ class Content {
             },
             " building mobile apps"
           ]
-        },  
+        },
         {
           text: "built sword and game mechanics for ",
           link: {
@@ -158,7 +158,7 @@ class Content {
       ],
       about: [
         "passionate about researching and building AI that solves real-world problems",
-        "work spans applied AI, biomedical and health tech, ML research, web/mobile app dev, hackathon organizing, education, game dev, and more",
+        "work spans applied AI/ML, bio/health tech, research, web/mobile app dev, hackathon organizing, education, game dev, and more",
         "feel free to reach out if you're interested in tech or building something cool!"
       ],
       archive: {
@@ -347,13 +347,13 @@ class Content {
           return '';
         }).join('');
       }
-      
+
       // Legacy support: if role.logo2 exists, use special case
       if (role.logo2) {
         // Special case for WAT.ai × Bindwell with two logos
         return `<a href="${role.link}" target="_blank" rel="noopener noreferrer">WAT.ai</a><img src="${role.logo}" alt="WAT.ai" class="project-logo"> × <a href="https://bindwell.ai/" target="_blank" rel="noopener noreferrer">Bindwell</a><img src="${role.logo2}" alt="Bindwell" class="project-logo"> (YC W25)`;
       }
-      
+
       // Legacy support: render role text + company link with logo
       const roleText = role.role ? role.role + ' ' : '';
       const logoHtml = role.logo ? `<img src="${role.logo}" alt="${role.company}" class="project-logo">` : '';
@@ -379,15 +379,15 @@ class Content {
                 <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/gmail.svg" alt="Email" class="social-logo">
               </a>
               ${this.data.socialLinks.map(link => {
-                const iconMap = {
-                  'LinkedIn': 'linkedin',
-                  'GitHub': 'github',
-                  'Google Scholar': 'googlescholar',
-                  'Twitter': 'x',
-                  'Instagram': 'instagram'
-                };
-                const iconName = iconMap[link.name] || link.name.toLowerCase().replace(' ', '');
-                return `
+      const iconMap = {
+        'LinkedIn': 'linkedin',
+        'GitHub': 'github',
+        'Google Scholar': 'googlescholar',
+        'Twitter': 'x',
+        'Instagram': 'instagram'
+      };
+      const iconName = iconMap[link.name] || link.name.toLowerCase().replace(' ', '');
+      return `
                 <a href="${link.url}" 
                    target="_blank" 
                    class="profile-social-link" 
@@ -396,65 +396,65 @@ class Content {
                   <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/${iconName}.svg" alt="${link.name}" class="social-logo">
                 </a>
               `;
-              }).join('')}
+    }).join('')}
             </div>
           </div>
         </div>
         <h2>about:</h2>
         <ul class="about-list">
-          ${Array.isArray(this.data.about) 
-            ? this.data.about.map(item => {
-                if (typeof item === 'string') {
-                  return `<li>${item}</li>`;
-                } else if (item.text) {
-                  const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
-                  return `<li>${item.text}${subItems}</li>`;
-                }
-                return `<li>${item}</li>`;
-              }).join('')
-            : `<li>${this.data.about}</li>`
+          ${Array.isArray(this.data.about)
+        ? this.data.about.map(item => {
+          if (typeof item === 'string') {
+            return `<li>${item}</li>`;
+          } else if (item.text) {
+            const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
+            return `<li>${item.text}${subItems}</li>`;
           }
+          return `<li>${item}</li>`;
+        }).join('')
+        : `<li>${this.data.about}</li>`
+      }
         </ul>
       </section>
 
       <section class="content-section">
         <h2>currently:</h2>
         ${this.data.currentRoles.map(role => {
-          const subItems = role.subItems ? role.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
-          return `
+        const subItems = role.subItems ? role.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
+        return `
           <div class="role-item">
             <span class="role-text">${renderRoleText(role)}</span>${subItems}
           </div>
         `;
-        }).join('')}
+      }).join('')}
         ${this.data.building.map(item => {
-          const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
-          return `
+        const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
+        return `
           <div class="project-item">
             ${renderBuildingItem(item)}${subItems}
           </div>
         `;
-        }).join('')}
+      }).join('')}
       </section>
 
       <section class="content-section">
         <h2>previously:</h2>
         ${this.data.previously.map(role => {
-          const subItems = role.subItems ? role.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
-          return `
+        const subItems = role.subItems ? role.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
+        return `
           <div class="role-item">
             <span class="role-text">${renderRoleText(role)}</span>${subItems}
           </div>
         `;
-        }).join('')}
+      }).join('')}
         ${this.data.completed.map(item => {
-          const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
-          return `
+        const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
+        return `
           <div class="project-item">
             ${renderBuildingItem(item)}${subItems}
           </div>
         `;
-        }).join('')}
+      }).join('')}
       </section>
 
       <section class="content-section">
@@ -546,15 +546,15 @@ class Content {
               <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/gmail.svg" alt="Email" class="social-logo">
             </a>
             ${this.data.socialLinks.map(link => {
-              const iconMap = {
-                'LinkedIn': 'linkedin',
-                'GitHub': 'github',
-                'Google Scholar': 'googlescholar',
-                'Twitter': 'x',
-                'Instagram': 'instagram'
-              };
-              const iconName = iconMap[link.name] || link.name.toLowerCase().replace(' ', '');
-              return `
+        const iconMap = {
+          'LinkedIn': 'linkedin',
+          'GitHub': 'github',
+          'Google Scholar': 'googlescholar',
+          'Twitter': 'x',
+          'Instagram': 'instagram'
+        };
+        const iconName = iconMap[link.name] || link.name.toLowerCase().replace(' ', '');
+        return `
               <a href="${link.url}" 
                  target="_blank" 
                  class="footer-social-link" 
@@ -563,7 +563,7 @@ class Content {
                 <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/${iconName}.svg" alt="${link.name}" class="social-logo">
               </a>
             `;
-            }).join('')}
+      }).join('')}
           </div>
           <div class="webring-widget">
             <a href="https://se30webring.com?from=https://wcagas.com&dir=prev" style="text-decoration: none; color: #FFCE1A; font-size: 1.5rem; line-height: 1; display: flex; align-items: center;">←</a>
@@ -591,18 +591,18 @@ class App {
   init() {
     // Render nav and content inside main
     const main = document.querySelector('main');
-    
+
     if (main) {
       // Insert nav at the beginning of main
       main.insertAdjacentHTML('afterbegin', this.content.renderNav());
-      
+
       // Render content after nav
       main.insertAdjacentHTML('beforeend', this.content.renderContent());
     }
-    
+
     // Initialize theme toggle
     this.initThemeToggle();
-    
+
     // Initialize archive carousel
     this.initArchiveCarousel();
   }
@@ -621,7 +621,7 @@ class App {
     const prevBtn = document.getElementById('archive-carousel-prev');
     const nextBtn = document.getElementById('archive-carousel-next');
     const wrapper = track?.parentElement;
-    
+
     if (!track || !prevBtn || !nextBtn || !wrapper) return;
 
     const items = track.querySelectorAll('.archive-photo-item');
@@ -631,7 +631,7 @@ class App {
 
     const updateCarousel = () => {
       if (items.length === 0) return;
-      
+
       // Wait for layout to be ready
       const firstItem = items[0];
       const secondItem = items[1];
@@ -639,7 +639,7 @@ class App {
         requestAnimationFrame(updateCarousel);
         return;
       }
-      
+
       // Calculate the distance between the left edges of consecutive items
       // This accounts for item width + gap in one measurement
       let stepSize;
@@ -651,10 +651,10 @@ class App {
         // Fallback if only one item
         stepSize = firstItem.offsetWidth + 16;
       }
-      
+
       // Calculate the exact translate value
       const translateX = -currentIndex * stepSize;
-      
+
       track.style.transform = `translateX(${translateX}px)`;
     };
 
@@ -692,7 +692,7 @@ class App {
         requestAnimationFrame(initialize);
       }
     };
-    
+
     // Wait a bit for initial layout
     setTimeout(initialize, 100);
 
