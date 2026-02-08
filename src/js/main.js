@@ -35,7 +35,7 @@ class Content {
             url: "https://bindwell.ai/",
             logo: "/assets/logos/bindwell.png"
           },
-          after2: " (YC W25) <span class=\"sub-info\">(helping bring safer AI-discovered pesticides to farmers faster)</span>"
+          after2: " (YC W25)"
         },
         {
           text: "exploring multimodal AI systems for oncology workflows"
