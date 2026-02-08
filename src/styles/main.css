@@ -535,17 +535,40 @@ footer {
 .archive-photos-wrapper {
   overflow: hidden;
   margin: 0;
+  /* Mask to fade edges */
+  mask-image: linear-gradient(to right, transparent, black 2%, black 98%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 2%, black 98%, transparent);
 }
 
 .archive-photos-track {
   display: flex;
-  gap: 16px;
-  transition: transform 0.3s ease;
+  /* gap removed for seamless loop accuracy */
+  /* gap: 16px; */
+  width: max-content;
+  animation: scroll 420s linear infinite;
+  will-change: transform;
+}
+
+.archive-photos-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    /* Move by one set width (1/4 of total width since we have 4 sets) */
+    transform: translateX(-25%);
+  }
 }
 
 .archive-photo-item {
   margin: 0;
-  flex: 0 0 calc(33.333% - 11px);
+  margin-right: 16px;
+  /* Fixed width appropriate for desktop (approx 1/3 of max-width 800px minus gaps) */
+  flex: 0 0 260px;
   min-width: 0;
 }
 
@@ -575,47 +598,7 @@ footer {
   line-height: 1.4;
 }
 
-.carousel-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.5);
-  border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  z-index: 10;
-  color: white;
-  padding: 0;
-  backdrop-filter: blur(4px);
-}
-
-.carousel-btn:hover {
-  background: rgba(0, 0, 0, 0.7);
-}
-
-.carousel-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.carousel-btn svg {
-  width: 20px;
-  height: 20px;
-}
-
-.carousel-btn-prev {
-  left: 12px;
-}
-
-.carousel-btn-next {
-  right: 12px;
-}
+/* Button styles removed */
 
 .archive-videos {
   display: grid;
@@ -712,15 +695,8 @@ footer {
   }
 
   .archive-photo-item {
-    flex: 0 0 100%;
-  }
-
-  .carousel-btn-prev {
-    left: 0;
-  }
-
-  .carousel-btn-next {
-    right: 0;
+    /* Slightly smaller on mobile to see more items or just consistent sizing */
+    flex: 0 0 200px;
   }
 }
 

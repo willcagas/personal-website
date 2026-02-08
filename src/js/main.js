@@ -364,28 +364,18 @@ class Content {
           
           <!-- Photos Carousel -->
           <div class="archive-photos-carousel">
-            <button class="carousel-btn carousel-btn-prev" id="archive-carousel-prev" aria-label="Previous photos">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="15 18 9 12 15 6"></polyline>
-              </svg>
-            </button>
             <div class="archive-photos-wrapper">
               <div class="archive-photos-track" id="archive-photos-track">
-                ${this.data.archive.photos.map((photo, index) => `
+                ${[...this.data.archive.photos, ...this.data.archive.photos, ...this.data.archive.photos, ...this.data.archive.photos].map((photo, index) => `
                   <figure class="archive-photo-item">
                     <div class="archive-photo-frame">
-                      <img src="${photo.image}" alt="${photo.caption}" class="archive-photo" style="${photo.objectPosition ? `object-position: ${photo.objectPosition};` : ''}" loading="${index < 3 ? 'eager' : 'lazy'}">
+                      <img src="${photo.image}" alt="${photo.caption}" class="archive-photo" style="${photo.objectPosition ? `object-position: ${photo.objectPosition};` : ''}" loading="eager">
                     </div>
                     <figcaption class="archive-photo-caption">${photo.caption}</figcaption>
                   </figure>
                 `).join('')}
               </div>
             </div>
-            <button class="carousel-btn carousel-btn-next" id="archive-carousel-next" aria-label="Next photos">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 18 15 12 9 6"></polyline>
-              </svg>
-            </button>
           </div>
 
           <!-- Videos -->
@@ -489,9 +479,6 @@ class App {
 
     // Initialize theme toggle
     this.initThemeToggle();
-
-    // Initialize archive carousel
-    this.initArchiveCarousel();
   }
 
   initThemeToggle() {
@@ -503,93 +490,7 @@ class App {
     }
   }
 
-  initArchiveCarousel() {
-    const track = document.getElementById('archive-photos-track');
-    const prevBtn = document.getElementById('archive-carousel-prev');
-    const nextBtn = document.getElementById('archive-carousel-next');
-    const wrapper = track?.parentElement;
 
-    if (!track || !prevBtn || !nextBtn || !wrapper) return;
-
-    const items = track.querySelectorAll('.archive-photo-item');
-    const totalItems = items.length;
-    const itemsPerView = 3;
-    let currentIndex = 0;
-
-    const updateCarousel = () => {
-      if (items.length === 0) return;
-
-      // Wait for layout to be ready
-      const firstItem = items[0];
-      const secondItem = items[1];
-      if (!firstItem || firstItem.offsetWidth === 0) {
-        requestAnimationFrame(updateCarousel);
-        return;
-      }
-
-      // Calculate the distance between the left edges of consecutive items
-      // This accounts for item width + gap in one measurement
-      let stepSize;
-      if (secondItem) {
-        const firstRect = firstItem.getBoundingClientRect();
-        const secondRect = secondItem.getBoundingClientRect();
-        stepSize = secondRect.left - firstRect.left;
-      } else {
-        // Fallback if only one item
-        stepSize = firstItem.offsetWidth + 16;
-      }
-
-      // Calculate the exact translate value
-      const translateX = -currentIndex * stepSize;
-
-      track.style.transform = `translateX(${translateX}px)`;
-    };
-
-    const next = () => {
-      // Check if moving forward would show white space
-      if (currentIndex + itemsPerView >= totalItems) {
-        // Wrap back to the beginning
-        currentIndex = 0;
-      } else {
-        // Move forward by one item
-        currentIndex = currentIndex + 1;
-      }
-      updateCarousel();
-    };
-
-    const prev = () => {
-      // Move backward by one item, wrapping to the end if needed
-      if (currentIndex === 0) {
-        // Find the last valid starting position that shows 3 items
-        currentIndex = Math.max(0, totalItems - itemsPerView);
-      } else {
-        currentIndex = currentIndex - 1;
-      }
-      updateCarousel();
-    };
-
-    prevBtn.addEventListener('click', prev);
-    nextBtn.addEventListener('click', next);
-
-    // Initialize after layout is ready
-    const initialize = () => {
-      if (items.length > 0 && items[0].offsetWidth > 0) {
-        updateCarousel();
-      } else {
-        requestAnimationFrame(initialize);
-      }
-    };
-
-    // Wait a bit for initial layout
-    setTimeout(initialize, 100);
-
-    // Update on resize
-    let resizeTimeout;
-    window.addEventListener('resize', () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(updateCarousel, 150);
-    });
-  }
 
 }
 
