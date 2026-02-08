@@ -823,4 +823,9 @@ footer {
   .footer-social {
     justify-content: center;
   }
+
+  /* Slower carousel on mobile */
+  .archive-photos-track {
+    animation-duration: 600s;
+  }
 }
