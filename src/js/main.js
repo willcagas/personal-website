@@ -54,7 +54,7 @@ class Content {
         {
           text: "shipped ",
           link: {
-            text: "GooseTrials",
+            text: "Goose Trials",
             url: "https://goosetrials.com",
             logo: "/assets/logos/goosetrials.png"
           },
