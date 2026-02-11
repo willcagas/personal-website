@@ -110,6 +110,10 @@ class Content {
       archive: {
         photos: [
           {
+            image: "/assets/pictures/watai-kickoff.jpeg",
+            caption: "WAT.ai Kickoff Meeting for EPA Consultant Team"
+          },
+          {
             image: "/assets/pictures/uw-zfellows-meetup.jpeg",
             caption: "UW x Z Fellows builder meetup"
           },
