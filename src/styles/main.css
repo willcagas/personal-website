@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600&display=swap");
+
 /**
  * Minimal Stylesheet
  * Terminal-style template: dark theme, monospace, timeline layout
@@ -11,7 +13,7 @@
   --color-link: #1a1a1a;
   --color-border: #e5e5e5;
 
-  --font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --font-family: "Fira Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-size-base: 16px;
   --font-size-small: 14px;
   --line-height: 1.6;

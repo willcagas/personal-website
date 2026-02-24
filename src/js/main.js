@@ -94,7 +94,7 @@ class Content {
         }
       ],
       aboutMeta: "Passionate about AI that solves real-world problems",
-      location: "Waterloo | SF",
+      location: "Hamilton | Waterloo | San Francisco",
       // Preserved for future archive section reintroduction.
       archiveData: ARCHIVE_DATA,
       press: [
