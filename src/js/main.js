@@ -7,6 +7,7 @@
  */
 
 import ThemeManager from './theme.js';
+import ARCHIVE_DATA from './archive-data.js';
 
 /**
  * Content Component
@@ -15,169 +16,87 @@ import ThemeManager from './theme.js';
 class Content {
   constructor() {
     this.data = {
-      name: "William Cagas 🪿",
-      nameSimple: "William Cagas",
-      aboutList: [
-        { text: "passionate about researching and building AI that solves real-world problems" },
-        { text: "feel free to reach out if you're interested in tech or building something cool!" }
-      ],
-      currentList: [
-        {
-          text: "leading a team at ",
-          link: {
-            text: "WAT.ai",
-            url: "https://watai.ca",
-            logo: "/assets/logos/watai.png"
-          },
-          after: " building AI for pesticide regulatory approval for ",
-          secondLink: {
-            text: "Bindwell",
-            url: "https://bindwell.ai/",
-            logo: "/assets/logos/bindwell.png"
-          },
-          after2: " (YC W25)"
-        },
-        {
-          text: "exploring multimodal AI systems for oncology workflows"
-        },
-        {
-          text: "building AI for acne at ",
-          link: {
-            text: "AcneCura",
-            url: "https://acnecura.io",
-            logo: "/assets/logos/acnecura.png"
-          },
-          after: " <span class=\"sub-info\">(300K organic views, interviewed on Global News)</span>"
-        }
-      ],
-      previousList: [
-        {
-          text: "shipped ",
-          link: {
-            text: "Goose Trials",
-            url: "https://goosetrials.com",
-            logo: "/assets/logos/goosetrials.png"
-          },
-          after: ", the ranked Human Benchmark <span class=\"sub-info\">(~1000 unique players + 8000 games played in 24 hrs, featured in UWaterloo's newspaper)</span>"
-        },
-        {
-          text: "conducted collaborative ML research at ",
-          link: {
-            text: "CMU Xu Lab",
-            url: "https://xulabs.github.io/",
-            logo: "/assets/logos/cmu.png"
-          },
-          after: " <span class=\"sub-info\">(accelerating clinical trials for rare diseases using DDPMs)</span>"
-        },
-        {
-          text: "taught CS106A and Python basics 2x at ",
-          link: {
-            text: "Stanford Code in Place",
-            url: "https://codeinplace.stanford.edu/",
-            logo: "/assets/logos/stanford-logo.jpg"
-          }
-        },
-        {
-          text: "led and organized ",
-          link: {
-            text: "HammerHacks",
-            url: "https://hammerhacks2024.wcagas.com",
-            logo: "/assets/logos/hammerhacks.png"
-          },
-          after: " <span class=\"sub-info\">(140+ participants, ~50 projects, and $12,000 in funding from McMaster Engineering, Hack Club, and more)</span>"
-        },
-        {
-          text: "published an ML research paper on ",
-          link: {
-            text: "GANs for medical imaging",
-            url: "https://medgans.wcagas.com",
-            logo: "/assets/logos/medgans.png"
-          },
-          after: " <span class=\"sub-info\">(oral presentation at ACCV 2024, cited 8× incl. ICCV, ACM)</span>"
-        },
-        // Green Venture item removed as requested
-        {
-          text: "built sword and game mechanics for ",
-          link: {
-            text: "Sword Power Tycoon",
-            url: "https://www.roblox.com/games/6937615628/Sword-Power-Tycoon",
-            logo: "/assets/logos/roblox-logo.png"
-          },
-          after: " <span class=\"sub-info\">(19M+ plays, 36K+ favourites)</span>"
-        }
-      ],
-      // Keep archive/press/socialLinks as is for now/footer
-      archive: {
-        photos: [
-          {
-            image: "/assets/pictures/watai-kickoff.jpeg",
-            caption: "WAT.ai Kickoff Meeting for EPA Consultant Team"
-          },
-          {
-            image: "/assets/pictures/uw-zfellows-meetup.jpeg",
-            caption: "UW x Z Fellows builder meetup"
-          },
-          {
-            image: "/assets/pictures/goosetrials-launch.jpg",
-            caption: "Goose Trials launch at SE lounge",
-            objectPosition: "60% 40%"
-          },
-          {
-            image: "/assets/pictures/se-2030.JPG",
-            caption: "Most cracked builders in Canada (i.e. Waterloo SE '30)",
-            objectPosition: "0% 100%"
-          },
-          {
-            image: "/assets/pictures/bts-news.jpg",
-            caption: "Behind-the-scenes Global News interview ft. my family",
-            objectPosition: "0% 40%"
-          },
-          {
-            image: "/assets/pictures/sf-2025.png",
-            caption: "Hack Club's Undercity hackathon at GitHub HQ in SF"
-          },
-          {
-            image: "/assets/pictures/loo-park.jpg",
-            caption: "Views from Waterloo Park, Waterloo, Canada"
-          },
-          {
-            image: "/assets/pictures/dev-the-future.JPG",
-            caption: "Panelist at the semiannual Apple x DevTheFuture conference",
-            objectPosition: "70% 40%"
-          },
-          {
-            image: "/assets/pictures/accv.jpg",
-            caption: "Presenting research at ACCV 2024 in Hanoi, Vietnam"
-          },
-          {
-            image: "/assets/pictures/hammerhacks.JPEG",
-            caption: "Organizing team for HammerHacks, Hamilton's first high school hackathon"
-          },
-          {
-            image: "/assets/pictures/code-in-place.jpg",
-            caption: "First class teaching for Stanford Code in Place"
-          },
-          {
-            image: "/assets/pictures/robotics.jpg",
-            caption: "Winners of the FRC Ontario District Niagara College Event",
-            objectPosition: "40% 40%"
-          }
-        ],
-        videos: [
-          {
-            title: "Global News Interview",
-            type: "iframe",
-            embedSrc: "https://globalnews.ca/video/embed/11330376/",
-            caption: "Global News interview about AcneCura"
-          },
-          {
-            title: "HammerHacks Recap",
-            type: "youtube",
-            videoId: "Jb-2RpDonEs",
-            caption: "HammerHacks recap video"
-          }
-        ]
+      name: "William Cagas",
+      nameSubtitle: "",
+      roleLine: {
+        prefix: "Software Engineering @ ",
+        link: { text: "University of Waterloo", url: "https://uwaterloo.ca/", logo: "/assets/logos/waterloo-logo.png" }
       },
+      // Keep this list in desired visual order.
+      // Requested order: WAT.ai, CMU, Algoverse, HammerHacks.
+      mainRoles: [
+        {
+          companies: [
+            { name: "WAT.ai", url: "https://watai.ca", logo: "/assets/logos/watai.png" },
+            { name: "Bindwell", url: "https://bindwell.ai/", logo: "/assets/logos/bindwell.png" }
+          ],
+          suffix: " (YC W25)",
+          role: "Technical PM",
+          current: true,
+          stats: ["Building AI systems for pesticide regulatory approval."]
+        },
+        {
+          company: "CMU Xu Lab",
+          url: "https://xulabs.github.io/",
+          logo: "/assets/logos/cmu.png",
+          role: "ML Researcher",
+          current: false,
+          stats: [
+            "Researched DDPMs for accelerating rare disease clinical trials through medical image synthesis.",
+          ]
+        },
+        {
+          company: "Algoverse AI Research",
+          url: "https://algoverseairesearch.org/",
+          logo: "/assets/logos/algoverse.png",
+          role: "ML Researcher",
+          current: false,
+          stats: [
+            "Lead author on GAN-based medical imaging research published at GAISynMeD at ACCV 2024."
+          ]
+        },
+        {
+          company: "HammerHacks",
+          url: "https://hammerhacks2024.wcagas.com",
+          logo: "/assets/logos/hammerhacks.png",
+          role: "Co-Founder",
+          current: false,
+          stats: ["140+ participants and $12K in sponsorships from McMaster Engineering, Hack Club, and more."]
+        }
+      ],
+      projectHighlights: [
+        {
+          title: "Goose Trials",
+          url: "https://goosetrials.com",
+          logo: "/assets/logos/goosetrials.png",
+          detail: "~1K unique players and 8K games in 24 hours."
+        },
+        {
+          title: "AcneCura",
+          url: "https://acnecura.io",
+          logo: "/assets/logos/acnecura.png",
+          detail: "300K+ organic views; featured on Global News."
+        },
+        {
+          title: "Sword Power Tycoon",
+          url: "https://www.roblox.com/games/6937615628/Sword-Power-Tycoon",
+          logo: "/assets/logos/roblox-logo.png",
+          detail: "19M+ plays and 36K+ favourites."
+        }
+      ],
+      researchHighlights: [
+        {
+          title: "Medical Imaging Complexity and its Effects on GAN Performance",
+          venue: "GAISynMeD @ ACCV 2024",
+          note: "Oral presentation; cited 9x (incl. ICCV, ACM).",
+          url: "https://medgans.wcagas.com",
+          logo: "/assets/logos/medgans.png"
+        }
+      ],
+      aboutMeta: "Passionate about AI that solves real-world problems",
+      location: "Waterloo | SF",
+      // Preserved for future archive section reintroduction.
+      archiveData: ARCHIVE_DATA,
       press: [
         {
           outlet: "UW Imprint",
@@ -200,7 +119,6 @@ class Content {
           title: "Hamilton high schooler uses tech to solve problems — from gaps in medical data to teen acne"
         }
       ],
-      location: "Hamilton, ON, Canada",
       email: "wcagas@uwaterloo.ca",
       socialLinks: [
         {
@@ -229,232 +147,157 @@ class Content {
 
   renderNav() {
     return `
-      <nav>
-        <div class="nav-container">
-          <a href="/" class="nav-logo">${this.data.nameSimple}</a>
-          <div class="nav-links">
-            <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme" type="button">
-              <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <circle cx="12" cy="12" r="5"></circle>
-                <line x1="12" y1="1" x2="12" y2="3"></line>
-                <line x1="12" y1="21" x2="12" y2="23"></line>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                <line x1="1" y1="12" x2="3" y2="12"></line>
-                <line x1="21" y1="12" x2="23" y2="12"></line>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-              </svg>
-              <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-              </svg>
-            </button>
+      <header class="site-header">
+        <div class="header-inner">
+          <div class="header-left">
+            <h1 class="site-name">${this.data.name}</h1>
+            ${this.data.nameSubtitle ? `<p class="site-subtitle">${this.data.nameSubtitle}</p>` : ""}
+            <p class="site-role">${this.data.roleLine.prefix}<a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">${this.data.roleLine.link.text}</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="${this.data.roleLine.link.text}" class="school-logo">` : ""}</p>
           </div>
+          <button class="theme-toggle theme-toggle-label" id="theme-toggle" aria-label="Toggle theme" type="button"></button>
         </div>
-      </nav>
+      </header>
     `;
   }
 
   renderContent() {
-    const renderItem = (item) => {
-      let content = item.text || '';
-      if (item.link) {
-        const logoHtml = item.link.logo ? `<img src="${item.link.logo}" alt="${item.link.text}" class="project-logo">` : '';
-        content += `<a href="${item.link.url}" target="_blank" rel="noopener noreferrer">${item.link.text}</a>${logoHtml}`;
-      }
-      if (item.after) {
-        content += item.after;
-      }
-      if (item.secondLink) {
-        const logo2Html = item.secondLink.logo ? `<img src="${item.secondLink.logo}" alt="${item.secondLink.text}" class="project-logo">` : '';
-        content += `<a href="${item.secondLink.url}" target="_blank" rel="noopener noreferrer">${item.secondLink.text}</a>${logo2Html}`;
-      }
-      if (item.after2) {
-        content += item.after2;
-      }
-      return content;
+    const logoHtml = (src, alt) => src ? `<img src="${src}" alt="${alt}" class="inline-logo">` : "";
+
+    const roleItems = this.data.mainRoles.map((item) => {
+      const companyHtml = item.companies
+        ? `${item.companies.map((company) => `<a href="${company.url}" target="_blank" rel="noopener noreferrer">${company.name}</a>${logoHtml(company.logo, company.name)}`).join(" x ")}${item.suffix || ""}`
+        : (item.url
+          ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.company}${item.suffix || ""}</a>${logoHtml(item.logo, item.company)}`
+          : `${item.company}${item.suffix || ""}`);
+      const statsHtml = (item.stats && item.stats.length)
+        ? `<div class="timeline-stats">${item.stats.map((stat) => `<p>${stat}</p>`).join("")}</div>`
+        : "";
+      return `
+        <div class="timeline-item" data-current="${item.current ? "true" : "false"}" data-has-stats="${item.stats ? "true" : "false"}">
+          <div class="timeline-main" tabindex="${item.stats ? "0" : "-1"}" role="${item.stats ? "button" : "presentation"}" aria-expanded="false">
+            <div class="timeline-dot"></div>
+            <div class="timeline-left">${companyHtml}</div>
+            <div class="timeline-right">${item.role}</div>
+          </div>
+          ${statsHtml}
+        </div>`;
+    }).join("");
+
+    const projectItems = this.data.projectHighlights
+      .map((project) => `
+        <article class="project-item">
+          <p class="project-title"><a href="${project.url}" target="_blank" rel="noopener noreferrer">${project.title}</a>${logoHtml(project.logo, project.title)}</p>
+          <p class="project-detail">${project.detail}</p>
+        </article>
+      `)
+      .join("");
+
+    const researchItems = this.data.researchHighlights
+      .map((paper) => `
+        <article class="research-item">
+          <div class="research-main">
+            <a href="${paper.url}" target="_blank" rel="noopener noreferrer">${paper.title}</a>${logoHtml(paper.logo, paper.title)}
+            <p class="research-note">${paper.note}</p>
+          </div>
+          <p class="research-venue">${paper.venue}</p>
+        </article>
+      `)
+      .join("");
+
+    const pressItems = (this.data.press || [])
+      .map((item) => `<li><a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.outlet}</a></li>`)
+      .join("");
+
+    const socialOrder = ["Email", "LinkedIn", "GitHub", "Google Scholar", "Twitter", "Instagram"];
+    const iconMap = {
+      Email: "gmail",
+      LinkedIn: "linkedin",
+      GitHub: "github",
+      "Google Scholar": "googlescholar",
+      Twitter: "x",
+      Instagram: "instagram"
     };
 
+    const socialItems = socialOrder
+      .map((name) => {
+        if (name === "Email") {
+          return {
+            name: "Email",
+            url: `mailto:${this.data.email}`,
+            icon: iconMap.Email
+          };
+        }
+        const link = this.data.socialLinks.find((s) => s.name === name);
+        if (!link) return null;
+        return {
+          name: link.name,
+          url: link.url,
+          icon: iconMap[link.name] || link.name.toLowerCase().replace(/\s+/g, "")
+        };
+      })
+      .filter(Boolean)
+      .map((social) => `
+        <a href="${social.url}" target="_blank" rel="noopener noreferrer" class="footer-social-link" aria-label="${social.name}">
+          <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/${social.icon}.svg" alt="${social.name}" class="social-logo">
+        </a>
+      `)
+      .join("");
+
     return `
-      <section id="about" class="content-section">
-        <div class="profile-header">
-          <div class="profile-image-container">
-            <img src="/assets/pictures/profile.JPG" alt="" class="profile-image" onload="this.classList.add('loaded');" onerror="this.classList.add('loaded');">
-          </div>
-          <div class="profile-info">
-            <h1 class="profile-name">${this.data.name}</h1>
-            <p class="profile-university">Software Engineering @ <a href="https://uwaterloo.ca/" target="_blank" rel="noopener noreferrer">University of Waterloo</a><img src="/assets/logos/waterloo-logo.png" alt="University of Waterloo" class="project-logo"></p>
-            <p class="profile-location">Waterloo, Ontario</p>
-            <div class="profile-social">
-              <a href="mailto:${this.data.email}" 
-                 target="_blank" 
-                 class="profile-social-link" 
-                 aria-label="Email"
-                 rel="noopener noreferrer">
-                <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/gmail.svg" alt="Email" class="social-logo">
-              </a>
-              ${this.data.socialLinks.map(link => {
-      const iconMap = {
-        'LinkedIn': 'linkedin',
-        'GitHub': 'github',
-        'Google Scholar': 'googlescholar',
-        'Twitter': 'x',
-        'Instagram': 'instagram'
-      };
-      const iconName = iconMap[link.name] || link.name.toLowerCase().replace(' ', '');
-      return `
-                <a href="${link.url}" 
-                   target="_blank" 
-                   class="profile-social-link" 
-                   aria-label="${link.name}"
-                   rel="noopener noreferrer">
-                  <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/${iconName}.svg" alt="${link.name}" class="social-logo">
-                </a>
-              `;
-    }).join('')}
-            </div>
+      <section class="panel panel-meta">
+        <p class="section-kicker">PROFILE</p>
+        <div class="meta-section">
+          <p class="meta-inline">
+            <span class="meta-about">${this.data.aboutMeta}</span>
+            <span class="meta-location">${this.data.location}</span>
+          </p>
+        </div>
+      </section>
+
+      <section class="panel panel-main-roles">
+        <p class="section-kicker">Work</p>
+        <div class="timeline-section">
+          ${roleItems}
+        </div>
+      </section>
+
+      <section class="panel panel-projects">
+        <p class="section-kicker">NOTABLE BUILDS</p>
+        <div class="projects-layout">
+          <div class="projects-list">
+            ${projectItems}
           </div>
         </div>
-      <section class="content-section">
-        <h2>about:</h2>
-        ${this.data.aboutList.map(item => `
-          <div class="role-item">
-            <span class="role-text">${renderItem(item)}</span>
-          </div>
-        `).join('')}
       </section>
 
-      <section class="content-section">
-        <h2>currently:</h2>
-        ${this.data.currentList.map(item => {
-      const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
-      return `
-          <div class="role-item">
-            <span class="role-text">${renderItem(item)}</span>${subItems}
-          </div>
-        `;
-    }).join('')}
+      <section class="panel panel-research">
+        <p class="section-kicker">RESEARCH</p>
+        <div class="research-list">
+          ${researchItems}
+        </div>
       </section>
 
-      <section class="content-section">
-        <h2>previously:</h2>
-        ${this.data.previousList.map(item => {
-      const subItems = item.subItems ? item.subItems.map(sub => `<span class="sub-item">${sub}</span>`).join('') : '';
-      return `
-          <div class="role-item">
-            <span class="role-text">${renderItem(item)}</span>${subItems}
-          </div>
-        `;
-    }).join('')}
-      </section>
-
-      <section class="content-section">
-        <h2>press:</h2>
-        <ul class="press-list">
-          ${this.data.press.map(item => `
-            <li class="press-item">
-              <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="press-link">
-                <span class="press-outlet">${item.outlet}</span>
-                <span class="press-article">${item.title}</span>
-              </a>
-            </li>
-          `).join('')}
+      <section class="panel panel-press">
+        <p class="section-kicker">PRESS</p>
+        <ul class="press-outlets">
+          ${pressItems}
         </ul>
       </section>
 
-      <section class="content-section">
-        <h2>archive:</h2>
-        <div class="archive-content">
-          
-          <!-- Photos Carousel -->
-          <div class="archive-photos-carousel">
-            <div class="archive-photos-wrapper">
-              <div class="archive-photos-track" id="archive-photos-track">
-                ${[...this.data.archive.photos, ...this.data.archive.photos, ...this.data.archive.photos, ...this.data.archive.photos].map((photo, index) => `
-                  <figure class="archive-photo-item">
-                    <div class="archive-photo-frame">
-                      <img src="${photo.image}" alt="${photo.caption}" class="archive-photo" style="${photo.objectPosition ? `object-position: ${photo.objectPosition};` : ''}" loading="eager">
-                    </div>
-                    <figcaption class="archive-photo-caption">${photo.caption}</figcaption>
-                  </figure>
-                `).join('')}
-              </div>
-            </div>
+      <footer class="site-footer">
+        <p class="section-kicker">SOCIALS</p>
+        <div class="footer-row">
+          <div class="footer-socials">
+            ${socialItems}
           </div>
-
-          <!-- Videos -->
-          <div class="archive-videos">
-            ${this.data.archive.videos.map(video => `
-              <figure class="archive-video-item">
-                <div class="archive-video-wrapper">
-                  ${video.type === "youtube" ? `
-                    <iframe 
-                      src="https://www.youtube.com/embed/${video.videoId}" 
-                      title="${video.title}"
-                      frameborder="0" 
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                      allowfullscreen
-                      loading="lazy"
-                      class="archive-video-iframe">
-                    </iframe>
-                  ` : `
-                    <iframe 
-                      src="${video.embedSrc}" 
-                      title="${video.title}"
-                      frameborder="0" 
-                      allowfullscreen
-                      scrolling="no"
-                      loading="lazy"
-                      class="archive-video-iframe">
-                    </iframe>
-                  `}
-                </div>
-                <figcaption class="archive-video-caption">${video.caption}</figcaption>
-              </figure>
-            `).join('')}
+          <div class="webring-widget" aria-label="SE '30 Webring">
+            <a href="https://se30webring.com?from=https://wcagas.com&dir=prev" aria-label="Previous site" style="text-decoration: none; color: #FFCE1A; font-size: 1.5rem; line-height: 1; display: flex; align-items: center;">←</a>
+            <a href="https://se30webring.com" target="_blank" rel="noopener noreferrer" aria-label="SE '30 Webring" style="text-decoration: none; display: flex; align-items: center;">
+              <img src="https://se30webring.com/assets/icon-yellow.svg" alt="SE '30 Webring" style="width: 22px; height: 22px;" />
+            </a>
+            <a href="https://se30webring.com?from=https://wcagas.com&dir=next" aria-label="Next site" style="text-decoration: none; color: #FFCE1A; font-size: 1.5rem; line-height: 1; display: flex; align-items: center;">→</a>
           </div>
         </div>
-      </section>
-
-      <footer>
-        <div class="footer-content-wrapper">
-          <div class="footer-social">
-            <a href="mailto:${this.data.email}" 
-               target="_blank" 
-               class="footer-social-link" 
-               aria-label="Email"
-               rel="noopener noreferrer">
-              <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/gmail.svg" alt="Email" class="social-logo">
-            </a>
-            ${this.data.socialLinks.map(link => {
-      const iconMap = {
-        'LinkedIn': 'linkedin',
-        'GitHub': 'github',
-        'Google Scholar': 'googlescholar',
-        'Twitter': 'x',
-        'Instagram': 'instagram'
-      };
-      const iconName = iconMap[link.name] || link.name.toLowerCase().replace(' ', '');
-      return `
-              <a href="${link.url}" 
-                 target="_blank" 
-                 class="footer-social-link" 
-                 aria-label="${link.name}"
-                 rel="noopener noreferrer">
-                <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/${iconName}.svg" alt="${link.name}" class="social-logo">
-              </a>
-            `;
-    }).join('')}
-          </div>
-          <div class="webring-widget">
-            <a href="https://se30webring.com?from=https://wcagas.com&dir=prev" style="text-decoration: none; color: #FFCE1A; font-size: 1.5rem; line-height: 1; display: flex; align-items: center;">←</a>
-            <a href="https://se30webring.com" target="_blank" style="text-decoration: none; display: flex; align-items: center;">
-              <img src="https://se30webring.com/assets/icon-yellow.svg" alt="SE '30 Webring" style="width: 32px; height: 32px;" />
-            </a>
-            <a href="https://se30webring.com?from=https://wcagas.com&dir=next" style="text-decoration: none; color: #FFCE1A; font-size: 1.5rem; line-height: 1; display: flex; align-items: center;">→</a>
-          </div>
-        </div>
-        <p class="footer-copyright">© ${new Date().getFullYear()} ${this.data.nameSimple}</p>
       </footer>
     `;
   }
@@ -481,17 +324,55 @@ class App {
       main.insertAdjacentHTML('beforeend', this.content.renderContent());
     }
 
-    // Initialize theme toggle
+    // Initialize theme toggle and set label (button is in DOM after render)
     this.initThemeToggle();
+    this.themeManager.updateToggleButton();
+    this.initMilestoneStats();
   }
 
   initThemeToggle() {
     const toggleBtn = document.getElementById('theme-toggle');
     if (toggleBtn) {
-      toggleBtn.addEventListener('click', () => {
-        this.themeManager.toggleTheme();
+      toggleBtn.addEventListener('click', (event) => {
+        this.themeManager.toggleTheme(event.currentTarget);
       });
     }
+  }
+
+  initMilestoneStats() {
+    const items = Array.from(document.querySelectorAll('.timeline-item[data-has-stats="true"]'));
+    const collapseAll = () => {
+      items.forEach((item) => {
+        item.classList.remove('expanded');
+        const trigger = item.querySelector('.timeline-main');
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+      });
+    };
+
+    items.forEach((item) => {
+      const trigger = item.querySelector('.timeline-main');
+      if (!trigger) return;
+
+      const toggle = () => {
+        const willExpand = !item.classList.contains('expanded');
+        collapseAll();
+        if (willExpand) {
+          item.classList.add('expanded');
+          trigger.setAttribute('aria-expanded', 'true');
+        }
+      };
+
+      trigger.addEventListener('click', (event) => {
+        if (event.target.closest('a')) return;
+        toggle();
+      });
+      trigger.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          toggle();
+        }
+      });
+    });
   }
 
 

@@ -7,12 +7,11 @@
     <title>William Cagas</title>
     <link rel="stylesheet" href="src/styles/main.css">
     <script>
-      // Prevent flash of wrong theme
+      // Prevent flash of wrong theme; default dark to match template
       (function() {
         try {
           const storedTheme = localStorage.getItem('theme');
-          const systemTheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-          const theme = storedTheme || systemTheme;
+          const theme = storedTheme || 'dark';
           document.documentElement.setAttribute('data-theme', theme);
         } catch (e) {}
       })();
