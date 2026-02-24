@@ -245,7 +245,7 @@ class Content {
 
     return `
       <section class="panel panel-meta">
-        <p class="section-kicker">PROFILE</p>
+        <p class="section-kicker">ABOUT</p>
         <div class="meta-section">
           <p class="meta-inline">
             <span class="meta-about">${this.data.aboutMeta}</span>
