@@ -208,12 +208,12 @@ class Content {
       .map((item) => `<li><a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.outlet}</a></li>`)
       .join("");
 
-    const socialOrder = ["Email", "LinkedIn", "GitHub", "Google Scholar", "Twitter", "Instagram"];
+    const socialOrder = ["Email", "GitHub", "Google Scholar", "LinkedIn", "Twitter", "Instagram"];
     const iconMap = {
       Email: "gmail",
-      LinkedIn: "linkedin",
       GitHub: "github",
       "Google Scholar": "googlescholar",
+      LinkedIn: "linkedin",
       Twitter: "x",
       Instagram: "instagram"
     };
@@ -291,11 +291,11 @@ class Content {
             ${socialItems}
           </div>
           <div class="webring-widget" aria-label="SE '30 Webring">
-            <a href="https://se30webring.com?from=https://wcagas.com&dir=prev" aria-label="Previous site" style="text-decoration: none; color: #FFCE1A; font-size: 1.5rem; line-height: 1; display: flex; align-items: center;">←</a>
+            <a href="https://se30webring.com?from=https://wcagas.com&dir=prev" aria-label="Previous site" style="text-decoration: none; color: #FFCE1A; font-size: 1.1  5rem; line-height: 1; display: flex; align-items: center;">←</a>
             <a href="https://se30webring.com" target="_blank" rel="noopener noreferrer" aria-label="SE '30 Webring" style="text-decoration: none; display: flex; align-items: center;">
               <img src="https://se30webring.com/assets/icon-yellow.svg" alt="SE '30 Webring" style="width: 22px; height: 22px;" />
             </a>
-            <a href="https://se30webring.com?from=https://wcagas.com&dir=next" aria-label="Next site" style="text-decoration: none; color: #FFCE1A; font-size: 1.5rem; line-height: 1; display: flex; align-items: center;">→</a>
+            <a href="https://se30webring.com?from=https://wcagas.com&dir=next" aria-label="Next site" style="text-decoration: none; color: #FFCE1A; font-size: 1.15rem; line-height: 1; display: flex; align-items: center;">→</a>
           </div>
         </div>
       </footer>
