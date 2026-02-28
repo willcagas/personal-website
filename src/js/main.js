@@ -26,15 +26,22 @@ class Content {
       // Requested order: WAT.ai, CMU, Algoverse, HammerHacks.
       mainRoles: [
         {
+          company: "Thesis (YC F25)",
+          url: "https://thesislabs.ai/",
+          logo: "/assets/logos/thesislabs.png",
+          role: "SWE Intern",
+          current: true,
+          stats: ["Creating the scientific engine for advancing AI/ML R&D."]
+        },
+        {
           companies: [
             { name: "WAT.ai", url: "https://watai.ca", logo: "/assets/logos/watai.png" },
-            { name: "Bindwell", url: "https://bindwell.ai/", logo: "/assets/logos/bindwell.png" }
+            { name: "Bindwell (YC W25)", url: "https://bindwell.ai/", logo: "/assets/logos/bindwell.png" }
           ],
-          suffix: " (YC W25)",
           role: "Technical PM",
           current: true,
           stats: ["Building AI systems for pesticide regulatory approval."]
-        },
+        },  
         {
           company: "CMU Xu Lab",
           url: "https://xulabs.github.io/",
@@ -165,10 +172,10 @@ class Content {
 
     const roleItems = this.data.mainRoles.map((item) => {
       const companyHtml = item.companies
-        ? `${item.companies.map((company) => `<a href="${company.url}" target="_blank" rel="noopener noreferrer">${company.name}</a>${logoHtml(company.logo, company.name)}`).join(" x ")}${item.suffix || ""}`
+        ? `${item.companies.map((company) => `<a href="${company.url}" target="_blank" rel="noopener noreferrer">${company.name}</a>${logoHtml(company.logo, company.name)}`).join(" x ")}`
         : (item.url
-          ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.company}${item.suffix || ""}</a>${logoHtml(item.logo, item.company)}`
-          : `${item.company}${item.suffix || ""}`);
+          ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.company}</a>${logoHtml(item.logo, item.company)}`
+          : `${item.company}`);
       const statsHtml = (item.stats && item.stats.length)
         ? `<div class="timeline-stats">${item.stats.map((stat) => `<p>${stat}</p>`).join("")}</div>`
         : "";
