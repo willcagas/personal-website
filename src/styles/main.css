@@ -240,6 +240,11 @@ a:hover {
 
 .timeline-item[data-has-stats="true"] .timeline-main {
   cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.timeline-item[data-has-stats="true"] .timeline-main:hover {
+  color: var(--color-text);
 }
 
 .timeline-dot {
@@ -294,12 +299,14 @@ a:hover {
 }
 
 .timeline-item[data-has-stats="true"] .timeline-right::after {
-  content: " +";
-  color: var(--color-text-secondary);
+  content: " ▸";
+  color: var(--color-text);
+  font-size: 0.9em;
+  margin-left: 6px;
 }
 
 .timeline-item.expanded[data-has-stats="true"] .timeline-right::after {
-  content: " -";
+  content: " ▾";
 }
 
 .timeline-stats {

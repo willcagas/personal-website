@@ -76,7 +76,7 @@ class Content {
           title: "Goose Trials",
           url: "https://goosetrials.com",
           logo: "/assets/logos/goosetrials.png",
-          detail: "~1K unique players and 8K games in 24 hours; featured on UW Imprint."
+          detail: "~1K unique players and 8K games played in 24 hours; featured on UW Imprint."
         },
         {
           title: "AcneCura",
