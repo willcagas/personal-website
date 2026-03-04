@@ -73,10 +73,16 @@ class Content {
       ],
       projectHighlights: [
         {
+          title: "Zentro",
+          url: "https://x.com/kavir777/status/2028169851211272676",
+          logo: "/assets/logos/zentro-logo.png",
+          detail: "300K+ views on X in 24h (most viral project post-Browser Use x YC Web Agents Hackathon) with inbound from Founders Inc, Convex, Agent Mail and more."
+        },
+        {
           title: "Goose Trials",
           url: "https://goosetrials.com",
           logo: "/assets/logos/goosetrials.png",
-          detail: "~1K unique players and 8K games played in 24 hours; featured on UW Imprint."
+          detail: "~1K unique players and 8K games played in 24h; featured on UW Imprint."
         },
         {
           title: "AcneCura",
