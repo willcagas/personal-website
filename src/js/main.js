@@ -76,7 +76,7 @@ class Content {
           title: "Zentro",
           url: "https://x.com/kavir777/status/2028169851211272676",
           logo: "/assets/logos/zentro-logo.png",
-          detail: "300K+ views on X in 24h (most viral project post-Browser Use x YC Web Agents Hackathon) with inbound from Founders Inc, Convex, Agent Mail and more."
+          detail: "300K+ views on X in 24h (most viral project post-Browser Use x YC Web Agents Hackathon)."
         },
         {
           title: "Goose Trials",
