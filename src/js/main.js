@@ -29,7 +29,7 @@ class Content {
           company: "Thesis (YC F25)",
           url: "https://thesislabs.ai/",
           logo: "/assets/logos/thesislabs.png",
-          role: "SWE Intern",
+          role: "MTS Intern",
           current: true,
           stats: ["Creating the scientific engine for advancing AI/ML R&D."]
         },
