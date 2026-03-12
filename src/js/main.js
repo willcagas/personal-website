@@ -28,9 +28,9 @@ class Content {
           company: "Thesis (YC F25)",
           url: "https://thesislabs.ai/",
           logo: "/assets/logos/thesislabs.png",
-          role: "MTS Intern",
+          role: "Member of Technical Staff Intern",
           current: true,
-          stats: ["Creating the scientific engine for advancing AI/ML R&D."]
+          stats: ["Creating an agentic environment for AI/ML R&D."]
         },
         {
           companies: [
@@ -73,7 +73,7 @@ class Content {
       projectHighlights: [
         {
           title: "Zentro",
-          url: "https://x.com/kavir777/status/2028169851211272676",
+          url: "https://joinzentro.com",
           logo: "/assets/logos/zentro-logo.png",
           detail: "300K+ views on X in 24h (most viral project post-Browser Use x YC Web Agents Hackathon)."
         },
@@ -113,22 +113,26 @@ class Content {
         {
           outlet: "UW Imprint",
           url: "https://uwimprint.ca/first-year-engineering-students-launch-goose-trials-a-competitive-game-platform/",
-          title: "First-year engineering students launch Goose Trials, a competitive game platform"
+          title: "First-year engineering students launch Goose Trials, a competitive game platform",
+          date: "Jan. 2026"
         },
         {
           outlet: "Global News",
           url: "https://globalnews.ca/video/11330376/hamilton-teen-develops-app-to-detect-diagnose-acne/",
-          title: "Hamilton teen develops app to detect, diagnose acne"
+          title: "Hamilton teen develops app to detect, diagnose acne",
+          date: "Aug. 2025"
         },
         {
           outlet: "HWCDSB",
           url: "https://www.hwcdsb.ca/news/2024-2025/hammer_hacks_empowers_hamilton_youth_in_s_t_e_m",
-          title: "HammerHacks Empowers Hamilton Youth in STEM"
+          title: "HammerHacks Empowers Hamilton Youth in STEM",
+          date: "Jan. 2025"
         },
         {
           outlet: "The Hamilton Spectator",
           url: "https://www.thespec.com/news/hamilton-region/hamilton-high-schooler-uses-tech-to-solve-problems-from-gaps-in-medical-data-to-teen/article_35dcda17-4b96-5079-90d5-84625c65f254.html",
-          title: "Hamilton high schooler uses tech to solve problems — from gaps in medical data to teen acne"
+          title: "Hamilton high schooler uses tech to solve problems — from gaps in medical data to teen acne",
+          date: "Jan. 2025"
         }
       ],
       email: "wcagas@uwaterloo.ca",
@@ -216,7 +220,12 @@ class Content {
       .join("");
 
     const pressItems = (this.data.press || [])
-      .map((item) => `<li><a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.outlet}</a></li>`)
+      .map((item) => `
+        <div class="press-item">
+          <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="press-outlet" title="${item.title.replace(/"/g, "&quot;")}">${item.outlet}</a>
+          ${item.date ? `<span class="press-date">${item.date}</span>` : ""}
+        </div>
+      `)
       .join("");
 
     const socialOrder = ["Email", "GitHub", "Google Scholar", "LinkedIn", "Twitter", "Instagram"];
@@ -290,9 +299,9 @@ class Content {
 
       <section class="panel panel-press">
         <p class="section-kicker">PRESS</p>
-        <ul class="press-outlets">
+        <div class="press-list">
           ${pressItems}
-        </ul>
+        </div>
       </section>
 
       <footer class="site-footer">
