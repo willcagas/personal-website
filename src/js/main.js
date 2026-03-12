@@ -6,7 +6,6 @@
  * All content is managed in the Content class data structure.
  */
 
-import ThemeManager from './theme.js';
 import ARCHIVE_DATA from './archive-data.js';
 
 /**
@@ -167,7 +166,6 @@ class Content {
             ${this.data.nameSubtitle ? `<p class="site-subtitle">${this.data.nameSubtitle}</p>` : ""}
             <p class="site-role">${this.data.roleLine.prefix}<a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">${this.data.roleLine.link.text}</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="${this.data.roleLine.link.text}" class="school-logo">` : ""}</p>
           </div>
-          <button class="theme-toggle theme-toggle-label" id="theme-toggle" aria-label="Toggle theme" type="button"></button>
         </div>
       </header>
     `;
@@ -321,35 +319,18 @@ class Content {
  */
 class App {
   constructor() {
-    this.themeManager = new ThemeManager();
     this.content = new Content();
   }
 
   init() {
-    // Render nav and content inside main
     const main = document.querySelector('main');
 
     if (main) {
-      // Insert nav at the beginning of main
       main.insertAdjacentHTML('afterbegin', this.content.renderNav());
-
-      // Render content after nav
       main.insertAdjacentHTML('beforeend', this.content.renderContent());
     }
 
-    // Initialize theme toggle and set label (button is in DOM after render)
-    this.initThemeToggle();
-    this.themeManager.updateToggleButton();
     this.initMilestoneStats();
-  }
-
-  initThemeToggle() {
-    const toggleBtn = document.getElementById('theme-toggle');
-    if (toggleBtn) {
-      toggleBtn.addEventListener('click', (event) => {
-        this.themeManager.toggleTheme(event.currentTarget);
-      });
-    }
   }
 
   initMilestoneStats() {

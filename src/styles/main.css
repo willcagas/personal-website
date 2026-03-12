@@ -5,13 +5,13 @@
  * Terminal-style template: dark theme, monospace, timeline layout
  */
 
-/* CSS Variables */
+/* CSS Variables (single dark theme) */
 :root {
-  --color-bg: #ffffff;
-  --color-text: #1a1a1a;
-  --color-text-secondary: #666666;
-  --color-link: #1a1a1a;
-  --color-border: #e5e5e5;
+  --color-bg: #000000;
+  --color-text: #d4d4d4;
+  --color-text-secondary: #9ca3af;
+  --color-link: #d4d4d4;
+  --color-border: #333333;
 
   --font-family: "Fira Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-size-base: 16px;
@@ -19,14 +19,6 @@
   --line-height: 1.6;
   --max-width: 720px;
   --padding: 24px;
-}
-
-[data-theme="dark"] {
-  --color-bg: #000000;
-  --color-text: #d4d4d4;
-  --color-text-secondary: #9ca3af;
-  --color-link: #d4d4d4;
-  --color-border: #333333;
 }
 
 /* Base */
@@ -50,7 +42,22 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Full-viewport subtle background: banner with dark overlay */
+.bg-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.82) 100%),
+    url("/assets/v2_linkedin_banner.png");
+  background-size: cover;
+  background-position: center;
+}
+
 main {
+  position: relative;
+  z-index: 1;
   max-width: var(--max-width);
   margin: 0 auto;
   padding: var(--padding);
@@ -67,7 +74,7 @@ a:hover {
   opacity: 0.85;
 }
 
-/* Site header: name + subtitle + role left, theme label right */
+/* Site header: name + subtitle + role */
 .site-header {
   margin-bottom: 48px;
 }
@@ -114,39 +121,6 @@ a:hover {
   object-fit: contain;
   vertical-align: -0.15em;
   margin-left: 0.35rem;
-}
-
-.theme-toggle.theme-toggle-label {
-  flex-shrink: 0;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  cursor: pointer;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  color: var(--color-text-secondary);
-  transition: border-color 0.2s ease, color 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.theme-toggle.theme-toggle-label:hover {
-  color: var(--color-text);
-  border-color: var(--color-text-secondary);
-}
-
-.theme-toggle .theme-icon {
-  width: 16px;
-  height: 16px;
-  stroke-width: 1.9;
-}
-
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
 }
 
 /* Intro sentence + cursor */
@@ -502,10 +476,6 @@ a:hover {
   width: 16px;
   height: 16px;
   object-fit: contain;
-  filter: brightness(0) saturate(100%);
-}
-
-[data-theme="dark"] .footer-social-link .social-logo {
   filter: brightness(0) saturate(100%) invert(1);
 }
 

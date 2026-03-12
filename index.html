@@ -6,18 +6,9 @@
     <meta name="description" content="William Cagas - Software Engineering student at University of Waterloo. Building AI for good.">
     <title>William Cagas</title>
     <link rel="stylesheet" href="src/styles/main.css">
-    <script>
-      // Prevent flash of wrong theme; default dark to match template
-      (function() {
-        try {
-          const storedTheme = localStorage.getItem('theme');
-          const theme = storedTheme || 'dark';
-          document.documentElement.setAttribute('data-theme', theme);
-        } catch (e) {}
-      })();
-    </script>
 </head>
 <body>
+    <div class="bg-reveal" aria-hidden="true"></div>
     <main>
         <div id="content-root"></div>
     </main>
