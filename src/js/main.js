@@ -30,7 +30,7 @@ class Content {
           logo: "/assets/logos/thesislabs.png",
           role: "Member of Technical Staff Intern",
           current: true,
-          stats: ["Creating an agentic environment for AI/ML R&D."]
+          stats: ["δ Pushing the frontier of AI/ML R&D. Backed by Y Combinator."]
         },
         {
           companies: [
