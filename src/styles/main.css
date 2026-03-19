@@ -404,6 +404,130 @@ a:hover {
   color: var(--color-text-secondary);
 }
 
+/* Photos: arrow navigation, infinite wrap (JS translate) */
+.photo-carousel {
+  position: relative;
+  width: 100%;
+  margin: 0;
+}
+
+.photo-carousel-nav {
+  position: relative;
+  width: 100%;
+}
+
+.photo-nav {
+  position: absolute;
+  top: var(--photo-nav-center, 50%);
+  transform: translateY(-50%);
+  z-index: 3;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--color-text);
+  font-size: 1.28rem;
+  line-height: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.photo-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  line-height: 0;
+  transform: translateY(-0.05em);
+}
+
+.photo-nav-prev {
+  left: 8px;
+}
+
+.photo-nav-next {
+  right: 8px;
+}
+
+.photo-nav:hover:not(:disabled) {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.photo-nav:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.photo-strip {
+  width: 100%;
+  overflow: hidden;
+  outline: none;
+  --photo-gap: 12px;
+  --photo-slides-visible: 2;
+}
+
+.photo-strip:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-text-secondary);
+  border-radius: 4px;
+}
+
+.photo-strip-inner {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: var(--photo-gap);
+  will-change: transform;
+}
+
+.photo-carousel-item {
+  margin: 0;
+  flex: 0 0 calc(
+    (100% - (var(--photo-slides-visible) - 1) * var(--photo-gap)) /
+      var(--photo-slides-visible)
+  );
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Reduced motion: arrows still work; JS uses instant steps (no slide transition) */
+
+.photo-carousel-frame {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-border);
+}
+
+.photo-carousel-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center center;
+}
+
+.photo-carousel-caption {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  text-align: left;
+  line-height: 1.35;
+}
+
 /* Meta block: label left, value right */
 .meta-section {
   margin: 0;
@@ -634,6 +758,24 @@ a:hover {
 
   .press-outlet {
     font-size: 0.84rem;
+  }
+
+  .photo-strip {
+    --photo-slides-visible: 1;
+  }
+
+  .photo-nav {
+    width: 32px;
+    height: 32px;
+    font-size: 1.12rem;
+  }
+
+  .photo-nav-prev {
+    left: 5px;
+  }
+
+  .photo-nav-next {
+    right: 5px;
   }
 
   .footer-socials {

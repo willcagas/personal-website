@@ -1,6 +1,10 @@
 const ARCHIVE_DATA = {
   photos: [
     {
+      image: "/assets/pictures/browser-use-hackathon.jpg",
+      caption: "Browser Use x Y Combinator hackathon in SF"
+    },
+    {
       image: "/assets/pictures/watai-kickoff.jpeg",
       caption: "WAT.ai Kickoff Meeting for EPA Consultant Team"
     },

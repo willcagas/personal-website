@@ -228,6 +228,39 @@ class Content {
       `)
       .join("");
 
+    const photos = this.data.archiveData?.photos ?? [];
+    const escapeHtml = (s) =>
+      String(s || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/"/g, "&quot;");
+    const renderPhotoSlide = (photo) => {
+      const objectStyle = photo.objectPosition ? `object-position: ${photo.objectPosition};` : "";
+      return `
+          <figure class="photo-carousel-item">
+            <div class="photo-carousel-frame">
+              <img src="${photo.image}" alt="${escapeHtml(photo.caption)}" class="photo-carousel-img"${objectStyle ? ` style="${objectStyle}"` : ""} loading="eager" decoding="async">
+            </div>
+            <figcaption class="photo-carousel-caption">${escapeHtml(photo.caption)}</figcaption>
+          </figure>
+        `;
+    };
+    const slidesHtml = photos.map(renderPhotoSlide).join("");
+    const photoGalleryHtml =
+      photos.length > 0
+        ? `
+        <div class="photo-carousel-nav" role="group" aria-label="Photo gallery">
+          <button type="button" class="photo-nav photo-nav-prev" aria-label="Previous photo"><span class="photo-nav-icon" aria-hidden="true">‹</span></button>
+          <div class="photo-strip" tabindex="0" role="region" aria-roledescription="carousel" aria-label="Photos">
+            <div class="photo-strip-inner">
+              ${slidesHtml}
+            </div>
+          </div>
+          <button type="button" class="photo-nav photo-nav-next" aria-label="Next photo"><span class="photo-nav-icon" aria-hidden="true">›</span></button>
+        </div>
+      `
+        : "";
+
     const socialOrder = ["Email", "GitHub", "Google Scholar", "LinkedIn", "Twitter", "Instagram"];
     const iconMap = {
       Email: "gmail",
@@ -304,6 +337,15 @@ class Content {
         </div>
       </section>
 
+      ${photoGalleryHtml ? `
+      <section class="panel panel-photos">
+        <p class="section-kicker">PHOTOS</p>
+        <div class="photo-carousel">
+          ${photoGalleryHtml}
+        </div>
+      </section>
+      ` : ""}
+
       <footer class="site-footer">
         <p class="section-kicker">SOCIALS</p>
         <div class="footer-row">
@@ -340,6 +382,233 @@ class App {
     }
 
     this.initMilestoneStats();
+    this.initPhotoGalleryNav();
+  }
+
+  /**
+   * Arrow buttons; translate by one slide width. Logical pages use maxIndex = n - visibleCount
+   * so the viewport stays full. For smooth infinite wrap, clones bookend the strip: [clone][orig][clone];
+   * offset n..n+maxIndex addresses originals; wrapping animates into the adjacent clone run then resets.
+   */
+  initPhotoGalleryNav() {
+    const root = document.querySelector(".photo-carousel-nav");
+    if (!root) return;
+
+    const inner = root.querySelector(".photo-strip-inner");
+    const initialItems = inner ? inner.querySelectorAll(".photo-carousel-item") : [];
+    const prevBtn = root.querySelector(".photo-nav-prev");
+    const nextBtn = root.querySelector(".photo-nav-next");
+    const strip = root.querySelector(".photo-strip");
+
+    const n = initialItems.length;
+    if (!inner || !prevBtn || !nextBtn || n === 0) return;
+
+    if (n === 1) {
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      prevBtn.setAttribute("aria-hidden", "true");
+      nextBtn.setAttribute("aria-hidden", "true");
+      return;
+    }
+
+    const originals = Array.from(initialItems);
+    const lead = document.createDocumentFragment();
+    const trail = document.createDocumentFragment();
+    for (const el of originals) {
+      lead.appendChild(el.cloneNode(true));
+      trail.appendChild(el.cloneNode(true));
+    }
+    inner.insertBefore(lead, inner.firstChild);
+    inner.appendChild(trail);
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let offset = n;
+    let pendingWrap = null;
+    let busy = false;
+
+    const getVisibleCount = () => {
+      if (!strip) return 1;
+      const raw = getComputedStyle(strip).getPropertyValue("--photo-slides-visible").trim();
+      const k = parseInt(raw, 10);
+      if (!Number.isFinite(k) || k < 1) return 1;
+      return Math.min(k, n);
+    };
+
+    const getMaxIndex = () => Math.max(0, n - getVisibleCount());
+
+    const updateNavState = () => {
+      const maxIdx = getMaxIndex();
+      const hideNav = maxIdx === 0;
+      prevBtn.disabled = hideNav;
+      nextBtn.disabled = hideNav;
+      if (hideNav) {
+        prevBtn.setAttribute("aria-hidden", "true");
+        nextBtn.setAttribute("aria-hidden", "true");
+      } else {
+        prevBtn.removeAttribute("aria-hidden");
+        nextBtn.removeAttribute("aria-hidden");
+      }
+    };
+
+    const clampOffset = () => {
+      const maxIdx = getMaxIndex();
+      let logical = offset - n;
+      logical = Math.max(0, Math.min(maxIdx, logical));
+      offset = n + logical;
+    };
+
+    const getStep = () => {
+      if (inner.children.length < 2) {
+        return strip ? Math.max(1, strip.clientWidth) : 1;
+      }
+      const a = inner.children[0].getBoundingClientRect();
+      const b = inner.children[1].getBoundingClientRect();
+      return Math.max(1, Math.round(b.left - a.left));
+    };
+
+    const syncNavCenter = () => {
+      const leftEl = inner.children[offset];
+      const frame = leftEl?.querySelector?.(".photo-carousel-frame");
+      if (!frame) return;
+      const navRect = root.getBoundingClientRect();
+      const frameRect = frame.getBoundingClientRect();
+      if (frameRect.height < 2) return;
+      const y = frameRect.top - navRect.top + frameRect.height / 2;
+      root.style.setProperty("--photo-nav-center", `${Math.round(y * 10) / 10}px`);
+    };
+
+    const apply = (instant) => {
+      const step = getStep();
+      const useInstant = instant || reduceMotion;
+      if (useInstant) {
+        inner.style.transition = "none";
+      } else {
+        inner.style.transition = "transform 0.35s ease";
+      }
+      inner.style.transform = `translate3d(${-offset * step}px, 0, 0)`;
+      if (useInstant) {
+        void inner.offsetHeight;
+        inner.style.transition = reduceMotion ? "none" : "transform 0.35s ease";
+      }
+    };
+
+    const finishWrap = () => {
+      const kind = pendingWrap;
+      pendingWrap = null;
+      if (!kind) return;
+      const maxIdx = getMaxIndex();
+      if (kind === "forward") {
+        offset = n;
+      } else if (kind === "backward") {
+        offset = n + maxIdx;
+      }
+      apply(true);
+    };
+
+    let wrapFallbackTimer = null;
+    inner.addEventListener(
+      "transitionend",
+      (e) => {
+        if (e.target !== inner || e.propertyName !== "transform") return;
+        if (wrapFallbackTimer) {
+          clearTimeout(wrapFallbackTimer);
+          wrapFallbackTimer = null;
+        }
+        if (pendingWrap) {
+          finishWrap();
+        }
+        busy = false;
+      },
+      false
+    );
+
+    const go = (delta) => {
+      const maxIdx = getMaxIndex();
+      if (maxIdx === 0 || busy) return;
+      const v = getVisibleCount();
+
+      if (reduceMotion) {
+        let logical = offset - n;
+        if (delta === 1) {
+          logical = logical >= maxIdx ? 0 : logical + 1;
+        } else {
+          logical = logical <= 0 ? maxIdx : logical - 1;
+        }
+        offset = n + logical;
+        apply(true);
+        return;
+      }
+
+      busy = true;
+      if (delta === 1) {
+        if (offset < n + maxIdx) {
+          offset += 1;
+          apply(false);
+        } else {
+          pendingWrap = "forward";
+          offset += v;
+          apply(false);
+          wrapFallbackTimer = window.setTimeout(() => {
+            wrapFallbackTimer = null;
+            if (pendingWrap) finishWrap();
+            busy = false;
+          }, 450);
+        }
+      } else if (offset > n) {
+        offset -= 1;
+        apply(false);
+      } else {
+        pendingWrap = "backward";
+        offset -= v;
+        apply(false);
+        wrapFallbackTimer = window.setTimeout(() => {
+          wrapFallbackTimer = null;
+          if (pendingWrap) finishWrap();
+          busy = false;
+        }, 450);
+      }
+    };
+
+    prevBtn.addEventListener("click", () => go(-1));
+    nextBtn.addEventListener("click", () => go(1));
+
+    const onKey = (e) => {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        go(-1);
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        go(1);
+      }
+    };
+    strip.addEventListener("keydown", onKey);
+
+    const remeasure = () => {
+      pendingWrap = null;
+      if (wrapFallbackTimer) {
+        clearTimeout(wrapFallbackTimer);
+        wrapFallbackTimer = null;
+      }
+      busy = false;
+      clampOffset();
+      updateNavState();
+      syncNavCenter();
+      apply(true);
+    };
+    window.addEventListener("resize", remeasure, { passive: true });
+    if (typeof ResizeObserver !== "undefined") {
+      new ResizeObserver(remeasure).observe(strip);
+    }
+
+    inner.querySelectorAll(".photo-carousel-img").forEach((img) => {
+      if (!img.complete) img.addEventListener("load", remeasure, { passive: true });
+    });
+
+    requestAnimationFrame(() => {
+      remeasure();
+      requestAnimationFrame(remeasure);
+    });
   }
 
   initMilestoneStats() {
