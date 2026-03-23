@@ -105,7 +105,7 @@ class Content {
           logo: "/assets/logos/medgans.png"
         }
       ],
-      aboutMeta: "Passionate about AI that solves real-world problems",
+      aboutMeta: "Building to solve real-world problems",
       location: "Hamilton | Waterloo | San Francisco",
       // Preserved for future archive section reintroduction.
       archiveData: ARCHIVE_DATA,
@@ -315,7 +315,7 @@ class Content {
       </section>
 
       <section class="panel panel-projects">
-        <p class="section-kicker">NOTABLE BUILDS</p>
+        <p class="section-kicker">BUILDS</p>
         <div class="projects-layout">
           <div class="projects-list">
             ${projectItems}
