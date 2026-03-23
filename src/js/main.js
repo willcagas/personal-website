@@ -40,7 +40,7 @@ class Content {
           role: "Technical PM",
           current: true,
           stats: ["Building AI systems for pesticide regulatory approval."]
-        },  
+        },
         {
           company: "CMU Xu Lab",
           url: "https://xulabs.github.io/",
@@ -65,7 +65,7 @@ class Content {
           company: "HammerHacks",
           url: "https://hammerhacks2024.wcagas.com",
           logo: "/assets/logos/hammerhacks.png",
-          role: "Co-Founder",
+          role: "Co-Founder & Lead Organizer",
           current: false,
           stats: ["140+ participants and $12K in sponsorships from McMaster Engineering, Hack Club, and more."]
         }
@@ -339,7 +339,7 @@ class Content {
 
       ${photoGalleryHtml ? `
       <section class="panel panel-photos">
-        <p class="section-kicker">PHOTOS</p>
+        <p class="section-kicker">ARCHIVE</p>
         <div class="photo-carousel">
           ${photoGalleryHtml}
         </div>
