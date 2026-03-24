@@ -360,6 +360,9 @@ class Content {
             <a href="https://se30webring.com?from=https://wcagas.com&dir=next" aria-label="Next site" style="text-decoration: none; color: #FFCE1A; font-size: 1.15rem; line-height: 1; display: flex; align-items: center;">→</a>
           </div>
         </div>
+        <div class="footer-bottom">
+          <p>© ${new Date().getFullYear()} William Cagas. Built with ❤️.</p>
+        </div>
       </footer>
     `;
   }

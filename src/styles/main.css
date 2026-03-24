@@ -640,6 +640,14 @@ a:hover {
   display: block;
 }
 
+.footer-bottom {
+  margin-top: 48px;
+  padding-bottom: 24px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   body {
@@ -820,5 +828,10 @@ a:hover {
   .webring-widget img {
     width: 24px;
     height: 24px;
+  }
+
+  .footer-bottom {
+    margin-top: 40px;
+    padding-bottom: 40px;
   }
 }
