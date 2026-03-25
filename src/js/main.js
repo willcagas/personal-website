@@ -87,7 +87,7 @@ class Content {
           title: "AcneCura",
           url: "https://acnecura.io",
           logo: "/assets/logos/acnecura.png",
-          detail: "300K+ organic views; featured on Global News."
+          detail: "300K+ organic views; endorsed by Apple Canada and featured on Global News."
         },
         {
           title: "Sword Power Tycoon",
