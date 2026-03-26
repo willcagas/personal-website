@@ -105,7 +105,7 @@ class Content {
           logo: "/assets/logos/medgans.png"
         }
       ],
-      aboutMeta: "Building to solve real-world problems",
+      aboutMeta: "Building cool things to solve real-world problems",
       location: "Hamilton | Waterloo | San Francisco",
       // Preserved for future archive section reintroduction.
       archiveData: ARCHIVE_DATA,
