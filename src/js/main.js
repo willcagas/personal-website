@@ -421,9 +421,7 @@ class Content {
       .map((item) => `
         <div class="press-item">
           <p class="press-outlet">
-            <a href="${item.url}" target="_blank" rel="noopener noreferrer" title="${item.title.replace(/"/g, "&quot;")}">
-              ${item.outlet}
-            </a>${this.logoHtml(item.logo, item.outlet)}
+            <a href="${item.url}" target="_blank" rel="noopener noreferrer" title="${item.title.replace(/"/g, "&quot;")}">${item.outlet}</a>${this.logoHtml(item.logo, item.outlet)}
           </p>
           ${item.date ? `<span class="press-date">${item.date}</span>` : ""}
         </div>

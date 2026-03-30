@@ -207,12 +207,12 @@ a:hover {
   border: none;
   border-radius: 0;
   padding: 0;
-  margin-bottom: 30px;
+  margin-bottom: 42px;
 }
 
 /* Offset for the flex-track overhang in the photo carousel */
-.panel-photos {
-  margin-bottom: 12px;
+.panel.panel-photos {
+  margin-bottom: 24px;
 }
 
 .section-kicker {
@@ -764,7 +764,11 @@ a:hover {
 
   .panel {
     padding: 0;
-    margin-bottom: 24px;
+    margin-bottom: 32px;
+  }
+
+  .panel.panel-photos {
+    margin-bottom: 14px;
   }
 
   .projects-layout {
