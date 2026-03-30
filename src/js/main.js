@@ -290,7 +290,7 @@ class Content {
         <p class="section-kicker">ABOUT</p>
         <div class="meta-section">
           <p class="about-bio">I'm a Software Engineering student @ <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="University of Waterloo" class="school-logo">` : ""} interested in applied AI, bio/health tech, ML research, and full-stack/app/game development.</p>
-          <p class="about-bio">The equilibrium between knowledge and application lies in learning by doing. I've kept evolving by shipping and iterating on software that solves real-world problems and reaches real people.</p>
+          <p class="about-bio">The equilibrium between knowledge and application lies in learning by doing. I've kept evolving by shipping and iterating on software to solve real-world problems and reach real people.</p>
           <p class="about-bio">Currently, I'm at <a href="https://thesislabs.ai/" target="_blank" rel="noopener noreferrer">Thesis</a><img src="/assets/logos/thesislabs.png" alt="Thesis" class="school-logo"> as a Member of Technical Staff Intern to accelerate AI R&D by building an agentic environment that runs a ML research team for you.</p>
         </div>
       </section>
