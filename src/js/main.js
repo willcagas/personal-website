@@ -1,12 +1,41 @@
 /**
  * Main Application Entry Point
- * Simplified single-page design
+ * Multi-page SPA with client-side routing
  * 
- * This is a minimal, content-focused personal website.
+ * Routes: / (Home), /work, /projects, /media
  * All content is managed in the Content class data structure.
  */
 
 import ARCHIVE_DATA from './archive-data.js';
+
+/**
+ * Simple client-side router using History API
+ */
+class Router {
+  constructor(routes, onNavigate) {
+    this.routes = routes;
+    this.onNavigate = onNavigate;
+
+    window.addEventListener('popstate', () => this.resolve());
+
+    document.addEventListener('click', (e) => {
+      const link = e.target.closest('a[data-route]');
+      if (!link) return;
+      e.preventDefault();
+      const path = link.getAttribute('href');
+      if (path !== window.location.pathname) {
+        window.history.pushState(null, '', path);
+        this.resolve();
+      }
+    });
+  }
+
+  resolve() {
+    const path = window.location.pathname;
+    const route = this.routes.find((r) => r.path === path) || this.routes[0];
+    this.onNavigate(route);
+  }
+}
 
 /**
  * Content Component
@@ -30,7 +59,9 @@ class Content {
           logo: "/assets/logos/thesislabs.png",
           role: "Member of Technical Staff Intern",
           current: true,
-          stats: ["δ Pushing the frontier of AI/ML R&D. Backed by Y Combinator."]
+          stats: [
+            "δ Building an agentic environment that autonomously runs ML research — from hypothesis generation to experiment execution."
+          ]
         },
         {
           companies: [
@@ -39,7 +70,9 @@ class Content {
           ],
           role: "Technical PM",
           current: true,
-          stats: ["Building AI systems for pesticide regulatory approval."]
+          stats: [
+            "Leading a cross-functional team building AI systems for pesticide regulatory approval."
+          ]
         },
         {
           company: "CMU Xu Lab",
@@ -48,7 +81,7 @@ class Content {
           role: "ML Researcher",
           current: false,
           stats: [
-            "Researched DDPMs for accelerating rare disease clinical trials through medical image synthesis.",
+            "Researched DDPMs for medical image synthesis to accelerate rare disease clinical trials."
           ]
         },
         {
@@ -58,16 +91,8 @@ class Content {
           role: "ML Researcher",
           current: false,
           stats: [
-            "Lead author on GAN-based medical imaging research published at GAISynMeD at ACCV 2024."
+            "Lead author on GAN-based medical imaging research published at ACCV 2024 workshop."
           ]
-        },
-        {
-          company: "HammerHacks",
-          url: "https://hammerhacks2024.wcagas.com",
-          logo: "/assets/logos/hammerhacks.png",
-          role: "Co-Founder & Lead Organizer",
-          current: false,
-          stats: ["140+ participants and $12K in sponsorships from McMaster Engineering, Hack Club, and more."]
         }
       ],
       projectHighlights: [
@@ -90,6 +115,12 @@ class Content {
           detail: "300K+ organic views; endorsed by Apple Canada and featured on Global News."
         },
         {
+          title: "WasteBuster",
+          url: "https://apps.apple.com/ca/app/wastebuster/id6450317120",
+          logo: "/assets/logos/wastebuster.jpg",
+          detail: "500+ circular solutions tackling overconsumption."
+        },
+        {
           title: "Sword Power Tycoon",
           url: "https://www.roblox.com/games/6937615628/Sword-Power-Tycoon",
           logo: "/assets/logos/roblox-logo.png",
@@ -100,9 +131,25 @@ class Content {
         {
           title: "Medical Imaging Complexity and its Effects on GAN Performance",
           venue: "GAISynMeD @ ACCV 2024",
-          note: "Oral presentation; cited 9x (incl. ICCV, ACM).",
+          note: "(oral presentation); cited 10x including ICCV, ACM.",
           url: "https://medgans.wcagas.com",
           logo: "/assets/logos/medgans.png"
+        }
+      ],
+      communityHighlights: [
+        {
+          company: "HammerHacks",
+          url: "https://hammerhacks2024.wcagas.com",
+          logo: "/assets/logos/hammerhacks.png",
+          role: "Co-Founder & Lead Organizer",
+          stats: ["140+ participants and $12K in sponsorships from McMaster Engineering, Hack Club, and more."]
+        },
+        {
+          company: "Stanford Code in Place",
+          url: "https://codeinplace.stanford.edu/",
+          logo: "/assets/logos/stanford-logo.jpg",
+          role: "Coding Instructor",
+          stats: ["Taught CS106A Python fundamentals 2x to classes of international students."]
         }
       ],
       aboutMeta: "Building cool things to solve real-world problems",
@@ -114,25 +161,29 @@ class Content {
           outlet: "UW Imprint",
           url: "https://uwimprint.ca/first-year-engineering-students-launch-goose-trials-a-competitive-game-platform/",
           title: "First-year engineering students launch Goose Trials, a competitive game platform",
-          date: "Jan. 2026"
+          date: "Jan. 2026",
+          logo: "/assets/logos/uw-imprint.png"
         },
         {
           outlet: "Global News",
           url: "https://globalnews.ca/video/11330376/hamilton-teen-develops-app-to-detect-diagnose-acne/",
           title: "Hamilton teen develops app to detect, diagnose acne",
-          date: "Aug. 2025"
+          date: "Aug. 2025",
+          logo: "/assets/logos/global-news.jpeg"
         },
         {
           outlet: "HWCDSB",
           url: "https://www.hwcdsb.ca/news/2024-2025/hammer_hacks_empowers_hamilton_youth_in_s_t_e_m",
           title: "HammerHacks Empowers Hamilton Youth in STEM",
-          date: "Jan. 2025"
+          date: "Jan. 2025",
+          logo: "/assets/logos/hwcdsb.png"
         },
         {
           outlet: "The Hamilton Spectator",
           url: "https://www.thespec.com/news/hamilton-region/hamilton-high-schooler-uses-tech-to-solve-problems-from-gaps-in-medical-data-to-teen/article_35dcda17-4b96-5079-90d5-84625c65f254.html",
           title: "Hamilton high schooler uses tech to solve problems — from gaps in medical data to teen acne",
-          date: "Jan. 2025"
+          date: "Jan. 2025",
+          logo: "/assets/logos/hamilton-spec.png"
         }
       ],
       email: "wcagas@uwaterloo.ca",
@@ -152,116 +203,61 @@ class Content {
         {
           name: "Twitter",
           url: "https://x.com/williamcagas"
-        },
-        {
-          name: "Instagram",
-          url: "https://instagram.com/williamcagas"
         }
       ]
     };
   }
 
-  renderNav() {
+  /* ── Helpers ── */
+
+  logoHtml(src, alt) {
+    return src ? `<img src="${src}" alt="${alt}" class="inline-logo">` : "";
+  }
+
+  escapeHtml(s) {
+    return String(s || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  /* ── Shared chrome ── */
+
+  renderNav(currentPath) {
+    const links = [
+      { label: "Home", path: "/" },
+      { label: "Work", path: "/work" },
+      { label: "Projects", path: "/projects" },
+      { label: "Media", path: "/media" }
+    ];
+    const navItems = links.map((l) => {
+      const active = l.path === currentPath ? ' class="nav-link active"' : ' class="nav-link"';
+      return `<a href="${l.path}" data-route${active}>${l.label}</a>`;
+    }).join("");
+
     return `
       <header class="site-header">
         <div class="header-inner">
           <div class="header-left">
-            <h1 class="site-name">${this.data.name}</h1>
+            <h1 class="site-name"><a href="/" data-route class="name-link">${this.data.name}</a></h1>
             ${this.data.nameSubtitle ? `<p class="site-subtitle">${this.data.nameSubtitle}</p>` : ""}
-            <p class="site-role">${this.data.roleLine.prefix}<a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">${this.data.roleLine.link.text}</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="${this.data.roleLine.link.text}" class="school-logo">` : ""}</p>
           </div>
         </div>
+        <nav class="site-nav" aria-label="Main navigation">
+          ${navItems}
+        </nav>
       </header>
     `;
   }
 
-  renderContent() {
-    const logoHtml = (src, alt) => src ? `<img src="${src}" alt="${alt}" class="inline-logo">` : "";
+  renderFooter() {
+    return '';
+  }
 
-    const roleItems = this.data.mainRoles.map((item) => {
-      const companyHtml = item.companies
-        ? `${item.companies.map((company) => `<a href="${company.url}" target="_blank" rel="noopener noreferrer">${company.name}</a>${logoHtml(company.logo, company.name)}`).join(" x ")}`
-        : (item.url
-          ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.company}</a>${logoHtml(item.logo, item.company)}`
-          : `${item.company}`);
-      const statsHtml = (item.stats && item.stats.length)
-        ? `<div class="timeline-stats">${item.stats.map((stat) => `<p>${stat}</p>`).join("")}</div>`
-        : "";
-      return `
-        <div class="timeline-item" data-current="${item.current ? "true" : "false"}" data-has-stats="${item.stats ? "true" : "false"}">
-          <div class="timeline-main" tabindex="${item.stats ? "0" : "-1"}" role="${item.stats ? "button" : "presentation"}" aria-expanded="false">
-            <div class="timeline-dot"></div>
-            <div class="timeline-left">${companyHtml}</div>
-            <div class="timeline-right">${item.role}</div>
-          </div>
-          ${statsHtml}
-        </div>`;
-    }).join("");
+  /* ── Pages ── */
 
-    const projectItems = this.data.projectHighlights
-      .map((project) => `
-        <article class="project-item">
-          <p class="project-title"><a href="${project.url}" target="_blank" rel="noopener noreferrer">${project.title}</a>${logoHtml(project.logo, project.title)}</p>
-          <p class="project-detail">${project.detail}</p>
-        </article>
-      `)
-      .join("");
-
-    const researchItems = this.data.researchHighlights
-      .map((paper) => `
-        <article class="research-item">
-          <div class="research-main">
-            <a href="${paper.url}" target="_blank" rel="noopener noreferrer">${paper.title}</a>${logoHtml(paper.logo, paper.title)}
-            <p class="research-note">${paper.note}</p>
-          </div>
-          <p class="research-venue">${paper.venue}</p>
-        </article>
-      `)
-      .join("");
-
-    const pressItems = (this.data.press || [])
-      .map((item) => `
-        <div class="press-item">
-          <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="press-outlet" title="${item.title.replace(/"/g, "&quot;")}">${item.outlet}</a>
-          ${item.date ? `<span class="press-date">${item.date}</span>` : ""}
-        </div>
-      `)
-      .join("");
-
-    const photos = this.data.archiveData?.photos ?? [];
-    const escapeHtml = (s) =>
-      String(s || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/"/g, "&quot;");
-    const renderPhotoSlide = (photo) => {
-      const objectStyle = photo.objectPosition ? `object-position: ${photo.objectPosition};` : "";
-      return `
-          <figure class="photo-carousel-item">
-            <div class="photo-carousel-frame">
-              <img src="${photo.image}" alt="${escapeHtml(photo.caption)}" class="photo-carousel-img"${objectStyle ? ` style="${objectStyle}"` : ""} loading="eager" decoding="async">
-            </div>
-            <figcaption class="photo-carousel-caption">${escapeHtml(photo.caption)}</figcaption>
-          </figure>
-        `;
-    };
-    const slidesHtml = photos.map(renderPhotoSlide).join("");
-    const photoGalleryHtml =
-      photos.length > 0
-        ? `
-        <div class="photo-carousel-nav" role="group" aria-label="Photo gallery">
-          <button type="button" class="photo-nav photo-nav-prev" aria-label="Previous photo"><span class="photo-nav-icon" aria-hidden="true">‹</span></button>
-          <div class="photo-strip" tabindex="0" role="region" aria-roledescription="carousel" aria-label="Photos">
-            <div class="photo-strip-inner">
-              ${slidesHtml}
-            </div>
-          </div>
-          <button type="button" class="photo-nav photo-nav-next" aria-label="Next photo"><span class="photo-nav-icon" aria-hidden="true">›</span></button>
-        </div>
-      `
-        : "";
-
-    const socialOrder = ["Email", "GitHub", "Google Scholar", "LinkedIn", "Twitter", "Instagram"];
+  renderHome() {
+    const socialOrder = ["Email", "GitHub", "Google Scholar", "LinkedIn", "Twitter"];
     const iconMap = {
       Email: "gmail",
       GitHub: "github",
@@ -274,47 +270,134 @@ class Content {
     const socialItems = socialOrder
       .map((name) => {
         if (name === "Email") {
-          return {
-            name: "Email",
-            url: `mailto:${this.data.email}`,
-            icon: iconMap.Email
-          };
+          return { name: "Email", url: `mailto:${this.data.email}`, icon: iconMap.Email };
         }
         const link = this.data.socialLinks.find((s) => s.name === name);
         if (!link) return null;
-        return {
-          name: link.name,
-          url: link.url,
-          icon: iconMap[link.name] || link.name.toLowerCase().replace(/\s+/g, "")
-        };
+        return { name: link.name, url: link.url, icon: iconMap[link.name] || link.name.toLowerCase().replace(/\s+/g, "") };
       })
       .filter(Boolean)
       .map((social) => `
-        <a href="${social.url}" target="_blank" rel="noopener noreferrer" class="footer-social-link" aria-label="${social.name}">
+        <a href="${social.url}" target="_blank" rel="noopener noreferrer" class="social-list-link" aria-label="${social.name}">
           <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/${social.icon}.svg" alt="${social.name}" class="social-logo">
+          <span>${social.name}</span>
         </a>
       `)
       .join("");
 
     return `
-      <section class="panel panel-meta">
+      <section class="panel panel-meta page-content">
         <p class="section-kicker">ABOUT</p>
         <div class="meta-section">
-          <p class="meta-inline">
-            <span class="meta-about">${this.data.aboutMeta}</span>
-            <span class="meta-location">${this.data.location}</span>
-          </p>
+          <p class="about-bio">I'm a Software Engineering student @ <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="University of Waterloo" class="school-logo">` : ""} interested in applied AI, bio/health tech, ML research, and full-stack/app/game development.</p>
+          <p class="about-bio">The equilibrium between knowledge and application lies in learning by doing. I've kept evolving by shipping and iterating on software that solves real-world problems and reaches real people.</p>
+          <p class="about-bio">Currently, I'm at <a href="https://thesislabs.ai/" target="_blank" rel="noopener noreferrer">Thesis</a><img src="/assets/logos/thesislabs.png" alt="Thesis" class="school-logo"> as a Member of Technical Staff Intern to accelerate AI R&D by building an agentic environment that runs a ML research team for you.</p>
         </div>
       </section>
 
-      <section class="panel panel-main-roles">
-        <p class="section-kicker">Work</p>
-        <div class="timeline-section">
+      <section class="panel panel-location page-content">
+        <p class="section-kicker">LOCATION</p>
+        <p class="location-text">${this.data.location}</p>
+      </section>
+
+      <section class="panel panel-socials page-content">
+        <p class="section-kicker">SOCIALS</p>
+        <div class="social-list">
+          ${socialItems}
+        </div>
+        <div class="webring-widget" aria-label="SE '30 Webring">
+          <a href="https://se30webring.com?from=https://wcagas.com&dir=prev" aria-label="Previous site" style="text-decoration: none; color: #FFCE1A; font-size: 1.15rem; line-height: 1; display: flex; align-items: center;">←</a>
+          <a href="https://se30webring.com" target="_blank" rel="noopener noreferrer" aria-label="SE '30 Webring" style="text-decoration: none; display: flex; align-items: center;">
+            <img src="https://se30webring.com/assets/icon-yellow.svg" alt="SE '30 Webring" style="width: 22px; height: 22px;" />
+          </a>
+          <a href="https://se30webring.com?from=https://wcagas.com&dir=next" aria-label="Next site" style="text-decoration: none; color: #FFCE1A; font-size: 1.15rem; line-height: 1; display: flex; align-items: center;">→</a>
+        </div>
+      </section>
+      ${this.renderFooter()}
+    `;
+  }
+
+  renderWork() {
+    const roleItems = this.data.mainRoles.map((item) => {
+      const companyHtml = item.companies
+        ? item.companies.map((company) => `<a href="${company.url}" target="_blank" rel="noopener noreferrer">${company.name}</a>${this.logoHtml(company.logo, company.name)}`).join('<span class="meta-separator" style="margin: 0 4px;">x</span>')
+        : (item.url
+          ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.company}</a>${this.logoHtml(item.logo, item.company)}`
+          : `${item.company}`);
+      const statsHtml = (item.stats && item.stats.length)
+        ? item.stats.map((stat) => `<p class="work-detail">${stat}</p>`).join("")
+        : "";
+      return `
+        <article class="work-item">
+          <div class="work-header">
+            <p class="work-title">${companyHtml}</p>
+            <p class="work-role">${item.role}</p>
+          </div>
+          ${statsHtml}
+        </article>
+      `;
+    }).join("");
+
+    const communityItems = this.data.communityHighlights.map((item) => {
+      const companyHtml = item.url
+        ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.company}</a>${this.logoHtml(item.logo, item.company)}`
+        : `${item.company}`;
+      const statsHtml = (item.stats && item.stats.length)
+        ? `<p class="work-detail">${item.stats[0]}</p>`
+        : "";
+      const roleHtml = item.role ? `<p class="work-role">${item.role}</p>` : "";
+      return `
+        <article class="work-item">
+          <div class="work-header">
+            <p class="work-title">${companyHtml}</p>
+            ${roleHtml}
+          </div>
+          ${statsHtml}
+        </article>
+      `;
+    }).join("");
+
+    return `
+      <section class="panel panel-main-roles page-content">
+        <p class="section-kicker">WORK</p>
+        <div class="work-list">
           ${roleItems}
         </div>
       </section>
 
-      <section class="panel panel-projects">
+      <section class="panel panel-community page-content">
+        <p class="section-kicker">COMMUNITY</p>
+        <div class="work-list">
+          ${communityItems}
+        </div>
+      </section>
+      ${this.renderFooter()}
+    `;
+  }
+
+  renderProjects() {
+    const projectItems = this.data.projectHighlights
+      .map((project) => `
+        <article class="project-item">
+          <p class="project-title"><a href="${project.url}" target="_blank" rel="noopener noreferrer">${project.title}</a>${this.logoHtml(project.logo, project.title)}</p>
+          <p class="project-detail">${project.detail}</p>
+        </article>
+      `)
+      .join("");
+
+    const researchItems = this.data.researchHighlights
+      .map((paper) => `
+        <article class="project-item">
+          <p class="project-title"><a href="${paper.url}" target="_blank" rel="noopener noreferrer">${paper.title}</a>${this.logoHtml(paper.logo, paper.title)}</p>
+          <p class="project-detail">${paper.venue} ${paper.note}</p>
+        </article>
+      `)
+      .join("");
+
+
+
+    return `
+      <section class="panel panel-projects page-content">
         <p class="section-kicker">BUILDS</p>
         <div class="projects-layout">
           <div class="projects-list">
@@ -323,14 +406,79 @@ class Content {
         </div>
       </section>
 
-      <section class="panel panel-research">
+      <section class="panel panel-research page-content">
         <p class="section-kicker">RESEARCH</p>
-        <div class="research-list">
+        <div class="projects-list">
           ${researchItems}
         </div>
       </section>
+      ${this.renderFooter()}
+    `;
+  }
 
-      <section class="panel panel-press">
+  renderMedia() {
+    const pressItems = (this.data.press || [])
+      .map((item) => `
+        <div class="press-item">
+          <p class="press-outlet">
+            <a href="${item.url}" target="_blank" rel="noopener noreferrer" title="${item.title.replace(/"/g, "&quot;")}">
+              ${item.outlet}
+            </a>${this.logoHtml(item.logo, item.outlet)}
+          </p>
+          ${item.date ? `<span class="press-date">${item.date}</span>` : ""}
+        </div>
+      `)
+      .join("");
+
+    // Photos carousel
+    const photos = this.data.archiveData?.photos ?? [];
+    const renderPhotoSlide = (photo) => {
+      const objectStyle = photo.objectPosition ? `object-position: ${photo.objectPosition};` : "";
+      return `
+        <figure class="photo-carousel-item">
+          <div class="photo-carousel-frame">
+            <img src="${photo.image}" alt="${this.escapeHtml(photo.caption)}" class="photo-carousel-img"${objectStyle ? ` style="${objectStyle}"` : ""} loading="eager" decoding="async">
+          </div>
+          <figcaption class="photo-carousel-caption">${this.escapeHtml(photo.caption)}</figcaption>
+        </figure>
+      `;
+    };
+    const slidesHtml = photos.map(renderPhotoSlide).join("");
+    const photoGalleryHtml = photos.length > 0
+      ? `
+        <div class="photo-carousel-nav" role="group" aria-label="Photo gallery">
+          <button type="button" class="photo-nav photo-nav-prev" aria-label="Previous photo"><span class="photo-nav-icon" aria-hidden="true">‹</span></button>
+          <div class="photo-strip" tabindex="0" role="region" aria-roledescription="carousel" aria-label="Photos">
+            <div class="photo-strip-inner">
+              ${slidesHtml}
+            </div>
+          </div>
+          <button type="button" class="photo-nav photo-nav-next" aria-label="Next photo"><span class="photo-nav-icon" aria-hidden="true">›</span></button>
+        </div>
+      `
+      : "";
+
+    // Videos
+    const videos = this.data.archiveData?.videos ?? [];
+    const videoItems = videos.map((v) => {
+      let embedHtml = "";
+      if (v.type === "youtube") {
+        embedHtml = `<iframe src="https://www.youtube.com/embed/${v.videoId}" title="${this.escapeHtml(v.title)}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="video-iframe"></iframe>`;
+      } else if (v.type === "iframe") {
+        embedHtml = `<iframe src="${v.embedSrc}" title="${this.escapeHtml(v.title)}" frameborder="0" allowfullscreen class="video-iframe"></iframe>`;
+      }
+      return `
+        <div class="video-item">
+          <div class="video-frame">
+            ${embedHtml}
+          </div>
+          <p class="video-caption">${this.escapeHtml(v.caption)}</p>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <section class="panel panel-press page-content">
         <p class="section-kicker">PRESS</p>
         <div class="press-list">
           ${pressItems}
@@ -338,32 +486,23 @@ class Content {
       </section>
 
       ${photoGalleryHtml ? `
-      <section class="panel panel-photos">
-        <p class="section-kicker">ARCHIVE</p>
+      <section class="panel panel-photos page-content">
+        <p class="section-kicker">PHOTOS</p>
         <div class="photo-carousel">
           ${photoGalleryHtml}
         </div>
       </section>
       ` : ""}
 
-      <footer class="site-footer">
-        <p class="section-kicker">SOCIALS</p>
-        <div class="footer-row">
-          <div class="footer-socials">
-            ${socialItems}
-          </div>
-          <div class="webring-widget" aria-label="SE '30 Webring">
-            <a href="https://se30webring.com?from=https://wcagas.com&dir=prev" aria-label="Previous site" style="text-decoration: none; color: #FFCE1A; font-size: 1.1  5rem; line-height: 1; display: flex; align-items: center;">←</a>
-            <a href="https://se30webring.com" target="_blank" rel="noopener noreferrer" aria-label="SE '30 Webring" style="text-decoration: none; display: flex; align-items: center;">
-              <img src="https://se30webring.com/assets/icon-yellow.svg" alt="SE '30 Webring" style="width: 22px; height: 22px;" />
-            </a>
-            <a href="https://se30webring.com?from=https://wcagas.com&dir=next" aria-label="Next site" style="text-decoration: none; color: #FFCE1A; font-size: 1.15rem; line-height: 1; display: flex; align-items: center;">→</a>
-          </div>
+      ${videoItems ? `
+      <section class="panel panel-videos page-content">
+        <p class="section-kicker">VIDEOS</p>
+        <div class="videos-list">
+          ${videoItems}
         </div>
-        <div class="footer-bottom">
-          <p>© ${new Date().getFullYear()} William Cagas. Built with ❤️.</p>
-        </div>
-      </footer>
+      </section>
+      ` : ""}
+      ${this.renderFooter()}
     `;
   }
 }
@@ -374,16 +513,51 @@ class Content {
 class App {
   constructor() {
     this.content = new Content();
+    this.headerEl = null;
+    this.contentRoot = null;
   }
 
   init() {
     const main = document.querySelector('main');
+    if (!main) return;
 
-    if (main) {
-      main.insertAdjacentHTML('afterbegin', this.content.renderNav());
-      main.insertAdjacentHTML('beforeend', this.content.renderContent());
+    this.contentRoot = main.querySelector('#content-root');
+
+    // Insert header once (will be updated for active nav state)
+    this.headerEl = document.createElement('div');
+    this.headerEl.id = 'site-header-wrapper';
+    main.insertBefore(this.headerEl, main.firstChild);
+
+    const routes = [
+      { path: "/", render: () => this.content.renderHome() },
+      { path: "/work", render: () => this.content.renderWork() },
+      { path: "/projects", render: () => this.content.renderProjects() },
+      { path: "/media", render: () => this.content.renderMedia() }
+    ];
+
+    this.router = new Router(routes, (route) => this.onNavigate(route));
+    this.router.resolve();
+  }
+
+  onNavigate(route) {
+    const path = window.location.pathname;
+
+    // Update header with active nav state
+    this.headerEl.innerHTML = this.content.renderNav(path);
+
+    // Render page content with fade-in
+    if (this.contentRoot) {
+      this.contentRoot.classList.remove('page-fade-in');
+      this.contentRoot.innerHTML = route.render();
+      // Trigger reflow then add animation class
+      void this.contentRoot.offsetHeight;
+      this.contentRoot.classList.add('page-fade-in');
     }
 
+    // Scroll to top on navigation
+    window.scrollTo(0, 0);
+
+    // Re-init interactive features
     this.initMilestoneStats();
     this.initPhotoGalleryNav();
   }
@@ -649,9 +823,6 @@ class App {
       });
     });
   }
-
-
-
 }
 
 // Initialize app when DOM is ready
