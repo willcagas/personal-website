@@ -210,6 +210,11 @@ a:hover {
   margin-bottom: 30px;
 }
 
+/* Offset for the flex-track overhang in the photo carousel */
+.panel-photos {
+  margin-bottom: 12px;
+}
+
 .section-kicker {
   font-size: 10px;
   letter-spacing: 0.12em;
@@ -487,6 +492,11 @@ a:hover {
   color: var(--color-text-secondary);
   text-align: left;
   line-height: var(--line-height);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* Meta block */
@@ -541,6 +551,17 @@ a:hover {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
+}
+
+/* Playlists */
+.playlists-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.playlist-item {
+  width: 100%;
 }
 
 .video-item {
@@ -772,6 +793,11 @@ a:hover {
   }
 
   .videos-list {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .playlists-list {
     grid-template-columns: 1fr;
     gap: 24px;
   }

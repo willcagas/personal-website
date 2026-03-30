@@ -60,7 +60,7 @@ class Content {
           role: "Member of Technical Staff Intern",
           current: true,
           stats: [
-            "δ Building an agentic environment that autonomously runs ML research — from hypothesis generation to experiment execution."
+            "δ Building an agentic environment that autonomously runs ML research."
           ]
         },
         {
@@ -290,7 +290,7 @@ class Content {
         <p class="section-kicker">ABOUT</p>
         <div class="meta-section">
           <p class="about-bio">I'm a Software Engineering student @ <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="University of Waterloo" class="school-logo">` : ""} interested in applied AI, bio/health tech, ML research, and full-stack/app/game development.</p>
-          <p class="about-bio">The equilibrium between knowledge and application lies in learning by doing. I've kept evolving by shipping and iterating on software to solve real-world problems and reach real people.</p>
+          <p class="about-bio">The balance between knowledge and application lies in learning by doing. I've kept evolving by shipping and iterating on software to solve real-world problems and reach real people.</p>
           <p class="about-bio">Currently, I'm at <a href="https://thesislabs.ai/" target="_blank" rel="noopener noreferrer">Thesis</a><img src="/assets/logos/thesislabs.png" alt="Thesis" class="school-logo"> as a Member of Technical Staff Intern to accelerate AI R&D by building an agentic environment that runs a ML research team for you.</p>
         </div>
       </section>
@@ -477,6 +477,14 @@ class Content {
       `;
     }).join("");
 
+    // Playlists
+    const playlists = this.data.archiveData?.playlists ?? [];
+    const playlistItems = playlists.map((p) => `
+      <div class="playlist-item">
+        <iframe style="border-radius:12px" src="${p.embedSrc}" width="100%" height="352" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+      </div>
+    `).join("");
+
     return `
       <section class="panel panel-press page-content">
         <p class="section-kicker">PRESS</p>
@@ -499,6 +507,15 @@ class Content {
         <p class="section-kicker">VIDEOS</p>
         <div class="videos-list">
           ${videoItems}
+        </div>
+      </section>
+      ` : ""}
+
+      ${playlistItems ? `
+      <section class="panel panel-playlists page-content">
+        <p class="section-kicker">PLAYLISTS</p>
+        <div class="playlists-list">
+          ${playlistItems}
         </div>
       </section>
       ` : ""}
