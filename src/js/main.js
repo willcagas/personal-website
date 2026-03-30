@@ -100,7 +100,7 @@ class Content {
           title: "Zentro",
           url: "https://joinzentro.com",
           logo: "/assets/logos/zentro-logo.png",
-          detail: "300K+ views on X in 24h (most viral project post-Browser Use x YC Web Agents Hackathon)."
+          detail: "300K+ views on X/Twitter in 24h with inbound VC interest (most viral YC hackathon project)."
         },
         {
           title: "Goose Trials",
