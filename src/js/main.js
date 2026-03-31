@@ -576,18 +576,17 @@ class App {
     if (currentCount > 0) badge.textContent = currentCount.toLocaleString();
 
     // Fetch initial global count
-    fetch('https://api.counterapi.dev/v1/willcagas/pet-the-goose')
+    fetch('https://api.counterapi.dev/v1/willcagas/pet-the-goose/')
       .then(res => {
         if (!res.ok) throw new Error("Rate limited or error");
         return res.json();
       })
       .then(data => {
-        const newCount = data.count || 0;
-        if (newCount > currentCount) {
-          currentCount = newCount;
+        if (data && typeof data.count === 'number') {
+          currentCount = data.count; // Server is the ultimate source of truth
           localStorage.setItem('globalGooseCount', currentCount);
+          badge.textContent = currentCount.toLocaleString();
         }
-        badge.textContent = currentCount.toLocaleString();
       })
       .catch((err) => {
         console.warn("Counter API fetch failed, falling back to local cache:", err);
