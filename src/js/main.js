@@ -112,7 +112,7 @@ class Content {
           title: "AcneCura",
           url: "https://acnecura.io",
           logo: "/assets/logos/acnecura.png",
-          detail: "300K+ organic views; endorsed by Apple Canada and featured on Global News."
+          detail: "300K+ views; endorsed by Apple Canada and featured on Global News."
         },
         {
           title: "WasteBuster",
@@ -559,7 +559,7 @@ class App {
   initGlobalCounter() {
     const hasPet = localStorage.getItem('hasPetGoose') === 'true';
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    
+
     // Route through the secure Vercel Serverless Function in production to bypass CORS/Tracking blocks
     const baseApiUrl = isLocal ? 'https://api.counterapi.dev/v1/willcagas/pet-the-goose/' : '/api/goose';
     const upApiUrl = isLocal ? 'https://api.counterapi.dev/v1/willcagas/pet-the-goose/up/' : '/api/goose?action=up';
