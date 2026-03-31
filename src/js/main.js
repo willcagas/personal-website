@@ -558,10 +558,16 @@ class App {
 
   initGlobalCounter() {
     const hasPet = localStorage.getItem('hasPetGoose') === 'true';
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    // Route through the secure Vercel Serverless Function in production to bypass CORS/Tracking blocks
+    const baseApiUrl = isLocal ? 'https://api.counterapi.dev/v1/willcagas/pet-the-goose/' : '/api/goose';
+    const upApiUrl = isLocal ? 'https://api.counterapi.dev/v1/willcagas/pet-the-goose/up/' : '/api/goose?action=up';
+
     const container = document.createElement('div');
     container.className = 'global-counter-container';
     container.innerHTML = `
-      ${!hasPet ? '<div class="goose-label" id="goose-label">Click here! →</div>' : ''}
+      ${!hasPet ? '<div class="goose-label" id="goose-label">Pet me! →</div>' : ''}
       <div class="goose-count" id="goose-count-badge" aria-label="Global times goose was pet" title="Global times goose was pet">--</div>
       <button class="goose-btn" id="goose-pet-btn" aria-label="Pet the Goose" title="Pet the Goose!">🪿</button>
     `;
@@ -576,7 +582,7 @@ class App {
     if (currentCount > 0) badge.textContent = currentCount.toLocaleString();
 
     // Fetch initial global count
-    fetch('https://api.counterapi.dev/v1/willcagas/pet-the-goose/')
+    fetch(baseApiUrl)
       .then(res => {
         if (!res.ok) throw new Error("Rate limited or error");
         return res.json();
@@ -628,7 +634,7 @@ class App {
       }
       pendingClicks--;
 
-      fetch('https://api.counterapi.dev/v1/willcagas/pet-the-goose/up')
+      fetch(upApiUrl)
         .catch(e => console.warn("API hit dropped", e))
         .finally(() => {
           setTimeout(processQueue, 2100);
