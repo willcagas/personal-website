@@ -567,7 +567,7 @@ class App {
     const container = document.createElement('div');
     container.className = 'global-counter-container';
     container.innerHTML = `
-      ${!hasPet ? '<div class="goose-label" id="goose-label">Pet me! →</div>' : ''}
+      ${!hasPet ? '<div class="goose-label" id="goose-label">Click me! →</div>' : ''}
       <div class="goose-count" id="goose-count-badge" aria-label="Global times goose was pet" title="Global times goose was pet">--</div>
       <button class="goose-btn" id="goose-pet-btn" aria-label="Pet the Goose" title="Pet the Goose!">🪿</button>
     `;
