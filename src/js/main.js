@@ -2,7 +2,7 @@
  * Main Application Entry Point
  * Multi-page SPA with client-side routing
  * 
- * Routes: / (Home), /work, /projects, /media
+ * Routes: / (Home), /work, /projects, /archive
  * All content is managed in the Content class data structure.
  */
 
@@ -228,7 +228,7 @@ class Content {
       { label: "Home", path: "/" },
       { label: "Work", path: "/work" },
       { label: "Projects", path: "/projects" },
-      { label: "Media", path: "/media" }
+      { label: "Archive", path: "/archive" }
     ];
     const navItems = links.map((l) => {
       const active = l.path === currentPath ? ' class="nav-link active"' : ' class="nav-link"';
@@ -416,7 +416,7 @@ class Content {
     `;
   }
 
-  renderMedia() {
+  renderArchive() {
     const pressItems = (this.data.press || [])
       .map((item) => `
         <div class="press-item">
@@ -547,11 +547,128 @@ class App {
       { path: "/", render: () => this.content.renderHome() },
       { path: "/work", render: () => this.content.renderWork() },
       { path: "/projects", render: () => this.content.renderProjects() },
-      { path: "/media", render: () => this.content.renderMedia() }
+      { path: "/archive", render: () => this.content.renderArchive() }
     ];
 
     this.router = new Router(routes, (route) => this.onNavigate(route));
     this.router.resolve();
+
+    this.initGlobalCounter();
+  }
+
+  initGlobalCounter() {
+    const hasPet = localStorage.getItem('hasPetGoose') === 'true';
+    const container = document.createElement('div');
+    container.className = 'global-counter-container';
+    container.innerHTML = `
+      ${!hasPet ? '<div class="goose-label" id="goose-label">Click here! →</div>' : ''}
+      <div class="goose-count" id="goose-count-badge" aria-label="Global times goose was pet" title="Global times goose was pet">--</div>
+      <button class="goose-btn" id="goose-pet-btn" aria-label="Pet the Goose" title="Pet the Goose!">🪿</button>
+    `;
+    document.body.appendChild(container);
+
+    const btn = document.getElementById('goose-pet-btn');
+    const badge = document.getElementById('goose-count-badge');
+    const label = document.getElementById('goose-label');
+
+    // Fallback to local cache immediately so it never shows 0 if rate-limited
+    let currentCount = parseInt(localStorage.getItem('globalGooseCount'), 10) || 0;
+    if (currentCount > 0) badge.textContent = currentCount.toLocaleString();
+
+    // Fetch initial global count
+    fetch('https://api.counterapi.dev/v1/willcagas/pet-the-goose')
+      .then(res => {
+        if (!res.ok) throw new Error("Rate limited or error");
+        return res.json();
+      })
+      .then(data => {
+        const newCount = data.count || 0;
+        if (newCount > currentCount) {
+          currentCount = newCount;
+          localStorage.setItem('globalGooseCount', currentCount);
+        }
+        badge.textContent = currentCount.toLocaleString();
+      })
+      .catch((err) => {
+        console.warn("Counter API fetch failed, falling back to local cache:", err);
+        badge.textContent = currentCount.toLocaleString();
+      });
+
+    const fireHeart = () => {
+      const heart = document.createElement('div');
+      heart.className = 'floating-heart';
+      const emojis = ['🪿', '🦆', '🍞', '🪶', '🦢'];
+      heart.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+
+      const drift1 = (Math.random() * 40 - 20) + 'px';
+      const drift2 = (Math.random() * 80 - 40) + 'px';
+      const rotStart = (Math.random() * 60 - 30) + 'deg';
+      const rot1 = (Math.random() * 90 - 45) + 'deg';
+      const rot2 = (Math.random() * 120 - 60) + 'deg';
+      const scale = (Math.random() * 0.4 + 0.8);
+
+      heart.style.setProperty('--drift-1', drift1);
+      heart.style.setProperty('--drift-2', drift2);
+      heart.style.setProperty('--rot-start', rotStart);
+      heart.style.setProperty('--rot-1', rot1);
+      heart.style.setProperty('--rot-2', rot2);
+      heart.style.transform = `scale(${scale})`;
+
+      document.body.appendChild(heart);
+      setTimeout(() => heart.remove(), 2000);
+    };
+
+    let pendingClicks = 0;
+    let isProcessingQueue = false;
+
+    // The API allows ~30 requests per minute. We throttle our /up calls to 1 every 2.1s
+    const processQueue = () => {
+      if (pendingClicks <= 0) {
+        isProcessingQueue = false;
+        return;
+      }
+      pendingClicks--;
+
+      fetch('https://api.counterapi.dev/v1/willcagas/pet-the-goose/up')
+        .catch(e => console.warn("API hit dropped", e))
+        .finally(() => {
+          setTimeout(processQueue, 2100);
+        });
+    };
+
+    btn.addEventListener('click', () => {
+      // Hide label completely after they learn how it works
+      if (label && label.parentNode) {
+        localStorage.setItem('hasPetGoose', 'true');
+        label.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        label.style.opacity = '0';
+        label.style.transform = 'translate(-10px, -50%)'; // -50% preserves the vertical centering
+        setTimeout(() => label.remove(), 300);
+      }
+
+      // 1. Optimistic UI update instantly
+      currentCount++;
+      localStorage.setItem('globalGooseCount', currentCount);
+      badge.textContent = currentCount.toLocaleString();
+      badge.style.color = 'var(--color-text)';
+
+      // 2. Visual Effects
+      fireHeart();
+      btn.classList.add('is-petting');
+      setTimeout(() => btn.classList.remove('is-petting'), 100);
+
+      clearTimeout(btn.colorTimer);
+      btn.colorTimer = setTimeout(() => {
+        if (badge) badge.style.color = 'var(--color-text-secondary)';
+      }, 500);
+
+      // 3. Queue the global increment safely
+      pendingClicks++;
+      if (!isProcessingQueue) {
+        isProcessingQueue = true;
+        processQueue();
+      }
+    });
   }
 
   onNavigate(route) {
