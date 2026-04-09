@@ -1,7 +1,27 @@
 export default async function handler(req, res) {
   const isUp = req.query.action === 'up';
   
-  // Notice the trailing slash, essential for counterapi
+  // 1. Basic Origin/Referer validation (Soft protection)
+  const origin = req.headers.origin || '';
+  const referer = req.headers.referer || '';
+  const isAllowedOrigin = 
+    origin.includes('wcagas.com') || 
+    origin.includes('localhost') || 
+    origin.includes('127.0.0.1') ||
+    referer.includes('wcagas.com') ||
+    referer.includes('localhost');
+
+  if (!isAllowedOrigin && process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: "Unauthorized origin" });
+  }
+
+  // 2. Custom header validation (Harder for bots to guess)
+  // We only require this for incrementing 'up' to prevent most automated spam
+  if (isUp && req.headers['x-requested-with'] !== 'pet-the-goose') {
+    return res.status(403).json({ error: "Missing security handshake" });
+  }
+
+  // 3. Upstream URL is now hidden from the client
   const url = isUp 
     ? 'https://api.counterapi.dev/v1/willcagas/pet-the-goose/up/'
     : 'https://api.counterapi.dev/v1/willcagas/pet-the-goose/';

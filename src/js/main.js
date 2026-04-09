@@ -562,11 +562,10 @@ class App {
 
   initGlobalCounter() {
     const hasPet = localStorage.getItem('hasPetGoose') === 'true';
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-    // Route through the secure Vercel Serverless Function in production to bypass CORS/Tracking blocks
-    const baseApiUrl = isLocal ? 'https://api.counterapi.dev/v1/willcagas/pet-the-goose/' : '/api/goose';
-    const upApiUrl = isLocal ? 'https://api.counterapi.dev/v1/willcagas/pet-the-goose/up/' : '/api/goose?action=up';
+    // Route through the secure Vercel Serverless Function to hide the upstream API and prevent direct spamming.
+    // Note: Locally, this requires running the project with 'vercel dev'.
+    const baseApiUrl = '/api/goose';
+    const upApiUrl = '/api/goose?action=up';
 
     const container = document.createElement('div');
     container.className = 'global-counter-container';
@@ -638,7 +637,11 @@ class App {
       }
       pendingClicks--;
 
-      fetch(upApiUrl)
+      fetch(upApiUrl, {
+        headers: {
+          'x-requested-with': 'pet-the-goose'
+        }
+      })
         .catch(e => console.warn("API hit dropped", e))
         .finally(() => {
           setTimeout(processQueue, 2100);
