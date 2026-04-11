@@ -294,7 +294,7 @@ class Content {
         <p class="section-kicker">ABOUT</p>
         <div class="meta-section">
           <p class="about-bio">I'm a Software Engineering student @ <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="University of Waterloo" class="school-logo">` : ""} interested in applied AI/ML, bio/health tech, and full-stack/app/game development. I believe in learning by doing, evolving by shipping and iterating software to solve real-world problems.</p>
-          <p class="about-bio">Currently, I'm at <a href="https://thesislabs.ai/" target="_blank" rel="noopener noreferrer">Thesis</a><img src="/assets/logos/thesislabs.png" alt="Thesis" class="school-logo"> as a Member of Technical Staff Intern to help accelerate AI R&D for the good of all.</p>
+          <p class="about-bio">Currently, I'm at <span class="demo-toggle-group" id="demo-toggle"><span class="demo-play-btn" aria-label="Play demo">▶</span><span class="demo-toggle-name">Thesis</span><img src="/assets/logos/thesislabs.png" alt="Thesis" class="school-logo"></span> as a Member of Technical Staff Intern to help accelerate AI R&D for the good of all.</p>
           <p class="about-bio">Feel free to reach out to chat about anything :)</p>
         </div>
       </section>
@@ -704,6 +704,59 @@ class App {
     // Re-init interactive features
     this.initMilestoneStats();
     this.initPhotoGalleryNav();
+    this.initDemoToggle();
+  }
+
+  initDemoToggle() {
+    const toggle = document.getElementById('demo-toggle');
+    if (!toggle) return;
+
+    toggle.addEventListener('click', () => {
+      // Create modal if it doesn't exist yet
+      let modal = document.getElementById('demo-lightbox');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'demo-lightbox';
+        modal.className = 'demo-lightbox';
+        modal.innerHTML = `
+          <div class="demo-lightbox-backdrop"></div>
+          <div class="demo-lightbox-content">
+            <button class="demo-lightbox-close" aria-label="Close">✕</button>
+            <video
+              class="demo-video"
+              muted
+              loop
+              playsinline
+              preload="metadata"
+            >
+              <source src="/assets/thesis.mov" type="video/mp4" />
+            </video>
+            <a href="https://thesislabs.ai/" target="_blank" rel="noopener noreferrer" class="demo-lightbox-link">thesislabs.ai <span>↗</span></a>
+          </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Close handlers
+        const close = () => {
+          modal.classList.remove('is-open');
+          const video = modal.querySelector('video');
+          if (video) video.pause();
+          setTimeout(() => { modal.style.display = 'none'; }, 300);
+        };
+        modal.querySelector('.demo-lightbox-backdrop').addEventListener('click', close);
+        modal.querySelector('.demo-lightbox-close').addEventListener('click', close);
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && modal.classList.contains('is-open')) close();
+        });
+      }
+
+      // Open
+      modal.style.display = 'flex';
+      void modal.offsetHeight;
+      modal.classList.add('is-open');
+      const video = modal.querySelector('video');
+      if (video) video.play().catch(() => {});
+    });
   }
 
   /**

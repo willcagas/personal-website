@@ -137,8 +137,15 @@ a:hover {
 }
 
 @keyframes pageFadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .header-inner {
@@ -199,7 +206,9 @@ a:hover {
 }
 
 @keyframes blink {
-  50% { opacity: 0; }
+  50% {
+    opacity: 0;
+  }
 }
 
 /* Section framing */
@@ -459,10 +468,7 @@ a:hover {
 
 .photo-carousel-item {
   margin: 0;
-  flex: 0 0 calc(
-    (100% - (var(--photo-slides-visible) - 1) * var(--photo-gap)) /
-      var(--photo-slides-visible)
-  );
+  flex: 0 0 calc((100% - (var(--photo-slides-visible) - 1) * var(--photo-gap)) / var(--photo-slides-visible));
   min-width: 0;
   box-sizing: border-box;
 }
@@ -497,6 +503,139 @@ a:hover {
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Demo video toggle */
+.demo-toggle-group {
+  cursor: pointer;
+  display: inline;
+}
+
+.demo-toggle-name {
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-link);
+  transition: opacity 0.15s ease;
+}
+
+.demo-toggle-group:hover .demo-toggle-name {
+  opacity: 0.7;
+  border-bottom-color: var(--color-text-secondary);
+}
+
+.demo-play-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6em;
+  width: 1.6em;
+  height: 1.6em;
+  margin-left: 4px;
+  margin-right: 4px;
+  vertical-align: 0.1em;
+  border-radius: 50%;
+  background: var(--color-border);
+  color: var(--color-text);
+  animation: demoPulse 2s ease-in-out infinite;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.demo-toggle-group:hover .demo-play-btn {
+  animation: none;
+  background: var(--color-text-secondary);
+  transform: scale(1.1);
+}
+
+@keyframes demoPulse {
+
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+/* Lightbox modal */
+.demo-lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.demo-lightbox-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.demo-lightbox.is-open .demo-lightbox-backdrop {
+  opacity: 1;
+}
+
+.demo-lightbox-content {
+  position: relative;
+  width: 90%;
+  max-width: 900px;
+  transform: scale(0.92);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+
+.demo-lightbox.is-open .demo-lightbox-content {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.demo-lightbox-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.15s ease;
+  z-index: 1;
+}
+
+.demo-lightbox-close:hover {
+  color: #fff;
+}
+
+.demo-lightbox .demo-video {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  display: block;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.demo-lightbox-link {
+  display: block;
+  text-align: right;
+  margin-top: 12px;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.5);
+  border-bottom: none;
+  transition: color 0.15s ease;
+}
+
+.demo-lightbox-link:hover {
+  color: #fff;
+  opacity: 1;
 }
 
 /* Meta block */
@@ -875,6 +1014,10 @@ a:hover {
     margin-top: 40px;
     padding-bottom: 40px;
   }
+
+  .demo-lightbox-link {
+    font-size: 0.85rem;
+  }
 }
 
 /* ------------- Global Counter Styles ------------- */
@@ -920,14 +1063,16 @@ a:hover {
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
-.goose-btn:active, .goose-btn.is-petting {
+.goose-btn:active,
+.goose-btn.is-petting {
   transform: scale(0.92);
 }
 
 .goose-label {
   position: absolute;
   right: calc(100% + 16px);
-  bottom: 14px; /* Align with button vertical center */
+  bottom: 14px;
+  /* Align with button vertical center */
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -939,8 +1084,15 @@ a:hover {
 }
 
 @keyframes bounceSide {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(-4px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(-4px);
+  }
 }
 
 .goose-count {
@@ -961,7 +1113,10 @@ a:hover {
 }
 
 @keyframes badgeFadeIn {
-  to { opacity: 1; transform: translateY(0); }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Floating Hearts Animation */
@@ -973,7 +1128,7 @@ a:hover {
   pointer-events: none;
   z-index: 99;
   animation: floatUp 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
 @keyframes floatUp {
@@ -981,10 +1136,12 @@ a:hover {
     opacity: 0;
     transform: translate(0, 0) scale(0.5) rotate(var(--rot-start, 0deg));
   }
+
   15% {
     opacity: 1;
     transform: translate(var(--drift-1, -10px), -40px) scale(1) rotate(var(--rot-1, 10deg));
   }
+
   100% {
     opacity: 0;
     transform: translate(var(--drift-2, 20px), -180px) scale(1.2) rotate(var(--rot-2, -20deg));
@@ -996,11 +1153,13 @@ a:hover {
     bottom: 20px;
     right: 20px;
   }
+
   .goose-btn {
     width: 38px;
     height: 38px;
     font-size: 18px;
   }
+
   .floating-heart {
     bottom: 64px;
     right: 28px;
