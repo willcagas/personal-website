@@ -531,7 +531,7 @@ a:hover {
   height: 1.6em;
   margin-left: 4px;
   margin-right: 4px;
-  vertical-align: 0.1em;
+  vertical-align: -0.15em;
   border-radius: 50%;
   background: var(--color-border);
   color: var(--color-text);
@@ -1155,6 +1155,7 @@ a:hover {
   from {
     transform: scale(var(--goose-scale)) translate3d(0px, 0, 0);
   }
+
   to {
     transform: scale(var(--goose-scale)) translate3d(-100%, 0, 0);
   }

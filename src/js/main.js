@@ -294,7 +294,7 @@ class Content {
         <p class="section-kicker">ABOUT</p>
         <div class="meta-section">
           <p class="about-bio">I'm a Software Engineering student @ <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="University of Waterloo" class="school-logo">` : ""} interested in applied AI/ML, bio/health tech, and full-stack/app/game development. I believe in learning by doing, evolving by shipping and iterating software to solve real-world problems.</p>
-          <p class="about-bio">Currently, I'm at <span class="demo-toggle-group" id="demo-toggle"><span class="demo-play-btn" aria-label="Play demo">▶</span><span class="demo-toggle-name">Thesis</span><img src="/assets/logos/thesislabs.png" alt="Thesis" class="school-logo"></span> as a Member of Technical Staff Intern to help accelerate AI R&D for the good of all.</p>
+          <p class="about-bio">Currently, I'm at <span class="demo-toggle-group" id="demo-toggle"><span class="demo-play-btn" aria-label="Play demo"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span class="demo-toggle-name">Thesis</span><img src="/assets/logos/thesislabs.png" alt="Thesis" class="school-logo"></span> as a Member of Technical Staff Intern to help accelerate AI R&D for the good of all.</p>
           <p class="about-bio">Feel free to reach out to chat about anything :)</p>
         </div>
       </section>
@@ -614,24 +614,24 @@ class App {
         lastTime = 0;
         return;
       }
-      
+
       if (!lastTime) lastTime = timestamp;
       const deltaTime = timestamp - lastTime;
       lastTime = timestamp;
-      
+
       // Base math was designed for 60fps (16.66ms per frame). Multiply by ratio so 144hz/120hz monitors scale down per-frame movement
       const timeScale = deltaTime / 16.666;
-      
+
       geese = geese.filter(goose => {
         goose.x += goose.velocityX * timeScale;
         goose.y += goose.velocityY * timeScale;
-        
+
         goose.element.style.left = `${goose.x}px`;
         goose.element.style.top = `${goose.y}px`;
-        
+
         // Deletion bounds are safely wider than spawn offset so it doesn't instantly delete
         const isOutOfBounds = goose.x > window.innerWidth + 300 || goose.x < -300 || goose.y > window.innerHeight + 300 || goose.y < -300;
-        
+
         if (isOutOfBounds) {
           goose.element.remove();
           return false;
@@ -645,7 +645,7 @@ class App {
       const side = Math.floor(Math.random() * 4);
       let startX, startY, angle;
       const speed = 5 + Math.random() * 5;
-      
+
       // Spawn slightly off-screen (150px)
       if (side === 0) { // Top
         startX = Math.random() * window.innerWidth;
@@ -807,7 +807,7 @@ class App {
             >
               <source src="/assets/thesis.mov" type="video/mp4" />
             </video>
-            <a href="https://thesislabs.ai/" target="_blank" rel="noopener noreferrer" class="demo-lightbox-link">thesislabs.ai <span>↗</span></a>
+            <a href="https://thesislabs.ai/" target="_blank" rel="noopener noreferrer" class="demo-lightbox-link">thesislabs.ai<span style="display:inline-block; vertical-align:-0.15em; margin-left: 4px;"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M7 7h8.586L5.293 17.293l1.414 1.414L17 8.414V17h2V5H7v2z"/></svg></span></a>
           </div>
         `;
         document.body.appendChild(modal);
@@ -831,7 +831,7 @@ class App {
       void modal.offsetHeight;
       modal.classList.add('is-open');
       const video = modal.querySelector('video');
-      if (video) video.play().catch(() => {});
+      if (video) video.play().catch(() => { });
     });
   }
 
