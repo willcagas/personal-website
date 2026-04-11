@@ -602,29 +602,105 @@ class App {
         badge.textContent = currentCount.toLocaleString();
       });
 
-    const fireHeart = () => {
-      const heart = document.createElement('div');
-      heart.className = 'floating-heart';
-      const emojis = ['🪿', '🦆', '🍞', '🪶', '🦢'];
-      heart.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    let geese = [];
+    let gooseIdCounter = 0;
+    let isAnimating = false;
 
-      const drift1 = (Math.random() * 40 - 20) + 'px';
-      const drift2 = (Math.random() * 80 - 40) + 'px';
-      const rotStart = (Math.random() * 60 - 30) + 'deg';
-      const rot1 = (Math.random() * 90 - 45) + 'deg';
-      const rot2 = (Math.random() * 120 - 60) + 'deg';
-      const scale = (Math.random() * 0.4 + 0.8);
+    let lastTime = 0;
 
-      heart.style.setProperty('--drift-1', drift1);
-      heart.style.setProperty('--drift-2', drift2);
-      heart.style.setProperty('--rot-start', rotStart);
-      heart.style.setProperty('--rot-1', rot1);
-      heart.style.setProperty('--rot-2', rot2);
-      heart.style.transform = `scale(${scale})`;
-
-      document.body.appendChild(heart);
-      setTimeout(() => heart.remove(), 2000);
+    const animateGeese = (timestamp) => {
+      if (geese.length === 0) {
+        isAnimating = false;
+        lastTime = 0;
+        return;
+      }
+      
+      if (!lastTime) lastTime = timestamp;
+      const deltaTime = timestamp - lastTime;
+      lastTime = timestamp;
+      
+      // Base math was designed for 60fps (16.66ms per frame). Multiply by ratio so 144hz/120hz monitors scale down per-frame movement
+      const timeScale = deltaTime / 16.666;
+      
+      geese = geese.filter(goose => {
+        goose.x += goose.velocityX * timeScale;
+        goose.y += goose.velocityY * timeScale;
+        
+        goose.element.style.left = `${goose.x}px`;
+        goose.element.style.top = `${goose.y}px`;
+        
+        // Deletion bounds are safely wider than spawn offset so it doesn't instantly delete
+        const isOutOfBounds = goose.x > window.innerWidth + 300 || goose.x < -300 || goose.y > window.innerHeight + 300 || goose.y < -300;
+        
+        if (isOutOfBounds) {
+          goose.element.remove();
+          return false;
+        }
+        return true;
+      });
+      requestAnimationFrame(animateGeese);
     };
+
+    const launchFlyingGoose = () => {
+      const side = Math.floor(Math.random() * 4);
+      let startX, startY, angle;
+      const speed = 5 + Math.random() * 5;
+      
+      // Spawn slightly off-screen (150px)
+      if (side === 0) { // Top
+        startX = Math.random() * window.innerWidth;
+        startY = -150;
+        angle = Math.PI / 2 + (Math.random() - 0.5) * Math.PI / 2;
+      } else if (side === 1) { // Right
+        startX = window.innerWidth + 150;
+        startY = Math.random() * window.innerHeight;
+        angle = Math.PI + (Math.random() - 0.5) * Math.PI / 2;
+      } else if (side === 2) { // Bottom
+        startX = Math.random() * window.innerWidth;
+        startY = window.innerHeight + 150;
+        angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI / 2;
+      } else { // Left
+        startX = -150;
+        startY = Math.random() * window.innerHeight;
+        angle = (Math.random() - 0.5) * Math.PI / 2;
+      }
+
+      const scaleY = Math.cos(angle) < 0 ? -1 : 1;
+
+      const gooseEl = document.createElement('div');
+      gooseEl.className = 'flying-goose';
+      gooseEl.setAttribute('aria-hidden', 'true');
+      gooseEl.style.left = `${startX}px`;
+      gooseEl.style.top = `${startY}px`;
+      gooseEl.style.transform = `rotate(${angle}rad) scaleY(${scaleY})`;
+
+      const imgEl = document.createElement('img');
+      imgEl.className = 'goose-spritesheet';
+      imgEl.src = '/assets/goose-sprite.png';
+      imgEl.alt = 'Flying Goose';
+
+      gooseEl.appendChild(imgEl);
+      document.body.appendChild(gooseEl);
+
+      geese.push({
+        id: gooseIdCounter++,
+        x: startX,
+        y: startY,
+        velocityX: Math.cos(angle) * speed,
+        velocityY: Math.sin(angle) * speed,
+        element: gooseEl
+      });
+
+      if (!isAnimating) {
+        isAnimating = true;
+        requestAnimationFrame(animateGeese);
+      }
+    };
+
+    // Auto-spawn geese every 30 seconds (provided tab is active)
+    setInterval(() => {
+      if (!document.hidden) launchFlyingGoose();
+    }, 30000);
 
     let pendingClicks = 0;
     let isProcessingQueue = false;
@@ -665,7 +741,7 @@ class App {
       badge.style.color = 'var(--color-text)';
 
       // 2. Visual Effects
-      fireHeart();
+      launchFlyingGoose();
       btn.classList.add('is-petting');
       setTimeout(() => btn.classList.remove('is-petting'), 100);
 
