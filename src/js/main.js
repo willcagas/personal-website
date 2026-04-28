@@ -561,46 +561,9 @@ class App {
   }
 
   initGlobalCounter() {
-    const hasPet = localStorage.getItem('hasPetGoose') === 'true';
-    // Route through the secure Vercel Serverless Function to hide the upstream API and prevent direct spamming.
-    // Note: Locally, this requires running the project with 'vercel dev'.
-    const baseApiUrl = '/api/goose';
-    const upApiUrl = '/api/goose?action=up';
-
-    const container = document.createElement('div');
-    container.className = 'global-counter-container';
-    container.innerHTML = `
-      ${!hasPet ? '<div class="goose-label" id="goose-label">Click me! →</div>' : ''}
-      <div class="goose-count" id="goose-count-badge" aria-label="Global times goose was pet" title="Global times goose was pet">--</div>
-      <button class="goose-btn" id="goose-pet-btn" aria-label="Pet the Goose" title="Pet the Goose!">🪿</button>
-    `;
-    document.body.appendChild(container);
-
-    const btn = document.getElementById('goose-pet-btn');
-    const badge = document.getElementById('goose-count-badge');
-    const label = document.getElementById('goose-label');
-
-    // Fallback to local cache immediately so it never shows 0 if rate-limited
-    let currentCount = parseInt(localStorage.getItem('globalGooseCount'), 10) || 0;
-    if (currentCount > 0) badge.textContent = currentCount.toLocaleString();
-
-    // Fetch initial global count
-    fetch(baseApiUrl)
-      .then(res => {
-        if (!res.ok) throw new Error("Rate limited or error");
-        return res.json();
-      })
-      .then(data => {
-        if (data && typeof data.count === 'number') {
-          currentCount = data.count; // Server is the ultimate source of truth
-          localStorage.setItem('globalGooseCount', currentCount);
-          badge.textContent = currentCount.toLocaleString();
-        }
-      })
-      .catch((err) => {
-        console.warn("Counter API fetch failed, falling back to local cache:", err);
-        badge.textContent = currentCount.toLocaleString();
-      });
+    // --- Goose clicker UI hidden for now ---
+    // The button, counter badge, label, and click-to-pet logic are
+    // commented out. The flying goose auto-spawn remains active.
 
     let geese = [];
     let gooseIdCounter = 0;
@@ -701,62 +664,6 @@ class App {
     setInterval(() => {
       if (!document.hidden) launchFlyingGoose();
     }, 30000);
-
-    let pendingClicks = 0;
-    let isProcessingQueue = false;
-
-    // The API allows ~30 requests per minute. We throttle our /up calls to 1 every 2.1s
-    const processQueue = () => {
-      if (pendingClicks <= 0) {
-        isProcessingQueue = false;
-        return;
-      }
-      pendingClicks--;
-
-      fetch(upApiUrl, {
-        headers: {
-          'x-requested-with': 'pet-the-goose'
-        }
-      })
-        .catch(e => console.warn("API hit dropped", e))
-        .finally(() => {
-          setTimeout(processQueue, 2100);
-        });
-    };
-
-    btn.addEventListener('click', () => {
-      // Hide label completely after they learn how it works
-      if (label && label.parentNode) {
-        localStorage.setItem('hasPetGoose', 'true');
-        label.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-        label.style.opacity = '0';
-        label.style.transform = 'translate(-10px, -50%)'; // -50% preserves the vertical centering
-        setTimeout(() => label.remove(), 300);
-      }
-
-      // 1. Optimistic UI update instantly
-      currentCount++;
-      localStorage.setItem('globalGooseCount', currentCount);
-      badge.textContent = currentCount.toLocaleString();
-      badge.style.color = 'var(--color-text)';
-
-      // 2. Visual Effects
-      launchFlyingGoose();
-      btn.classList.add('is-petting');
-      setTimeout(() => btn.classList.remove('is-petting'), 100);
-
-      clearTimeout(btn.colorTimer);
-      btn.colorTimer = setTimeout(() => {
-        if (badge) badge.style.color = 'var(--color-text-secondary)';
-      }, 500);
-
-      // 3. Queue the global increment safely
-      pendingClicks++;
-      if (!isProcessingQueue) {
-        isProcessingQueue = true;
-        processQueue();
-      }
-    });
   }
 
   onNavigate(route) {

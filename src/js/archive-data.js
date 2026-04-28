@@ -76,10 +76,6 @@ const ARCHIVE_DATA = {
     {
       title: "Current Rotation",
       embedSrc: "https://open.spotify.com/embed/playlist/4tmEyQew9uy1XHmTbkv87r?utm_source=generator&theme=0"
-    },
-    {
-      title: "Focus",
-      embedSrc: "https://open.spotify.com/embed/playlist/4YFBfWp7XF7JJzpYCaL6Gp?utm_source=generator"
     }
   ]
 };
