@@ -294,7 +294,7 @@ class Content {
         <p class="section-kicker">ABOUT</p>
         <div class="meta-section">
           <p class="about-bio">I'm a Software Engineering student @ <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="University of Waterloo" class="school-logo">` : ""} interested in applied AI/ML, bio/health tech, and full-stack/app/game development. I believe in learning by doing, evolving by shipping and iterating software to solve real-world problems.</p>
-          <p class="about-bio">Currently, I'm at <span class="demo-toggle-group" id="demo-toggle"><span class="demo-play-btn" aria-label="Play demo"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span class="demo-toggle-name">Thesis</span><img src="/assets/logos/thesislabs.png" alt="Thesis" class="school-logo"></span> as a Member of Technical Staff Intern to help accelerate AI R&D for the good of all.</p>
+          <p class="about-bio">Currently, I'm at <span class="demo-toggle-group" id="demo-toggle"><span class="demo-play-btn" aria-label="Play demo"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span class="demo-toggle-name">Thesis</span><img src="/assets/logos/thesislabs.png" alt="Thesis" class="school-logo"></span> as a Member of Technical Staff Intern to help accelerate AI R&D for the benefit of humanity.</p>
           <p class="about-bio">Feel free to reach out to chat about anything :)</p>
         </div>
       </section>
