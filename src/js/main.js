@@ -236,7 +236,7 @@ class Content {
     ];
     const navItems = links.map((l) => {
       const active = l.path === currentPath ? ' class="nav-link active"' : ' class="nav-link"';
-      return `<a href="${l.path}" data-route${active}>${l.label}</a>`;
+      return `<a href="${l.path}" data-route${active} data-text="${l.label}">${l.label}</a>`;
     }).join("");
 
     return `
