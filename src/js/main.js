@@ -7,6 +7,7 @@
  */
 
 import ARCHIVE_DATA from './archive-data.js';
+import { initHillClimb } from './hill-climb.js';
 
 /**
  * Simple client-side router using History API
@@ -301,6 +302,15 @@ class Content {
       <section class="panel panel-location page-content">
         <p class="section-kicker">LOCATION</p>
         <p class="location-text">${this.data.location}</p>
+      </section>
+
+      <section class="panel panel-hill-climb page-content" aria-label="Hill climbing visualization">
+        <p class="section-kicker">HILL CLIMBING</p>
+        <div class="hill-climb-frame">
+          <canvas id="hill-climb-canvas" aria-label="An agent hill-climbing a loss landscape toward the global optimum"></canvas>
+          <p class="hill-climb-hud" id="hill-climb-hud" aria-hidden="true"></p>
+        </div>
+        <p class="hill-climb-caption">Each experiment's outcome optimizes the next: a loop of recursive self-improvement, hill-climbing to the frontier.</p>
       </section>
 
       <section class="panel panel-socials page-content">
@@ -687,6 +697,7 @@ class App {
     this.initMilestoneStats();
     this.initPhotoGalleryNav();
     this.initDemoToggle();
+    initHillClimb();
   }
 
   initDemoToggle() {
