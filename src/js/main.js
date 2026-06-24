@@ -9,6 +9,8 @@
 import ARCHIVE_DATA from './archive-data.js';
 import { initHillClimb } from './hill-climb.js';
 
+const THESIS_DEMO_ENABLED = false;
+
 /**
  * Simple client-side router using History API
  */
@@ -154,7 +156,7 @@ class Content {
         }
       ],
       aboutMeta: "Building cool things to solve real-world problems",
-      location: "Hamilton | Waterloo | San Francisco",
+      location: "San Francisco, CA",
       // Preserved for future archive section reintroduction.
       archiveData: ARCHIVE_DATA,
       press: [
@@ -290,12 +292,17 @@ class Content {
       `)
       .join("");
 
+    const thesisRole = this.data.mainRoles.find((r) => r.url === "https://thesislabs.ai/");
+    const thesisMention = THESIS_DEMO_ENABLED
+      ? `<span class="demo-toggle-group" id="demo-toggle"><span class="demo-play-btn" aria-label="Play demo"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span class="demo-toggle-name">Thesis</span><img src="${thesisRole.logo}" alt="Thesis" class="school-logo"></span>`
+      : `<a href="${thesisRole.url}" target="_blank" rel="noopener noreferrer">Thesis</a><img src="${thesisRole.logo}" alt="Thesis" class="school-logo">`;
+
     return `
       <section class="panel panel-meta page-content">
         <p class="section-kicker">ABOUT</p>
         <div class="meta-section">
-          <p class="about-bio">I'm a Software Engineering student @ <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="University of Waterloo" class="school-logo">` : ""} interested in applied AI/ML, bio/health tech, and full-stack/app/game development.</p>
-          <p class="about-bio">Currently, I'm at <span class="demo-toggle-group" id="demo-toggle"><span class="demo-play-btn" aria-label="Play demo"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span class="demo-toggle-name">Thesis</span><img src="/assets/logos/thesislabs.png" alt="Thesis" class="school-logo"></span> as a Member of Technical Staff Intern to automate AI R&D for the benefit of humanity.</p>
+          <p class="about-bio">I'm a Software Engineering student at the <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="University of Waterloo" class="school-logo">` : ""} interested in applied AI/ML, bio/health tech, and full-stack/app/game development.</p>
+          <p class="about-bio">Currently, I'm at ${thesisMention} as a Member of Technical Staff Intern to automate AI R&D for the benefit of humanity.</p>
         </div>
       </section>
 
@@ -310,7 +317,7 @@ class Content {
           <canvas id="hill-climb-canvas" aria-label="An agent hill-climbing a loss landscape toward the global optimum"></canvas>
           <p class="hill-climb-hud" id="hill-climb-hud" aria-hidden="true"></p>
         </div>
-        <p class="hill-climb-caption">Each experiment's outcome optimizes the next: a loop of recursive self-improvement, hill-climbing to the frontier.</p>
+        <p class="hill-climb-caption">A loop of recursive self-improvement, hillclimbing to the frontier.</p>
       </section>
 
       <section class="panel panel-socials page-content">
@@ -701,6 +708,8 @@ class App {
   }
 
   initDemoToggle() {
+    if (!THESIS_DEMO_ENABLED) return;
+
     const toggle = document.getElementById('demo-toggle');
     if (!toggle) return;
 

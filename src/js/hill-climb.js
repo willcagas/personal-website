@@ -448,7 +448,7 @@ class HillClimb {
   }
 
   /**
-   * Inset eval-score sparkline. The best-so-far score compounds upward
+   * Inset eval-metric sparkline. The best-so-far metric compounds upward
    * across experiments toward a dashed Frontier line; on a breakthrough
    * it turns gold.
    */
@@ -468,7 +468,7 @@ class HillClimb {
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = labelCol;
     ctx.textAlign = 'left';
-    ctx.fillText('EVAL SCORE', x0, y0 - 5);
+    ctx.fillText('EVAL METRIC', x0, y0 - 5);
     ctx.textAlign = 'right';
     ctx.fillStyle = breakthrough ? c.accent : labelCol;
     ctx.fillText(breakthrough ? 'BREAKTHROUGH' : 'FRONTIER', x0 + cw, y0 - 5);
@@ -518,10 +518,10 @@ class HillClimb {
     const t = this.terrain;
     const best = this.best ? this.best.h / t.maxH : 0;
     const status = this.frontierHold > 0
-      ? 'breakthrough · new directive'
-      : (this.agent.stuck > STUCK_LIMIT * 0.6 ? 'self-improving search…' : 'climbing to frontier');
+      ? 'breakthrough'
+      : (this.agent.stuck > STUCK_LIMIT * 0.6 ? 'searching' : 'climbing');
     this.hud.textContent =
-      `directive ${String(this.directive).padStart(2, '0')} · experiments ${this.iter.toLocaleString('en-US')} · score ${(best).toFixed(3)} / 1.000 · ${status}`;
+      `directive ${String(this.directive).padStart(2, '0')} · ${this.iter.toLocaleString('en-US')} experiments · eval metric ${best.toFixed(3)} · ${status}`;
   }
 
   start() {
