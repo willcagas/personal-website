@@ -300,7 +300,7 @@ class Content {
         <p class="section-kicker">ABOUT</p>
         <div class="meta-section">
           <p class="about-bio">I'm a Software Engineering student at the <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="University of Waterloo" class="school-logo">` : ""} interested in applied AI, health/bio tech, and full-stack web/app/game development.</p>
-          <p class="about-bio">Currently, I'm a Member of Technical Staff (Intern) at ${thesisMention} working on evolutionary computation and open-endedness to automate AI R&D for the benefit of humanity.</p>
+          <p class="about-bio">Currently, I'm a Member of Technical Staff (Intern) at ${thesisMention} working on open-ended evolutionary AI systems to automate scientific discovery for the benefit of humanity.</p>
         </div>
       </section>
 
