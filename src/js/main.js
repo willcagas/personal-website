@@ -53,8 +53,6 @@ class Content {
         prefix: "Software Engineering @ ",
         link: { text: "University of Waterloo", url: "https://uwaterloo.ca/", logo: "/assets/logos/waterloo-logo.png" }
       },
-      // Keep this list in desired visual order.
-      // Requested order: WAT.ai, CMU, Algoverse, HammerHacks.
       mainRoles: [
         {
           company: "Thesis (YC F25)",
@@ -63,7 +61,7 @@ class Content {
           role: "Member of Technical Staff Intern",
           current: true,
           stats: [
-            "δ Building an autonomous AI R&D environment that hill-climbs to the frontier."
+            "δ Building an autonomous AI R&D system that hill-climbs to the frontier."
           ]
         },
         {
@@ -134,7 +132,7 @@ class Content {
         {
           title: "Medical Imaging Complexity and its Effects on GAN Performance",
           venue: "GAISynMeD @ ACCV 2024",
-          note: "(oral presentation); cited 10x including ICCV, ACM.",
+          note: "(oral presentation); cited 11x including ICCV, ACM.",
           url: "https://medgans.wcagas.com",
           logo: "/assets/logos/medgans.png"
         }
@@ -156,7 +154,7 @@ class Content {
         }
       ],
       aboutMeta: "Building cool things to solve real-world problems",
-      location: "San Francisco, CA",
+      location: `San Francisco | <a href="https://en.wikipedia.org/wiki/Hamilton,_Ontario" target="_blank" rel="noopener noreferrer" class="location-link" title="Hamilton, Ontario, Canada">Hamilton<sup class="location-icon"><svg viewBox="0 0 24 24" width="0.8em" height="0.8em" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></sup></a>`,
       // Preserved for future archive section reintroduction.
       archiveData: ARCHIVE_DATA,
       press: [
@@ -301,8 +299,8 @@ class Content {
       <section class="panel panel-meta page-content">
         <p class="section-kicker">ABOUT</p>
         <div class="meta-section">
-          <p class="about-bio">I'm a Software Engineering student at the <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="University of Waterloo" class="school-logo">` : ""} interested in applied AI/ML, bio/health tech, and full-stack/app/game development.</p>
-          <p class="about-bio">Currently, I'm at ${thesisMention} as a Member of Technical Staff Intern to automate AI R&D for the benefit of humanity.</p>
+          <p class="about-bio">I'm a Software Engineering student at the <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="University of Waterloo" class="school-logo">` : ""} interested in applied AI, health/bio tech, and full-stack web/app/game development.</p>
+          <p class="about-bio">Currently, I'm a Member of Technical Staff (Intern) at ${thesisMention} working on evolutionary computation and open-endedness to automate AI R&D for the benefit of humanity.</p>
         </div>
       </section>
 
@@ -311,8 +309,8 @@ class Content {
         <p class="location-text">${this.data.location}</p>
       </section>
 
-      <section class="panel panel-hill-climb page-content" aria-label="Hill climbing visualization">
-        <p class="section-kicker">HILL CLIMBING</p>
+      <section class="panel panel-hill-climb page-content" aria-label="Hillclimbing visualization">
+        <p class="section-kicker">HILLCLIMBING</p>
         <div class="hill-climb-frame">
           <canvas id="hill-climb-canvas" aria-label="An agent hill-climbing a loss landscape toward the global optimum"></canvas>
           <p class="hill-climb-hud" id="hill-climb-hud" aria-hidden="true"></p>

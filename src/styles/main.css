@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600&display=swap");
 
 /**
  * Minimal Stylesheet
@@ -15,7 +15,7 @@
   --grid-color: rgba(255, 255, 255, 0.05);
   --icon-filter: brightness(0) saturate(100%) invert(1);
 
-  --font-family: "Outfit", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-family: "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-size-base: 14.5px;
   --font-size-small: 13px;
   --line-height: 1.6;
@@ -673,6 +673,31 @@ a:hover {
   font-size: var(--font-size-base);
   color: var(--color-text);
   line-height: var(--line-height);
+}
+
+.location-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: none;
+  position: relative;
+  display: inline-block;
+  transition: all 0.2s ease;
+}
+
+.location-link:hover {
+  color: var(--color-text);
+}
+
+.location-icon {
+  margin-left: 2px;
+  opacity: 0.6;
+  font-size: 0.8em;
+  vertical-align: super;
+  transition: opacity 0.2s ease;
+}
+
+.location-link:hover .location-icon {
+  opacity: 1;
 }
 
 .meta-inline {
