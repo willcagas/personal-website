@@ -61,7 +61,7 @@ class Content {
           role: "Member of Technical Staff Intern",
           current: true,
           stats: [
-            "δ Building an autonomous AI R&D system that hill-climbs to the frontier."
+            "δ Building an autonomous AI R&D system that hillclimbs to the frontier."
           ]
         },
         {
@@ -301,7 +301,7 @@ class Content {
         <div class="meta-section">
           <p class="about-bio">I'm a Software Engineering student at the <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="University of Waterloo" class="school-logo">` : ""} interested in applied AI, health/bio tech, and full-stack web/app/game development.</p>
           <p class="about-bio">Currently, I'm a Member of Technical Staff (Intern) at ${thesisMention}, working on open-ended evolutionary AI systems to automate scientific discovery for the benefit of humanity.</p>
-          <p class="about-bio">Previously, I conducted ML research under researchers from UC Berkeley and CMU, built an app featured on national TV, and founded a regional hackathon raising $12K in sponsorships.</p>
+          <p class="about-bio">Previously, I conducted ML research under researchers from UC Berkeley and CMU, built an app featured on national TV, and founded a regional hackathon with $12K in sponsorships.</p>
         </div>
       </section>
 
