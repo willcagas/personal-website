@@ -7,6 +7,7 @@
 
 /* CSS Variables (dynamic light/dark theme) */
 :root {
+  color-scheme: light;
   --color-bg: #fdfaf6; /* Cream color */
   --color-text: #1c1917; /* Very dark brown/grey for contrast */
   --color-text-secondary: #57534e;

@@ -117,26 +117,17 @@ class HillClimb {
   }
 
   readTheme() {
-    const light = window.matchMedia('(prefers-color-scheme: light)').matches;
-    this.colors = light
-      ? {
-        line: 'rgba(0, 0, 0, 0.10)',
-        lineHigh: 'rgba(0, 0, 0, 0.30)',
-        trail: '23, 23, 23',
-        agent: '#171717',
-        accent: '#b8860b',
-        accentSoft: 'rgba(184, 134, 11, 0.55)',
-        marker: 'rgba(0, 0, 0, 0.45)'
-      }
-      : {
-        line: 'rgba(255, 255, 255, 0.07)',
-        lineHigh: 'rgba(255, 255, 255, 0.28)',
-        trail: '212, 212, 212',
-        agent: '#f5f5f5',
-        accent: '#FFCE1A',
-        accentSoft: 'rgba(255, 206, 26, 0.55)',
-        marker: 'rgba(255, 255, 255, 0.45)'
-      };
+    // The website now uses a cream background for both light and dark mode,
+    // so we force the light mode colors (dark lines) here.
+    this.colors = {
+      line: 'rgba(0, 0, 0, 0.10)',
+      lineHigh: 'rgba(0, 0, 0, 0.30)',
+      trail: '23, 23, 23',
+      agent: '#171717',
+      accent: '#b8860b',
+      accentSoft: 'rgba(184, 134, 11, 0.55)',
+      marker: 'rgba(0, 0, 0, 0.45)'
+    };
   }
 
   resetWorld() {
