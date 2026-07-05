@@ -511,8 +511,12 @@ class HillClimb {
     const status = this.frontierHold > 0
       ? 'breakthrough'
       : (this.agent.stuck > STUCK_LIMIT * 0.6 ? 'searching' : 'climbing');
-    this.hud.textContent =
-      `directive ${String(this.directive).padStart(2, '0')} · ${this.iter.toLocaleString('en-US')} experiments · eval metric ${best.toFixed(3)} · ${status}`;
+    
+    if (window.innerWidth <= 640) {
+      this.hud.textContent = `d-${String(this.directive).padStart(2, '0')} · ${this.iter.toLocaleString('en-US')} exp · eval ${best.toFixed(3)} · ${status}`;
+    } else {
+      this.hud.textContent = `directive ${String(this.directive).padStart(2, '0')} · ${this.iter.toLocaleString('en-US')} experiments · eval metric ${best.toFixed(3)} · ${status}`;
+    }
   }
 
   start() {
