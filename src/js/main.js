@@ -132,7 +132,7 @@ class Content {
         {
           title: "Medical Imaging Complexity and its Effects on GAN Performance",
           venue: "GAISynMeD @ ACCV 2024",
-          note: "(oral presentation); cited 11x including ICCV, ACM.",
+          note: "(oral presentation); cited 14x including ICCV, ACM.",
           url: "https://medgans.wcagas.com",
           logo: "/assets/logos/medgans.png"
         }
@@ -216,7 +216,8 @@ class Content {
   /* ── Helpers ── */
 
   logoHtml(src, alt) {
-    return src ? `<img src="${src}" alt="${alt}" class="inline-logo">` : "";
+    // Logos intentionally omitted — clean underlined text links only.
+    return "";
   }
 
   escapeHtml(s) {
@@ -233,17 +234,19 @@ class Content {
       { label: "Home", path: "/" },
       { label: "Work", path: "/work" },
       { label: "Projects", path: "/projects" },
-      { label: "Archive", path: "/archive" }
+      { label: "Archive", path: "/archive" },
+      { label: "Blog", path: "/blog", soon: true }
     ];
     const navItems = links.map((l) => {
-      const active = l.path === currentPath ? ' class="nav-link active"' : ' class="nav-link"';
-      return `<a href="${l.path}" data-route${active} data-text="${l.label}">${l.label}</a>`;
+      const active = l.path === currentPath ? ' nav-link active' : ' nav-link';
+      return `<a href="${l.path}" data-route class="${active}" data-text="${l.label}">${l.label}</a>`;
     }).join("");
 
     return `
       <header class="site-header">
         <div class="header-inner">
           <div class="header-left">
+            <img src="/assets/pictures/profile-beach.jpg" alt="William Cagas" class="site-avatar" width="80" height="80" loading="eager" decoding="async">
             <h1 class="site-name"><a href="/" data-route class="name-link">${this.data.name}</a></h1>
             ${this.data.nameSubtitle ? `<p class="site-subtitle">${this.data.nameSubtitle}</p>` : ""}
           </div>
@@ -292,14 +295,14 @@ class Content {
 
     const thesisRole = this.data.mainRoles.find((r) => r.url === "https://thesislabs.ai/");
     const thesisMention = THESIS_DEMO_ENABLED
-      ? `<span class="demo-toggle-group" id="demo-toggle"><span class="demo-play-btn" aria-label="Play demo"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span class="demo-toggle-name">Thesis</span><img src="${thesisRole.logo}" alt="Thesis" class="school-logo"></span>`
-      : `<a href="${thesisRole.url}" target="_blank" rel="noopener noreferrer">Thesis</a><img src="${thesisRole.logo}" alt="Thesis" class="school-logo">`;
+      ? `<span class="demo-toggle-group" id="demo-toggle"><span class="demo-play-btn" aria-label="Play demo"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span class="demo-toggle-name">Thesis</span></span>`
+      : `<a href="${thesisRole.url}" target="_blank" rel="noopener noreferrer">Thesis</a>`;
 
     return `
       <section class="panel panel-meta page-content">
         <p class="section-kicker">ABOUT</p>
         <div class="meta-section">
-          <p class="about-bio">I'm a Software Engineering student at the <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a>${this.data.roleLine.link.logo ? `<img src="${this.data.roleLine.link.logo}" alt="University of Waterloo" class="school-logo">` : ""} interested in applied AI, health/bio tech, and full-stack web/app/game development.</p>
+          <p class="about-bio">I'm a Software Engineering student at the <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a> interested in applied AI, health/bio tech, and full-stack web/app/game development.</p>
           <p class="about-bio">Currently, I'm a Member of Technical Staff (Intern) at ${thesisMention} working on open-ended evolutionary AI systems to automate scientific discovery.</p>
           <p class="about-bio">Previously, I've conducted ML research under graduate AI  researchers from UC Berkeley and CMU, built an app featured on national TV, and founded a regional hackathon with $12K in sponsorships.</p>
         </div>
@@ -314,13 +317,12 @@ class Content {
         <p class="section-kicker">HILLCLIMBING</p>
         <div class="hill-climb-frame">
           <canvas id="hill-climb-canvas" aria-label="An agent hill-climbing a loss landscape toward the global optimum"></canvas>
-          <p class="hill-climb-hud" id="hill-climb-hud" aria-hidden="true"></p>
         </div>
         <p class="hill-climb-caption">A loop of recursive self-improvement, hillclimbing to the frontier.</p>
       </section>
 
       <section class="panel panel-socials page-content">
-        <p class="section-kicker">SOCIALS</p>
+        <p class="section-kicker">LINKS</p>
         <div class="social-list">
           ${socialItems}
         </div>
@@ -331,6 +333,16 @@ class Content {
           </a>
           <a href="https://se30webring.com?from=https://wcagas.com&dir=next" aria-label="Next site" style="text-decoration: none; color: #FFCE1A; font-size: 1.15rem; line-height: 1; display: flex; align-items: center;">→</a>
         </div>
+      </section>
+      ${this.renderFooter()}
+    `;
+  }
+
+  renderBlog() {
+    return `
+      <section class="panel page-content">
+        <p class="section-kicker">BLOG</p>
+        <p class="blog-soon">Coming soon. Writing on AI, research, and things I'm building.</p>
       </section>
       ${this.renderFooter()}
     `;
@@ -566,7 +578,8 @@ class App {
       { path: "/", render: () => this.content.renderHome() },
       { path: "/work", render: () => this.content.renderWork() },
       { path: "/projects", render: () => this.content.renderProjects() },
-      { path: "/archive", render: () => this.content.renderArchive() }
+      { path: "/archive", render: () => this.content.renderArchive() },
+      { path: "/blog", render: () => this.content.renderBlog() }
     ];
 
     this.router = new Router(routes, (route) => this.onNavigate(route));
