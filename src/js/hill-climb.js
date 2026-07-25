@@ -360,8 +360,8 @@ class HillClimb {
     ctx.scale(1, Math.max(0.2, ratio));
     const fade = ctx.createRadialGradient(0, 0, 0, 0, 0, fadeR);
     fade.addColorStop(0, 'rgba(0,0,0,0)');
-    fade.addColorStop(0.58, 'rgba(0,0,0,0)');
-    fade.addColorStop(0.88, 'rgba(0,0,0,1)');
+    fade.addColorStop(0.62, 'rgba(0,0,0,0)');
+    fade.addColorStop(0.92, 'rgba(0,0,0,1)');
     fade.addColorStop(1, 'rgba(0,0,0,1)');
     ctx.fillStyle = fade;
     ctx.fillRect(-fadeR, -fadeR, fadeR * 2, fadeR * 2);
@@ -433,6 +433,21 @@ class HillClimb {
     ctx.beginPath();
     ctx.arc(ap.x, ap.y, 2.6, 0, Math.PI * 2);
     ctx.fill();
+
+    // Dissolve the bottom band last of all, so nothing — mesh folds, pulse
+    // rings, trail or markers — leaves faint marks floating above the caption.
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    const bottomFadeH = 110;
+    const bf = ctx.createLinearGradient(0, this.h - bottomFadeH, 0, this.h);
+    bf.addColorStop(0, 'rgba(0,0,0,0)');
+    bf.addColorStop(0.45, 'rgba(0,0,0,0.85)');
+    bf.addColorStop(0.7, 'rgba(0,0,0,1)');
+    bf.addColorStop(1, 'rgba(0,0,0,1)');
+    ctx.fillStyle = bf;
+    ctx.fillRect(0, this.h - bottomFadeH, this.w, bottomFadeH);
+    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
 
     this.drawScoreChart();
     this.updateHud();

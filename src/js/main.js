@@ -7,7 +7,7 @@
  */
 
 import ARCHIVE_DATA from './archive-data.js';
-import { initHillClimb } from './hill-climb.js';
+import { initHillClimb } from './hill-climb.js?v=2';
 
 const THESIS_DEMO_ENABLED = false;
 
@@ -246,7 +246,7 @@ class Content {
       <header class="site-header">
         <div class="header-inner">
           <div class="header-left">
-            <img src="/assets/pictures/profile-beach.jpg" alt="William Cagas" class="site-avatar" width="80" height="80" loading="eager" decoding="async">
+            <img src="/assets/pictures/profile-beach.jpg" alt="William Cagas" class="site-avatar" width="104" height="104" loading="eager" decoding="async">
             <h1 class="site-name"><a href="/" data-route class="name-link">${this.data.name}</a></h1>
             ${this.data.nameSubtitle ? `<p class="site-subtitle">${this.data.nameSubtitle}</p>` : ""}
           </div>
@@ -318,7 +318,6 @@ class Content {
         <div class="hill-climb-frame">
           <canvas id="hill-climb-canvas" aria-label="An agent hill-climbing a loss landscape toward the global optimum"></canvas>
         </div>
-        <p class="hill-climb-caption">A loop of recursive self-improvement, hillclimbing to the frontier.</p>
       </section>
 
       <section class="panel panel-socials page-content">

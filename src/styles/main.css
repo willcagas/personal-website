@@ -184,9 +184,9 @@ a:hover {
 }
 
 .site-avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 18px;
+  width: 104px;
+  height: 104px;
+  border-radius: 22px;
   object-fit: cover;
   display: block;
   margin: 0 0 18px 0;
@@ -257,6 +257,12 @@ a:hover {
 /* Offset for the flex-track overhang in the photo carousel */
 .panel.panel-photos {
   margin-bottom: 24px;
+}
+
+/* The graph fades out well before the frame's bottom edge, so pull the next
+   section up to avoid a big empty band under the visualization. */
+.panel.panel-hill-climb {
+  margin-bottom: 4px;
 }
 
 .section-kicker {
