@@ -9,7 +9,7 @@
 import ARCHIVE_DATA from './archive-data.js';
 import { initHillClimb } from './hill-climb.js?v=2';
 
-const THESIS_DEMO_ENABLED = false;
+const DARWIN_DEMO_ENABLED = false;
 
 /**
  * Simple client-side router using History API
@@ -55,9 +55,9 @@ class Content {
       },
       mainRoles: [
         {
-          company: "Thesis (YC F25)",
-          url: "https://thesislabs.ai/",
-          logo: "/assets/logos/thesislabs.png",
+          company: "Darwin (YC F25)",
+          url: "https://www.darwinrobotics.ai/",
+          logo: "/assets/logos/darwinrobotics.png",
           role: "Member of Technical Staff (Intern)",
           current: true,
           stats: [
@@ -293,17 +293,18 @@ class Content {
       `)
       .join("");
 
-    const thesisRole = this.data.mainRoles.find((r) => r.url === "https://thesislabs.ai/");
-    const thesisMention = THESIS_DEMO_ENABLED
-      ? `<span class="demo-toggle-group" id="demo-toggle"><span class="demo-play-btn" aria-label="Play demo"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span class="demo-toggle-name">Thesis</span></span>`
-      : `<a href="${thesisRole.url}" target="_blank" rel="noopener noreferrer">Thesis</a>`;
+
+    const darwinRole = this.data.mainRoles.find((r) => r.url === "https://www.darwinrobotics.ai/");
+    const darwinMention = DARWIN_DEMO_ENABLED
+      ? `<span class="demo-toggle-group" id="demo-toggle"><span class="demo-play-btn" aria-label="Play demo"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span class="demo-toggle-name">Darwin</span></span>`
+      : `<a href="${darwinRole.url}" target="_blank" rel="noopener noreferrer">Darwin</a>`;
 
     return `
       <section class="panel panel-meta page-content">
         <p class="section-kicker">ABOUT</p>
         <div class="meta-section">
           <p class="about-bio">I'm a Software Engineering student at the <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a> interested in applied AI, health/bio tech, and full-stack web/app/game development.</p>
-          <p class="about-bio">Currently, I'm a Member of Technical Staff (Intern) at ${thesisMention} working on open-ended evolutionary AI systems to automate scientific discovery.</p>
+          <p class="about-bio">Currently, I'm a Member of Technical Staff (Intern) at ${darwinMention} working on open-ended evolutionary AI systems to automate scientific discovery.</p>
           <p class="about-bio">Previously, I've conducted ML research under graduate AI  researchers from UC Berkeley and CMU, built an app featured on national TV, and founded a regional hackathon with $12K in sponsorships.</p>
         </div>
       </section>
@@ -719,7 +720,7 @@ class App {
   }
 
   initDemoToggle() {
-    if (!THESIS_DEMO_ENABLED) return;
+    if (!DARWIN_DEMO_ENABLED) return;
 
     const toggle = document.getElementById('demo-toggle');
     if (!toggle) return;
@@ -742,9 +743,9 @@ class App {
               playsinline
               preload="metadata"
             >
-              <source src="/assets/thesis.mov" type="video/mp4" />
+              <source src="/assets/darwin.mov" type="video/mp4" />
             </video>
-            <a href="https://thesislabs.ai/" target="_blank" rel="noopener noreferrer" class="demo-lightbox-link">thesislabs.ai<span style="display:inline-block; vertical-align:-0.15em; margin-left: 4px;"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M7 7h8.586L5.293 17.293l1.414 1.414L17 8.414V17h2V5H7v2z"/></svg></span></a>
+            <a href="https://www.darwinrobotics.ai/" target="_blank" rel="noopener noreferrer" class="demo-lightbox-link">darwinrobotics.ai<span style="display:inline-block; vertical-align:-0.15em; margin-left: 4px;"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M7 7h8.586L5.293 17.293l1.414 1.414L17 8.414V17h2V5H7v2z"/></svg></span></a>
           </div>
         `;
         document.body.appendChild(modal);
