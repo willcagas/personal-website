@@ -423,6 +423,13 @@ a:hover {
   color: var(--color-text);
 }
 
+/* Phones: scale the title with the screen so a typical title stays on one line */
+@media (max-width: 640px) {
+  .blog-post-title {
+    font-size: clamp(19px, 5.7vw, 1.6rem);
+  }
+}
+
 /* Article hero: title card over a Game of Life field (src/js/title-card.js) */
 .blog-hero {
   margin: 0 0 34px;
@@ -623,9 +630,22 @@ a:hover {
   color: var(--color-text);
 }
 
+/* Phones: a smaller card and no arrow, so the title gets a full line */
 @media (max-width: 640px) {
+  .latest-row {
+    gap: 12px;
+  }
+
   .latest-thumb {
-    width: 104px;
+    width: 88px;
+  }
+
+  .latest-title {
+    font-size: 14.5px;
+  }
+
+  .latest-arrow {
+    display: none;
   }
 }
 

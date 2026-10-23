@@ -537,7 +537,7 @@ class Content {
         <a class="latest-row" href="/writings/${post.slug}" data-route>
           <div class="latest-thumb">${this.renderTitleCard(post.hero, { controls: false, minimal: true })}</div>
           <div class="latest-text">
-            <p class="latest-title">${this.escapeHtml(post.title)}</p>
+            <p class="latest-title">${this.keepParensTogether(this.escapeHtml(post.title))}</p>
             ${post.summary ? `<p class="latest-sub">${this.escapeHtml(post.summary)}</p>` : ''}
           </div>
           <span class="latest-arrow" aria-hidden="true">→</span>
@@ -603,7 +603,7 @@ class Content {
             ? '<a href="/projects" data-route class="blog-back">← Builds</a>'
             : '<a href="/writings" data-route class="blog-back">← Writings</a>'}
           <header class="blog-post-header">
-            <h1 class="blog-post-title">${this.escapeHtml(post.title)}</h1>
+            <h1 class="blog-post-title">${this.keepParensTogether(this.escapeHtml(post.title))}</h1>
             <p class="blog-post-meta">
               <span class="blog-post-author">${this.escapeHtml(authorLine)}</span>
               <span class="blog-post-meta-sep" aria-hidden="true">·</span>
