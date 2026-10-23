@@ -141,7 +141,7 @@ function createLife(W, H) {
 
 /* ───────────── Climbing toward the frontier ───────────── */
 
-function createFrontier(W, H, dpr) {
+function createFrontier(W, H, dpr, { minimal = false } = {}) {
   const BASE = H * 0.98;
   const TOP = H * 0.42;         // where a score of 1.0 would sit; the sky above holds the wordmark
   const N = 7;
@@ -149,7 +149,7 @@ function createFrontier(W, H, dpr) {
   const s = clamp(W / 680, 0.72, 1);   // labels and dots shrink on small cards
   const HOLD_MS = 3200;
   const PREWARM_MS = 2500;
-  let range, art, climbers, frontier, frontierY, clock, nextSwap, holdUntil, fadeK, rise;
+  let range, art, climbers, frontier, frontierY, clock, nextSwap, holdUntil, fadeK;
 
   const yOf = (f) => BASE - f * (BASE - TOP);
 
@@ -271,7 +271,6 @@ function createFrontier(W, H, dpr) {
     nextSwap = 2400;
     holdUntil = 0;
     fadeK = 0;
-    rise = null;
   }
 
   function step(dt) {
@@ -300,10 +299,7 @@ function createFrontier(W, H, dpr) {
         c.stuck++;
       }
       const f = range.fit(c.to);
-      if (f > frontier + 0.001) {
-        frontier = f;
-        rise = { t0: clock };
-      }
+      if (f > frontier) frontier = f;
     }
     // Swap the most hopeless climber for a fresh candidate
     if (clock > nextSwap) {
@@ -337,15 +333,12 @@ function createFrontier(W, H, dpr) {
     ctx.lineTo(W - 14, frontierY);
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.textAlign = 'right';
-    ctx.font = `italic 400 ${13 * s}px Newsreader, Georgia, serif`;
-    ctx.fillStyle = `rgba(${LIGHT}, 0.7)`;
-    haloText(ctx, `frontier · ${frontier.toFixed(2)}`, W - 16, frontierY - 6);
-    ctx.textAlign = 'left';
-    if (rise && clock - rise.t0 < 1200) {
-      ctx.fillStyle = `rgba(${GOLD}, ${1 - (clock - rise.t0) / 1200})`;
-      ctx.font = `italic 400 ${12 * s}px Newsreader, Georgia, serif`;
-      haloText(ctx, '↑ rises with the best', 18, frontierY - 6);
+    if (!minimal) {
+      ctx.textAlign = 'right';
+      ctx.font = `italic 400 ${13 * s}px Newsreader, Georgia, serif`;
+      ctx.fillStyle = `rgba(${LIGHT}, 0.7)`;
+      haloText(ctx, `frontier · ${frontier.toFixed(2)}`, W - 16, frontierY - 6);
+      ctx.textAlign = 'left';
     }
 
     // Climbers: fading rings where a step went downhill, gold for the best
@@ -373,7 +366,7 @@ function createFrontier(W, H, dpr) {
       ctx.fill();
       ctx.globalAlpha = 1 - fadeK;
     }
-    if (holdUntil) {
+    if (holdUntil && !minimal) {
       const x = best.to;
       ctx.globalAlpha = (1 - fadeK) * clamp((clock - (holdUntil - HOLD_MS)) / 400, 0, 1);
       ctx.fillStyle = `rgb(${GOLD})`;
@@ -447,7 +440,8 @@ class TitleCard {
     this.canvas.width = Math.round(this.w * this.dpr);
     this.canvas.height = Math.round(this.h * this.dpr);
     // Backgrounds are laid out for the card's size, so a new size starts a fresh one
-    this.field = this.create(this.w, this.h, this.dpr);
+    // Minimal cards (small thumbnails) draw no text
+    this.field = this.create(this.w, this.h, this.dpr, { minimal: this.root.dataset.minimal === 'true' });
     this.draw();
   }
 
@@ -485,6 +479,11 @@ class TitleCard {
     document.removeEventListener('visibilitychange', this.onVisibility);
     if (this.toggle) this.toggle.removeEventListener('click', this.onToggle);
   }
+}
+
+/** Mount a title card on a specific element; the caller destroys it. */
+export function createTitleCard(root) {
+  return new TitleCard(root);
 }
 
 /**

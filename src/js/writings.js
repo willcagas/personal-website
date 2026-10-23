@@ -13,9 +13,9 @@ const BLOG_POSTS = [
     section: "blog",
     slug: "thesis-labs-internship",
     title: "Six Months at Darwin (YC F25)",
-    date: "2026-10-23",
+    date: "2026-10",
     summary:
-      "My work, experiences, thoughts, and learnings during my internship with Thesis (now Darwin).",
+      "My work, experiences, thoughts, and learnings during my internship.",
     file: "/content/blog/thesis-labs-internship.md",
     comingSoon: true,
     hero: { kind: "title-card", title: "Darwin", background: "frontier" },
@@ -65,8 +65,9 @@ const bodyCache = new Map();
  * (wcagas.com, Vercel previews, anything not localhost) they are hidden and
  * their direct URLs resolve to "Not found". Their markdown lives in files that
  * are gitignored, so unfinished prose never ships. `hidden: true` hides a post
- * everywhere, including localhost. `comingSoon: true` lists a post as "Coming
- * soon" without a link; its page stays readable only on localhost.
+ * everywhere, including localhost. `comingSoon: true` publishes a post's page
+ * (title, date, hero, overview) with "Coming soon" in place of the article;
+ * on localhost the full draft shows so it can be edited.
  * `hero: { kind: "title-card", title, subtitle?, background? }` puts an animated
  * title card above the article (src/js/title-card.js); background is "life"
  * (default) or "frontier". `overview: { details, text }` adds a
@@ -115,7 +116,8 @@ export function getResearchPosts() {
   return sortByDate(visible(RESEARCH_POSTS));
 }
 
-export function canReadWriting(post) {
+/** Whether a post's article text is shown here (coming-soon posts show it only on localhost). */
+export function showsFullText(post) {
   return IS_DEV || !post.comingSoon;
 }
 

@@ -428,6 +428,24 @@ a:hover {
   margin: 0 0 34px;
 }
 
+/* Stands in for the article on a coming-soon post */
+.post-coming-soon {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 24px 0 72px;
+  font: italic 400 22px/1.3 "Newsreader", Georgia, serif;
+  color: var(--color-text-secondary);
+}
+
+.post-coming-soon::before,
+.post-coming-soon::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
 /* Details / Overview block under a post's hero */
 .post-overview {
   display: grid;
@@ -499,6 +517,7 @@ a:hover {
 
 .title-card {
   position: relative;
+  container-type: inline-size;
   aspect-ratio: 16 / 9;
   border-radius: 12px;
   overflow: hidden;
@@ -524,6 +543,114 @@ a:hover {
   pointer-events: none;
 }
 
+/* Homepage sections sit a little closer so the page fits one laptop screen */
+.panel.panel-meta,
+.panel.panel-latest {
+  margin-bottom: 30px;
+}
+
+.panel.panel-socials {
+  margin-bottom: 28px;
+}
+
+/* Homepage "Latest work": a small title card, then the post's title and summary */
+.latest-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: inherit;
+  border-bottom: none;
+}
+
+.latest-thumb {
+  width: 116px;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+.latest-thumb .title-card {
+  border-radius: 7px;
+}
+
+.latest-thumb .title-card-word {
+  font-size: 17px;
+}
+
+.latest-text {
+  min-width: 0;
+}
+
+.latest-title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.latest-sub {
+  margin: 2px 0 0;
+  font-size: var(--font-size-small);
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.latest-arrow {
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--color-text-secondary);
+  transition: transform 0.25s ease, color 0.25s ease;
+}
+
+.latest-row:hover {
+  opacity: 1;
+}
+
+.latest-row:hover .latest-thumb {
+  transform: scale(1.03);
+}
+
+.latest-row:hover .latest-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.latest-row:hover .latest-arrow {
+  transform: translateX(3px);
+  color: var(--color-text);
+}
+
+@media (max-width: 640px) {
+  .latest-thumb {
+    width: 104px;
+  }
+}
+
+/* Hover preview of a post's title card (e.g. "Darwin" on the homepage) */
+.post-preview {
+  position: fixed;
+  z-index: 50;
+  width: 320px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px) scale(0.98);
+  transform-origin: top left;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.post-preview.is-open {
+  opacity: 1;
+  transform: none;
+}
+
+.post-preview .title-card {
+  border-radius: 10px;
+  box-shadow: 0 18px 40px -18px rgba(28, 25, 23, 0.45), 0 2px 6px rgba(28, 25, 23, 0.12);
+}
+
 /* Over the mountain range, the wordmark sits in the sky */
 .title-card[data-background="frontier"] .title-card-text {
   bottom: 50%;
@@ -531,7 +658,8 @@ a:hover {
 
 .title-card-word {
   margin: 0;
-  font: 500 clamp(36px, 8vw, 64px)/0.9 "Newsreader", Georgia, serif;
+  /* Sized by the card's width, so the same card works as a hero and as a small preview */
+  font: 500 clamp(26px, 9.4cqi, 64px)/0.9 "Newsreader", Georgia, serif;
   letter-spacing: -0.035em;
   color: #f6f1e7;
 }
@@ -1288,37 +1416,6 @@ a:hover {
 
 .about-bio:last-of-type {
   margin-bottom: 6px;
-}
-
-.location-text {
-  font-size: var(--font-size-base);
-  color: var(--color-body);
-  line-height: var(--line-height);
-}
-
-.location-link {
-  color: inherit;
-  text-decoration: none;
-  border-bottom: none;
-  position: relative;
-  display: inline-block;
-  transition: all 0.2s ease;
-}
-
-.location-link:hover {
-  color: var(--color-text);
-}
-
-.location-icon {
-  margin-left: 2px;
-  opacity: 0.6;
-  font-size: 0.8em;
-  vertical-align: super;
-  transition: opacity 0.2s ease;
-}
-
-.location-link:hover .location-icon {
-  opacity: 1;
 }
 
 .meta-inline {

@@ -8,16 +8,16 @@
 
 import ARCHIVE_DATA from './archive-data.js?v=17';
 import { initGameOfLife } from './game-of-life.js?v=7';
-import { initTitleCard } from './title-card.js?v=4';
+import { initTitleCard, createTitleCard } from './title-card.js?v=8';
 import { initRangeFooter } from './range-footer.js';
 import { mountArticleFigures } from './article-figures.js?v=3';
 import {
   getBlogPosts,
   getResearchPosts,
   getWriting,
-  canReadWriting,
+  showsFullText,
   loadWritingBody
-} from './writings.js?v=17';
+} from './writings.js?v=19';
 
 let markedParse = null;
 let katexReady = null;
@@ -193,14 +193,13 @@ class Content {
           ]
         },
         {
-          companies: [
-            { name: "WAT.ai", url: "https://watai.ca", logo: "/assets/logos/watai.png" },
-            { name: "Bindwell (YC W25)", url: "https://bindwell.ai/", logo: "/assets/logos/bindwell.png" }
-          ],
+          company: "WAT.ai",
+          url: "https://watai.ca",
+          logo: "/assets/logos/watai.png",
           role: "Technical PM",
           current: true,
           stats: [
-            "Lead a cross-functional team building AI systems for pesticide regulatory approval."
+            'Lead a cross-functional team building AI systems for pesticide regulatory approval for <span class="nowrap">Bindwell (YC W25)</span>.'
           ]
         },
         {
@@ -273,7 +272,6 @@ class Content {
         }
       ],
       aboutMeta: "Building cool things to solve real-world problems",
-      location: `San Francisco | Waterloo | <a href="https://en.wikipedia.org/wiki/Hamilton,_Ontario" target="_blank" rel="noopener noreferrer" class="location-link" title="Hamilton, Ontario, Canada">Hamilton<sup class="location-icon"><svg viewBox="0 0 24 24" width="0.8em" height="0.8em" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></sup></a>`,
       // Preserved for future archive section reintroduction.
       archiveData: ARCHIVE_DATA,
       press: [
@@ -415,14 +413,11 @@ class Content {
         <p class="section-kicker">ABOUT</p>
         <div class="meta-section">
           <p class="about-bio">I'm a Software Engineering student at the <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a> interested in applied AI, health/bio tech, and full-stack web/app/game development.</p>
-          <p class="about-bio">Previously, I was a Member of Technical Staff (Intern) at <a href="https://darwinrobotics.ai/" target="_blank" rel="noopener noreferrer">Darwin</a>, formerly Thesis (YC F25), working on autonomous AI R&D systems for scientific discovery.</p>
+          <p class="about-bio">Previously, I was a Member of Technical Staff (Intern) at ${this.darwinLink()} (formerly Thesis) in San Francisco, working on autonomous AI R&D systems for scientific discovery.</p>
         </div>
       </section>
 
-      <section class="panel panel-location page-content">
-        <p class="section-kicker">LOCATION</p>
-        <p class="location-text">${this.data.location}</p>
-      </section>
+      ${this.renderLatestWork()}
 
       <section class="panel panel-socials page-content">
         <p class="section-kicker">LINKS</p>
@@ -434,15 +429,19 @@ class Content {
     `;
   }
 
+  /** "2026-09-19" → "September 19, 2026"; a month-only "2026-10" → "October 2026". */
   formatBlogDate(dateStr) {
-    const d = new Date(`${dateStr}T12:00:00`);
+    const monthOnly = /^\d{4}-\d{2}$/.test(dateStr);
+    const d = new Date(`${monthOnly ? `${dateStr}-01` : dateStr}T12:00:00`);
     if (Number.isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    return d.toLocaleDateString('en-US', monthOnly
+      ? { year: 'numeric', month: 'long' }
+      : { year: 'numeric', month: 'long', day: 'numeric' });
   }
 
   /** Press-style short date: "Jan. 2026" */
   formatWritingListDate(dateStr) {
-    const d = new Date(`${dateStr}T12:00:00`);
+    const d = new Date(`${/^\d{4}-\d{2}$/.test(dateStr) ? `${dateStr}-01` : dateStr}T12:00:00`);
     if (Number.isNaN(d.getTime())) return dateStr;
     const months = [
       'Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'Jun.',
@@ -471,11 +470,10 @@ class Content {
     return `
       <article class="project-item writing-list-item">
         <div class="writing-list-header">
-          ${post.comingSoon
-            ? `<p class="project-title">${this.escapeHtml(post.title)}</p>
-          <span class="writing-list-date">Coming soon</span>`
-            : `<p class="project-title"><a href="/writings/${post.slug}" data-route>${this.escapeHtml(post.title)}</a></p>
-          <time class="writing-list-date" datetime="${post.date}">${this.formatWritingListDate(post.date)}</time>`}
+          <p class="project-title"><a href="/writings/${post.slug}" data-route>${this.escapeHtml(post.title)}</a></p>
+          ${!post.comingSoon
+            ? `<time class="writing-list-date" datetime="${post.date}">${this.formatWritingListDate(post.date)}</time>`
+            : `<span class="writing-list-date">Coming soon${showsFullText(post) ? ' · local preview' : ''}</span>`}
         </div>
         ${post.summary ? `<p class="project-detail">${this.escapeHtml(post.summary)}</p>` : ''}
       </article>
@@ -527,33 +525,67 @@ class Content {
     `;
   }
 
+  /**
+   * The newest post with a title card, as a row that opens it.
+   */
+  renderLatestWork() {
+    const post = getBlogPosts().find((p) => p.hero?.kind === 'title-card');
+    if (!post) return '';
+    return `
+      <section class="panel panel-latest page-content">
+        <p class="section-kicker">LATEST WORK</p>
+        <a class="latest-row" href="/writings/${post.slug}" data-route>
+          <div class="latest-thumb">${this.renderTitleCard(post.hero, { controls: false, minimal: true })}</div>
+          <div class="latest-text">
+            <p class="latest-title">${this.escapeHtml(post.title)}</p>
+            ${post.summary ? `<p class="latest-sub">${this.escapeHtml(post.summary)}</p>` : ''}
+          </div>
+          <span class="latest-arrow" aria-hidden="true">→</span>
+        </a>
+      </section>
+    `;
+  }
+
+  /**
+   * "Darwin" in the About paragraph links to the internship post, with a hover
+   * preview of its title card; without the post it links to the company.
+   */
+  darwinLink() {
+    const post = getWriting('thesis-labs-internship');
+    if (post) {
+      return `<a href="/writings/${post.slug}" data-route data-post-preview="${post.slug}">Darwin</a>`;
+    }
+    return '<a href="https://darwinrobotics.ai/" target="_blank" rel="noopener noreferrer">Darwin</a>';
+  }
+
+  renderTitleCard(hero, { controls = true, minimal = false } = {}) {
+    return `
+      <div class="title-card" data-title-card data-background="${hero.background || 'life'}"${minimal ? ' data-minimal="true"' : ''}>
+        <canvas aria-hidden="true"></canvas>
+        <div class="title-card-text">
+          <p class="title-card-word">${this.escapeHtml(hero.title)}</p>
+          ${hero.subtitle ? `<p class="title-card-sub">${this.escapeHtml(hero.subtitle)}</p>` : ''}
+        </div>
+        ${controls ? `<button type="button" class="title-card-toggle" data-hero-toggle data-paused="false" aria-label="Pause animation">
+          <svg class="icon-pause" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
+          <svg class="icon-play" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        </button>` : ''}
+      </div>
+    `;
+  }
+
   renderPostHero(hero) {
     if (hero?.kind !== 'title-card') return '';
-    return `
-      <figure class="blog-hero">
-        <div class="title-card" data-title-card data-background="${hero.background || 'life'}">
-          <canvas aria-hidden="true"></canvas>
-          <div class="title-card-text">
-            <p class="title-card-word">${this.escapeHtml(hero.title)}</p>
-            ${hero.subtitle ? `<p class="title-card-sub">${this.escapeHtml(hero.subtitle)}</p>` : ''}
-          </div>
-          <button type="button" class="title-card-toggle" data-hero-toggle data-paused="false" aria-label="Pause animation">
-            <svg class="icon-pause" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
-            <svg class="icon-play" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-          </button>
-        </div>
-      </figure>
-    `;
+    return `<figure class="blog-hero">${this.renderTitleCard(hero)}</figure>`;
   }
 
   renderWritingPost(slug) {
     const post = getWriting(slug);
-    if (!post || !canReadWriting(post)) {
-      const message = post ? `${this.escapeHtml(post.title)} is coming soon.` : 'Not found.';
+    if (!post) {
       return `
         <section class="panel page-content">
           <p class="section-kicker">WRITINGS</p>
-          <p class="blog-soon">${message}</p>
+          <p class="blog-soon">Not found.</p>
           <p><a href="/writings" data-route class="blog-back">← Writings</a></p>
         </section>
         ${this.renderFooter()}
@@ -561,9 +593,11 @@ class Content {
     }
 
     const authorLine = post.authors || this.data.name;
+    // Coming soon: the page is real, but "Coming soon" stands in for the article
+    const teaser = !showsFullText(post);
 
     return `
-      <article class="panel page-content blog-post blog-post-layout" data-blog-slug="${this.escapeHtml(post.slug)}">
+      <article class="panel page-content blog-post blog-post-layout" data-blog-slug="${this.escapeHtml(post.slug)}"${teaser ? ' data-teaser="true"' : ''}>
         <div class="blog-post-main">
           ${post.section === 'research'
             ? '<a href="/projects" data-route class="blog-back">← Builds</a>'
@@ -574,13 +608,13 @@ class Content {
               <span class="blog-post-author">${this.escapeHtml(authorLine)}</span>
               <span class="blog-post-meta-sep" aria-hidden="true">·</span>
               <time class="blog-post-date" datetime="${post.date}">${this.formatBlogDate(post.date)}</time>
-              <span class="blog-post-meta-sep" aria-hidden="true">·</span>
-              <span class="blog-post-readtime" data-blog-readtime>…</span>
+              ${teaser ? '' : `<span class="blog-post-meta-sep" aria-hidden="true">·</span>
+              <span class="blog-post-readtime" data-blog-readtime>…</span>`}
             </p>
           </header>
           ${this.renderPostHero(post.hero)}
           ${this.renderPostOverview(post.overview)}
-          <div class="blog-post-body" data-blog-body></div>
+          <div class="blog-post-body" data-blog-body>${teaser ? '<p class="post-coming-soon">Coming soon</p>' : ''}</div>
         </div>
         <aside class="blog-toc" data-blog-toc hidden aria-label="Contents"></aside>
       </article>
@@ -989,8 +1023,73 @@ class App {
     this.initMilestoneStats();
     this.initPhotoGalleryNav();
     initTitleCard();
+    this.initPostPreviews();
     mountArticleFigures(null);
     this.initWritingPost();
+  }
+
+  /** Hovering a [data-post-preview] link floats a live copy of that post's title card. */
+  initPostPreviews() {
+    this._postPreview?.close(true);
+    this._postPreview = null;
+    if (!window.matchMedia('(hover: hover)').matches) return; // touch: a tap just opens the post
+
+    this.contentRoot?.querySelectorAll('[data-post-preview]').forEach((link) => {
+      const post = getWriting(link.dataset.postPreview);
+      if (post?.hero?.kind !== 'title-card') return;
+      let el = null;
+      let card = null;
+      let showTimer = null;
+      let hideTimer = null;
+
+      const close = (now = false) => {
+        clearTimeout(showTimer);
+        if (!el) return;
+        const node = el;
+        const mounted = card;
+        el = null;
+        card = null;
+        node.classList.remove('is-open');
+        setTimeout(() => {
+          mounted?.destroy();
+          node.remove();
+        }, now ? 0 : 200);
+      };
+
+      const open = () => {
+        clearTimeout(hideTimer);
+        if (el) return;
+        showTimer = setTimeout(() => {
+          el = document.createElement('div');
+          el.className = 'post-preview';
+          el.setAttribute('aria-hidden', 'true');
+          el.innerHTML = this.content.renderTitleCard(post.hero, { controls: false });
+          document.body.appendChild(el);
+          // Below the link, kept on screen; above it if there's no room underneath
+          const r = link.getBoundingClientRect();
+          const w = el.offsetWidth;
+          const h = el.offsetHeight;
+          const left = Math.min(Math.max(12, r.left), window.innerWidth - w - 12);
+          const top = r.bottom + 10 + h > window.innerHeight - 12 ? r.top - 10 - h : r.bottom + 10;
+          el.style.left = `${left}px`;
+          el.style.top = `${top}px`;
+          card = createTitleCard(el.querySelector('[data-title-card]'));
+          requestAnimationFrame(() => el?.classList.add('is-open'));
+        }, 120);
+      };
+
+      const scheduleClose = () => {
+        clearTimeout(showTimer);
+        hideTimer = setTimeout(() => close(), 80);
+      };
+
+      link.addEventListener('mouseenter', open);
+      link.addEventListener('focus', open);
+      link.addEventListener('mouseleave', scheduleClose);
+      link.addEventListener('blur', scheduleClose);
+      link.addEventListener('click', () => close(true));
+      this._postPreview = { close };
+    });
   }
 
   async initWritingPost() {
@@ -1004,6 +1103,7 @@ class App {
 
     const mainEl = document.querySelector('main');
     mainEl?.classList.add('main-wide');
+    if (article.dataset.teaser === 'true') return; // the article text isn't published yet
 
     try {
       const markdown = await loadWritingBody(slug);
