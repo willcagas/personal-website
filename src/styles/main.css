@@ -512,10 +512,6 @@ a:hover {
     gap: 22px;
   }
 
-  .post-overview-text {
-    order: -1;
-  }
-
   .post-overview-details dl {
     grid-template-columns: 1fr 1fr;
     gap: 14px 20px;
@@ -630,22 +626,47 @@ a:hover {
   color: var(--color-text);
 }
 
-/* Phones: a smaller card and no arrow, so the title gets a full line */
+/* Phones: a smaller card; the title takes the full line, and the arrow sits
+   beside the summary underneath it */
 @media (max-width: 640px) {
   .latest-row {
-    gap: 12px;
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr) auto;
+    column-gap: 12px;
+    row-gap: 2px;
+    align-items: center;
   }
 
   .latest-thumb {
+    grid-column: 1;
+    grid-row: 1 / span 2;
     width: 88px;
   }
 
+  .latest-text {
+    display: contents;
+  }
+
   .latest-title {
+    grid-column: 2 / 4;
+    grid-row: 1;
+    align-self: end;
     font-size: 14.5px;
   }
 
+  .latest-sub {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+    margin-top: 0;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+  }
+
   .latest-arrow {
-    display: none;
+    grid-column: 3;
+    grid-row: 2;
+    padding-left: 4px;
   }
 }
 
