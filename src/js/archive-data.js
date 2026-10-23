@@ -32,7 +32,7 @@ const ARCHIVE_DATA = {
       objectPosition: "0% 40%"
     },
     {
-      image: "/assets/pictures/sf-2025.png",
+      image: "/assets/pictures/sf-2025.jpg",
       caption: "Hack Club's Undercity hackathon at GitHub HQ in SF"
     },
     {

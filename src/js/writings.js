@@ -1,11 +1,19 @@
 /**
- * Writings index (Blog + Research).
+ * Writings: blog posts (/content/blog/*.md) and research papers
+ * (/content/research/*.md). A file's frontmatter (title, date, summary, venue,
+ * authors) overrides the entry here once the body loads.
  *
- * Blog:     /content/blog/*.md
- * Research: /content/research/*.md
- *
- * Frontmatter: title, date, slug, summary
- * Research may also set: venue, authors
+ * Post fields:
+ *   date        "YYYY-MM-DD", or "YYYY-MM" to show only the month
+ *   draft       shown only on localhost; elsewhere its URL is "Not found".
+ *               Draft markdown is gitignored, so unfinished prose never ships.
+ *   hidden      hidden everywhere, localhost included
+ *   comingSoon  the page (title, date, hero, overview) is public with "Coming
+ *               soon" in place of the article; localhost shows the full text
+ *   hero        { kind: "title-card", title, subtitle?, background?: "life" | "frontier" }
+ *               an animated title card above the article (src/js/title-card.js)
+ *   overview    { details: [{ label, value, note? }], text }
+ *               a Details / Overview block under the hero
  */
 
 const BLOG_POSTS = [
@@ -60,19 +68,7 @@ const RESEARCH_POSTS = [
 const ALL_POSTS = [...BLOG_POSTS, ...RESEARCH_POSTS];
 const bodyCache = new Map();
 
-/**
- * Drafts are visible only when developing locally. On the deployed site
- * (wcagas.com, Vercel previews, anything not localhost) they are hidden and
- * their direct URLs resolve to "Not found". Their markdown lives in files that
- * are gitignored, so unfinished prose never ships. `hidden: true` hides a post
- * everywhere, including localhost. `comingSoon: true` publishes a post's page
- * (title, date, hero, overview) with "Coming soon" in place of the article;
- * on localhost the full draft shows so it can be edited.
- * `hero: { kind: "title-card", title, subtitle?, background? }` puts an animated
- * title card above the article (src/js/title-card.js); background is "life"
- * (default) or "frontier". `overview: { details, text }` adds a
- * Details / Overview block under it.
- */
+// Local development (wcagas.com and Vercel previews are not)
 const IS_DEV =
   typeof location !== "undefined" &&
   (location.hostname === "" ||
@@ -125,11 +121,6 @@ export function getWriting(slug) {
   return visible(ALL_POSTS).find((p) => p.slug === slug) || null;
 }
 
-/** @deprecated use getWriting */
-export function getBlogPost(slug) {
-  return getWriting(slug);
-}
-
 /** Fetch markdown body for a writing (cached). */
 export async function loadWritingBody(slug) {
   if (bodyCache.has(slug)) return bodyCache.get(slug);
@@ -141,19 +132,10 @@ export async function loadWritingBody(slug) {
   if (!res.ok) throw new Error(`Failed to load ${post.file} (${res.status})`);
 
   const { meta, body } = parseFrontmatter(await res.text());
-  if (meta.title) post.title = meta.title;
-  if (meta.date) post.date = meta.date;
-  if (meta.summary) post.summary = meta.summary;
-  if (meta.venue) post.venue = meta.venue;
-  if (meta.authors) post.authors = meta.authors;
+  for (const key of ["title", "date", "summary", "venue", "authors"]) {
+    if (meta[key]) post[key] = meta[key];
+  }
 
   bodyCache.set(slug, body);
   return body;
 }
-
-/** @deprecated use loadWritingBody */
-export async function loadBlogPostBody(slug) {
-  return loadWritingBody(slug);
-}
-
-export default { blog: BLOG_POSTS, research: RESEARCH_POSTS };
