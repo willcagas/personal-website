@@ -627,7 +627,7 @@ a:hover {
 }
 
 /* Phones: a smaller card; the title takes the full line, and the arrow sits
-   beside the summary underneath it */
+   at the right, beside the summary */
 @media (max-width: 640px) {
   .latest-row {
     display: grid;
@@ -663,10 +663,13 @@ a:hover {
     line-clamp: 3;
   }
 
+  /* Centred on the whole row (level with the card), a little in from the edge */
   .latest-arrow {
     grid-column: 3;
-    grid-row: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
     padding-left: 4px;
+    margin-right: 8px;
   }
 }
 
