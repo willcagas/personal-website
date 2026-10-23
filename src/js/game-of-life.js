@@ -14,6 +14,8 @@ const CELL = 9;             // CSS px per cell
 const STEP_MS = 150;        // one Conway generation (calmer than real-time)
 const PAD = 7;              // overscan cells so the grid's hard edge sits off-screen
 const FADE = 30;            // CSS px of soft fade at the visible border
+const GROUND_CLEAR = 16;    // CSS px above the footer mountains where no cell lives
+const SPAWN_GAP = 24;       // CSS px above the footer mountains that new patterns start clear of
 const SOUP_DENSITY = 0.42;
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -25,6 +27,15 @@ class GameOfLife {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.ground = document.querySelector('[data-range-footer]');
+    this.wallRow = Infinity;
+    this.spawnRow = Infinity;
+    // A still frame doesn't tick, so clear the ground and redraw as the mountains scroll in
+    this.onScroll = () => {
+      this.applyWall();
+      this.draw(0);
+    };
+    if (this.reduceMotion) window.addEventListener('scroll', this.onScroll, { passive: true });
 
     this.rafId = null;
     this.visible = true;
@@ -75,8 +86,32 @@ class GameOfLife {
     return PAD + Math.floor(f * (this.cols - 2 * PAD));
   }
 
+  // New patterns start at least SPAWN_GAP px above the mountains, whole footprint
+  // included: soups and gliders reach 2 rows below the row they're anchored on
   iy(f) {
-    return PAD + Math.floor(f * (this.rows - 2 * PAD));
+    const limit = Math.min(this.rows - PAD, this.spawnRow - 2);
+    return PAD + Math.floor(f * Math.max(6, limit - PAD + 1));
+  }
+
+  /**
+   * Last grid row lying entirely `px` or more above the footer mountains. The
+   * canvas is fixed to the viewport while the range scrolls with the page, so
+   * this moves as you scroll.
+   */
+  rowAbove(px) {
+    if (!this.ground) return Infinity;
+    const groundY = this.ground.getBoundingClientRect().top - this.canvas.getBoundingClientRect().top;
+    return Math.floor((groundY - px - this.offY) / CELL) - 1;
+  }
+
+  /** Nothing lives at or below the wall; cells there die like any other. */
+  applyWall() {
+    this.wallRow = Math.max(0, this.rowAbove(GROUND_CLEAR) + 1); // first row that must stay empty
+    this.spawnRow = this.rowAbove(SPAWN_GAP);
+    if (this.wallRow >= this.rows) return;
+    const from = this.wallRow * this.cols;
+    this.grid.fill(0, from);
+    if (this.reduceMotion) this.bright.fill(0, from);
   }
 
   resize() {
@@ -104,6 +139,7 @@ class GameOfLife {
     this.next = new Uint8Array(len);
     this.bright = new Float32Array(len);
     this.flash = new Float32Array(len);
+    this.applyWall();
 
     // Scatter initial clusters across the visible interior
     const blobs = Math.max(6, (len / 1150) | 0);
@@ -212,6 +248,7 @@ class GameOfLife {
     this.grid = next;
     this.next = grid;
     this.ticks++;
+    this.applyWall();
 
     // Keep the field lively without overcrowding it
     if (this.ticks % 12 === 0) {
@@ -298,6 +335,7 @@ class GameOfLife {
     this.resizeObserver.disconnect();
     this.io.disconnect();
     document.removeEventListener('visibilitychange', this.onVisibility);
+    window.removeEventListener('scroll', this.onScroll);
   }
 }
 

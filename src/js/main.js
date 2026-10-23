@@ -7,14 +7,17 @@
  */
 
 import ARCHIVE_DATA from './archive-data.js?v=17';
-import { initGameOfLife } from './game-of-life.js';
+import { initGameOfLife } from './game-of-life.js?v=7';
+import { initTitleCard } from './title-card.js?v=4';
+import { initRangeFooter } from './range-footer.js';
+import { mountArticleFigures } from './article-figures.js?v=3';
 import {
   getBlogPosts,
   getResearchPosts,
   getWriting,
   canReadWriting,
   loadWritingBody
-} from './writings.js?v=3';
+} from './writings.js?v=17';
 
 let markedParse = null;
 let katexReady = null;
@@ -498,6 +501,51 @@ class Content {
     return this.renderWritings();
   }
 
+  /** Stop "(YC F25)"-style asides from breaking across lines. */
+  keepParensTogether(html) {
+    return html.replace(/\(([^)]*)\)/g, '<span class="nowrap">($1)</span>');
+  }
+
+  renderPostOverview(overview) {
+    if (!overview) return '';
+    return `
+      <section class="post-overview" aria-label="Overview">
+        <div class="post-overview-details">
+          <h2 class="post-overview-label">Details</h2>
+          <dl>${overview.details.map((d) => `
+            <div>
+              <dt>${this.escapeHtml(d.label)}</dt>
+              <dd>${this.keepParensTogether(this.escapeHtml(d.value))}${d.note ? `<span class="post-overview-note">${this.escapeHtml(d.note)}</span>` : ''}</dd>
+            </div>`).join('')}
+          </dl>
+        </div>
+        <div class="post-overview-text">
+          <h2 class="post-overview-label" id="overview">Overview</h2>
+          <p>${this.escapeHtml(overview.text)}</p>
+        </div>
+      </section>
+    `;
+  }
+
+  renderPostHero(hero) {
+    if (hero?.kind !== 'title-card') return '';
+    return `
+      <figure class="blog-hero">
+        <div class="title-card" data-title-card data-background="${hero.background || 'life'}">
+          <canvas aria-hidden="true"></canvas>
+          <div class="title-card-text">
+            <p class="title-card-word">${this.escapeHtml(hero.title)}</p>
+            ${hero.subtitle ? `<p class="title-card-sub">${this.escapeHtml(hero.subtitle)}</p>` : ''}
+          </div>
+          <button type="button" class="title-card-toggle" data-hero-toggle data-paused="false" aria-label="Pause animation">
+            <svg class="icon-pause" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
+            <svg class="icon-play" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+        </div>
+      </figure>
+    `;
+  }
+
   renderWritingPost(slug) {
     const post = getWriting(slug);
     if (!post || !canReadWriting(post)) {
@@ -530,6 +578,8 @@ class Content {
               <span class="blog-post-readtime" data-blog-readtime>…</span>
             </p>
           </header>
+          ${this.renderPostHero(post.hero)}
+          ${this.renderPostOverview(post.overview)}
           <div class="blog-post-body" data-blog-body></div>
         </div>
         <aside class="blog-toc" data-blog-toc hidden aria-label="Contents"></aside>
@@ -766,8 +816,9 @@ class App {
 
     this.contentRoot = main.querySelector('#content-root');
 
-    // Site-wide background; lives outside the routed content so it keeps running across pages
+    // Site-wide background and footer; they live outside the routed content
     initGameOfLife();
+    initRangeFooter();
 
     // Insert header once (will be updated for active nav state)
     this.headerEl = document.createElement('div');
@@ -937,6 +988,8 @@ class App {
     // Re-init interactive features
     this.initMilestoneStats();
     this.initPhotoGalleryNav();
+    initTitleCard();
+    mountArticleFigures(null);
     this.initWritingPost();
   }
 
@@ -960,6 +1013,7 @@ class App {
       const parse = await ensureMarked();
       body.innerHTML = parse(markdown);
       addHeadingIds(body);
+      mountArticleFigures(body);
       this.initBlogToc(article, body);
 
       const bindInPageNav = (root) => {
@@ -1004,7 +1058,9 @@ class App {
     const tocEl = article.querySelector('[data-blog-toc]');
     if (!tocEl) return;
 
-    const headings = [...body.querySelectorAll('h2, h3, h4')].filter((h) => {
+    // The post's Overview block sits above the body; list it first, as a section
+    const overview = article.querySelector('#overview');
+    const headings = [...(overview ? [overview] : []), ...body.querySelectorAll('h2, h3, h4')].filter((h) => {
       const text = h.textContent.trim();
       return text && !/^contents$/i.test(text);
     });
@@ -1017,7 +1073,7 @@ class App {
     const items = [];
     let currentGroup = null;
     for (const heading of headings) {
-      const level = Number(heading.tagName.slice(1));
+      const level = heading === overview ? 3 : Number(heading.tagName.slice(1));
       const entry = {
         id: heading.id,
         text: heading.textContent.trim(),

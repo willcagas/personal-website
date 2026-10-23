@@ -13,11 +13,21 @@ const BLOG_POSTS = [
     section: "blog",
     slug: "thesis-labs-internship",
     title: "Six Months at Darwin (YC F25)",
-    date: "2026-09-19",
+    date: "2026-10-23",
     summary:
-      "My work, experiences, thoughts, and learnings during my internship for Darwin, previously Thesis Labs.",
+      "My work, experiences, thoughts, and learnings during my internship with Thesis (now Darwin).",
     file: "/content/blog/thesis-labs-internship.md",
-    comingSoon: true
+    comingSoon: true,
+    hero: { kind: "title-card", title: "Darwin", background: "frontier" },
+    overview: {
+      details: [
+        { label: "Role", value: "Member of Technical Staff (Intern)" },
+        { label: "Location", value: "San Francisco" },
+        { label: "Dates", value: "March – August 2026" }
+      ],
+      text:
+        "I spent six months at Thesis (YC F25), now Darwin, working on autonomous AI R&D systems for scientific discovery. My work was centered around Darwin Autoresearch, a hill‑climbing machine that searches a vast combinatorial space of ML experiments where every result steers the next and research compounds toward the frontier. Here, I talk about some of the projects I worked on, thoughts and experiences working my first paid internship, and learnings throughout."
+    }
   },
   {
     section: "blog",
@@ -57,6 +67,10 @@ const bodyCache = new Map();
  * are gitignored, so unfinished prose never ships. `hidden: true` hides a post
  * everywhere, including localhost. `comingSoon: true` lists a post as "Coming
  * soon" without a link; its page stays readable only on localhost.
+ * `hero: { kind: "title-card", title, subtitle?, background? }` puts an animated
+ * title card above the article (src/js/title-card.js); background is "life"
+ * (default) or "frontier". `overview: { details, text }` adds a
+ * Details / Overview block under it.
  */
 const IS_DEV =
   typeof location !== "undefined" &&

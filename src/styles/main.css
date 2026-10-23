@@ -56,6 +56,10 @@ html {
 }
 
 body {
+  /* Column layout so the footer range sits at the bottom of short pages */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   font-family: var(--font-family);
   font-size: var(--font-size-base);
   line-height: var(--line-height);
@@ -111,9 +115,35 @@ body:has(main.main-wide) #game-of-life-canvas {
 main {
   position: relative;
   z-index: 1;
+  flex: 1 0 auto;
+  width: 100%;
   max-width: var(--max-width);
   margin: 0 auto;
   padding: var(--padding);
+}
+
+/* Engraved mountain range along the bottom of every page (src/js/range-footer.js).
+   Its sky is transparent, so it tucks up into the page's bottom whitespace. */
+.site-range {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  height: 170px;
+  margin-top: -60px;
+  pointer-events: none;
+}
+
+.site-range canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 640px) {
+  .site-range {
+    height: 120px;
+    margin-top: -40px;
+  }
 }
 
 main.main-wide {
@@ -391,6 +421,183 @@ a:hover {
   letter-spacing: -0.02em;
   line-height: 1.2;
   color: var(--color-text);
+}
+
+/* Article hero: title card over a Game of Life field (src/js/title-card.js) */
+.blog-hero {
+  margin: 0 0 34px;
+}
+
+/* Details / Overview block under a post's hero */
+.post-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 32px;
+  margin: 0 0 40px;
+}
+
+.post-overview-label {
+  margin: 0 0 10px;
+  scroll-margin-top: 24px;
+  font: 600 1rem/1.4 var(--font-family-serif);
+  color: var(--color-text);
+}
+
+.post-overview-details dl {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+
+.post-overview-details dt {
+  margin-bottom: 3px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.post-overview-details dd {
+  margin: 0;
+  font-size: var(--font-size-base);
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
+.post-overview-note {
+  display: block;
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+}
+
+.post-overview-text p {
+  margin: 0;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height);
+  color: var(--color-body);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .post-overview {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .post-overview-text {
+    order: -1;
+  }
+
+  .post-overview-details dl {
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 20px;
+  }
+}
+
+.title-card {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0c0c0b;
+}
+
+.title-card canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.title-card-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Over the mountain range, the wordmark sits in the sky */
+.title-card[data-background="frontier"] .title-card-text {
+  bottom: 50%;
+}
+
+.title-card-word {
+  margin: 0;
+  font: 500 clamp(36px, 8vw, 64px)/0.9 "Newsreader", Georgia, serif;
+  letter-spacing: -0.035em;
+  color: #f6f1e7;
+}
+
+.title-card-sub {
+  margin: 18px 0 0;
+  font: 400 14px/1.4 var(--font-family-sans);
+  color: rgba(246, 241, 231, 0.6);
+}
+
+.title-card-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: rgba(246, 241, 231, 0.75);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.title-card-toggle:hover {
+  color: #f6f1e7;
+}
+
+.title-card-toggle[data-paused="false"] .icon-play,
+.title-card-toggle[data-paused="true"] .icon-pause {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .title-card-sub {
+    margin-top: 12px;
+    font-size: 12px;
+  }
+}
+
+/* Live figures inside articles (src/js/article-figures.js) */
+.blog-post-body .live-figure {
+  position: relative;
+  aspect-ratio: 16 / 9;
+}
+
+.blog-post-body .live-figure canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Phones: taller frames so the figures keep room for their labels */
+@media (max-width: 640px) {
+  .blog-post-body [data-figure="islands"] .live-figure {
+    aspect-ratio: 1 / 1;
+  }
+
+  .blog-post-body [data-figure="reading"] .live-figure {
+    aspect-ratio: 4 / 5;
+  }
 }
 
 .blog-post-meta {
