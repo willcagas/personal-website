@@ -533,7 +533,7 @@ class Content {
     if (!post) return '';
     return `
       <section class="panel panel-latest page-content">
-        <p class="section-kicker">LATEST WORK</p>
+        <p class="section-kicker">LATEST</p>
         <a class="latest-row" href="/writings/${post.slug}" data-route>
           <div class="latest-thumb">${this.renderTitleCard(post.hero, { controls: false, minimal: true })}</div>
           <div class="latest-text">
