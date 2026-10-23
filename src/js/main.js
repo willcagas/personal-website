@@ -8,8 +8,124 @@
 
 import ARCHIVE_DATA from './archive-data.js';
 import { initHillClimb } from './hill-climb.js?v=2';
+import {
+  getBlogPosts,
+  getResearchPosts,
+  getWriting,
+  canReadWriting,
+  loadWritingBody
+} from './writings.js?v=3';
 
-const THESIS_DEMO_ENABLED = false;
+let markedParse = null;
+let katexReady = null;
+
+/** Pull $...$ / $$...$$ out so markdown can't mangle LaTeX subscripts (_..._). */
+function protectMath(md) {
+  const slots = [];
+  const stash = (match) => {
+    const key = `@@MATH${slots.length}@@`;
+    slots.push(match);
+    return key;
+  };
+  // Display math first, then inline (non-greedy, same-line)
+  let text = md.replace(/\$\$[\s\S]+?\$\$/g, stash);
+  text = text.replace(/\$[^$\n]+?\$/g, stash);
+  return { text, slots };
+}
+
+function restoreMath(html, slots) {
+  // Use a function replacer — string replace treats "$$" as a single "$".
+  return slots.reduce(
+    (acc, math, i) => acc.replaceAll(`@@MATH${i}@@`, () => math),
+    html
+  );
+}
+
+/** Marked does not parse markdown inside raw HTML — convert caption links to <a>. */
+function hydrateFigcaptionLinks(md) {
+  return String(md || '').replace(/<figcaption>([\s\S]*?)<\/figcaption>/g, (_, inner) => {
+    const fixed = inner.replace(
+      /\[([^\]]+)\]\(([^)\s]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+    );
+    return `<figcaption>${fixed}</figcaption>`;
+  });
+}
+
+async function ensureMarked() {
+  if (markedParse) return markedParse;
+  const { marked } = await import('https://cdn.jsdelivr.net/npm/marked@15.0.12/lib/marked.esm.js');
+  const renderer = new marked.Renderer();
+  const defaultLink = renderer.link.bind(renderer);
+  renderer.link = (token) => {
+    const html = defaultLink(token);
+    const href = typeof token === 'string' ? token : token?.href;
+    if (!href || href.startsWith('#') || href.startsWith('/') || href.startsWith('mailto:')) {
+      return html;
+    }
+    return html.replace('<a ', '<a target="_blank" rel="noopener noreferrer" ');
+  };
+  marked.setOptions({ gfm: true, breaks: false, renderer });
+  markedParse = (md) => {
+    const { text, slots } = protectMath(md);
+    return restoreMath(marked.parse(hydrateFigcaptionLinks(text)), slots);
+  };
+  return markedParse;
+}
+
+function loadStylesheet(href) {
+  if (document.querySelector(`link[href="${href}"]`)) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = href;
+  document.head.appendChild(link);
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      if (existing.dataset.loaded === 'true') resolve();
+      else existing.addEventListener('load', () => resolve(), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.onload = () => {
+      script.dataset.loaded = 'true';
+      resolve();
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+async function ensureKatex() {
+  if (katexReady) return katexReady;
+  katexReady = (async () => {
+    loadStylesheet('https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css');
+    await loadScript('https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js');
+    await loadScript('https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js');
+  })();
+  return katexReady;
+}
+
+function slugifyHeading(text) {
+  return String(text || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+function addHeadingIds(root) {
+  root.querySelectorAll('h2, h3, h4').forEach((heading) => {
+    if (heading.id) return;
+    heading.id = slugifyHeading(heading.textContent);
+  });
+}
 
 /**
  * Simple client-side router using History API
@@ -24,8 +140,9 @@ class Router {
     document.addEventListener('click', (e) => {
       const link = e.target.closest('a[data-route]');
       if (!link) return;
-      e.preventDefault();
       const path = link.getAttribute('href');
+      if (!path || path.startsWith('#')) return;
+      e.preventDefault();
       if (path !== window.location.pathname) {
         window.history.pushState(null, '', path);
         this.resolve();
@@ -33,10 +150,18 @@ class Router {
     });
   }
 
+  matchRoute(path) {
+    return (
+      this.routes.find((r) => r.path === path) ||
+      this.routes.find((r) => typeof r.match === 'function' && r.match(path)) ||
+      this.routes[0]
+    );
+  }
+
   resolve() {
     const path = window.location.pathname;
-    const route = this.routes.find((r) => r.path === path) || this.routes[0];
-    this.onNavigate(route);
+    const route = this.matchRoute(path);
+    this.onNavigate(route, path);
   }
 }
 
@@ -55,13 +180,13 @@ class Content {
       },
       mainRoles: [
         {
-          company: "Thesis (YC F25)",
-          url: "https://thesislabs.ai/",
-          logo: "/assets/logos/thesislabs.png",
+          company: "Darwin (YC F25)",
+          url: "https://darwinrobotics.ai/",
+          logo: "/assets/logos/darwin.png",
           role: "Member of Technical Staff (Intern)",
-          current: true,
+          current: false,
           stats: [
-            "δ Building an autonomous AI R&D system that hillclimbs to the frontier."
+            "δ Helped develop an autonomous AI R&D system that hillclimbs to the frontier (formerly Thesis)."
           ]
         },
         {
@@ -72,7 +197,7 @@ class Content {
           role: "Technical PM",
           current: true,
           stats: [
-            "Leading a cross-functional team building AI systems for pesticide regulatory approval."
+            "Lead a cross-functional team building AI systems for pesticide regulatory approval."
           ]
         },
         {
@@ -128,15 +253,6 @@ class Content {
           detail: "19M+ plays and 36K+ favourites."
         }
       ],
-      researchHighlights: [
-        {
-          title: "Medical Imaging Complexity and its Effects on GAN Performance",
-          venue: "GAISynMeD @ ACCV 2024",
-          note: "(oral presentation); cited 14x including ICCV, ACM.",
-          url: "https://medgans.wcagas.com",
-          logo: "/assets/logos/medgans.png"
-        }
-      ],
       communityHighlights: [
         {
           company: "HammerHacks",
@@ -182,7 +298,7 @@ class Content {
         {
           outlet: "The Hamilton Spectator",
           url: "https://www.thespec.com/news/hamilton-region/hamilton-high-schooler-uses-tech-to-solve-problems-from-gaps-in-medical-data-to-teen/article_35dcda17-4b96-5079-90d5-84625c65f254.html",
-          title: "Hamilton high schooler uses tech to solve problems — from gaps in medical data to teen acne",
+          title: "Hamilton high schooler uses tech to solve problems, from gaps in medical data to teen acne",
           date: "Jan. 2025",
           logo: "/assets/logos/hamilton-spec.png"
         }
@@ -233,12 +349,20 @@ class Content {
     const links = [
       { label: "Home", path: "/" },
       { label: "Work", path: "/work" },
-      { label: "Projects", path: "/projects" },
+      { label: "Builds", path: "/projects" },
       { label: "Archive", path: "/archive" },
-      { label: "Blog", path: "/blog", soon: true }
+      { label: "Writings", path: "/writings" }
     ];
     const navItems = links.map((l) => {
-      const active = l.path === currentPath ? ' nav-link active' : ' nav-link';
+      const onWritings =
+        l.path === '/writings' &&
+        (currentPath === '/blog' || currentPath.startsWith('/blog/'));
+      const active =
+        l.path === currentPath ||
+        (l.path !== '/' && currentPath.startsWith(l.path + '/')) ||
+        onWritings
+          ? ' nav-link active'
+          : ' nav-link';
       return `<a href="${l.path}" data-route class="${active}" data-text="${l.label}">${l.label}</a>`;
     }).join("");
 
@@ -293,18 +417,12 @@ class Content {
       `)
       .join("");
 
-    const thesisRole = this.data.mainRoles.find((r) => r.url === "https://thesislabs.ai/");
-    const thesisMention = THESIS_DEMO_ENABLED
-      ? `<span class="demo-toggle-group" id="demo-toggle"><span class="demo-play-btn" aria-label="Play demo"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span class="demo-toggle-name">Thesis</span></span>`
-      : `<a href="${thesisRole.url}" target="_blank" rel="noopener noreferrer">Thesis</a>`;
-
     return `
       <section class="panel panel-meta page-content">
         <p class="section-kicker">ABOUT</p>
         <div class="meta-section">
           <p class="about-bio">I'm a Software Engineering student at the <a href="${this.data.roleLine.link.url}" target="_blank" rel="noopener noreferrer">University of Waterloo</a> interested in applied AI, health/bio tech, and full-stack web/app/game development.</p>
-          <p class="about-bio">Currently, I'm a Member of Technical Staff (Intern) at ${thesisMention} working on open-ended evolutionary AI systems to automate scientific discovery.</p>
-          <p class="about-bio">Previously, I've conducted ML research under graduate AI  researchers from UC Berkeley and CMU, built an app featured on national TV, and founded a regional hackathon with $12K in sponsorships.</p>
+          <p class="about-bio">Previously, I was a Member of Technical Staff (Intern) at <a href="https://darwinrobotics.ai/" target="_blank" rel="noopener noreferrer">Darwin</a>, formerly Thesis (YC F25), working on autonomous AI R&D systems for scientific discovery.</p>
         </div>
       </section>
 
@@ -337,14 +455,122 @@ class Content {
     `;
   }
 
-  renderBlog() {
+  formatBlogDate(dateStr) {
+    const d = new Date(`${dateStr}T12:00:00`);
+    if (Number.isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
+  /** Press-style short date: "Jan. 2026" */
+  formatWritingListDate(dateStr) {
+    const d = new Date(`${dateStr}T12:00:00`);
+    if (Number.isNaN(d.getTime())) return dateStr;
+    const months = [
+      'Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'Jun.',
+      'Jul.', 'Aug.', 'Sep.', 'Oct.', 'Nov.', 'Dec.'
+    ];
+    return `${months[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  /** Word-count reading time from current markdown — updates whenever the body changes. */
+  estimateReadingTime(markdown, wpm = 220) {
+    const text = String(markdown || '')
+      .replace(/\$\$[\s\S]+?\$\$/g, ' ')
+      .replace(/\$[^$\n]+?\$/g, ' ')
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/`[^`]+`/g, ' ')
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+      .replace(/\[[^\]]*\]\([^)]*\)/g, ' ')
+      .replace(/[#>*_~|]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const words = text ? text.split(' ').length : 0;
+    return Math.max(1, Math.round(words / wpm));
+  }
+
+  renderWritingListItem(post) {
+    return `
+      <article class="project-item writing-list-item">
+        <div class="writing-list-header">
+          ${post.comingSoon
+            ? `<p class="project-title">${this.escapeHtml(post.title)}</p>
+          <span class="writing-list-date">Coming soon</span>`
+            : `<p class="project-title"><a href="/writings/${post.slug}" data-route>${this.escapeHtml(post.title)}</a></p>
+          <time class="writing-list-date" datetime="${post.date}">${this.formatWritingListDate(post.date)}</time>`}
+        </div>
+        ${post.summary ? `<p class="project-detail">${this.escapeHtml(post.summary)}</p>` : ''}
+      </article>
+    `;
+  }
+
+  renderWritings() {
+    const blogItems = getBlogPosts().map((p) => this.renderWritingListItem(p)).join('');
+    const researchItems = getResearchPosts().map((p) => this.renderWritingListItem(p)).join('');
+
     return `
       <section class="panel page-content">
         <p class="section-kicker">BLOG</p>
-        <p class="blog-soon">Coming soon. Writing on AI, research, and things I'm building.</p>
+        <div class="projects-list">
+          ${blogItems || '<p class="blog-soon">No posts yet.</p>'}
+        </div>
+      </section>
+
+      <section class="panel page-content">
+        <p class="section-kicker">PAPERS</p>
+        <div class="projects-list">
+          ${researchItems || '<p class="blog-soon">No papers yet.</p>'}
+        </div>
       </section>
       ${this.renderFooter()}
     `;
+  }
+
+  /** @deprecated */
+  renderBlog() {
+    return this.renderWritings();
+  }
+
+  renderWritingPost(slug) {
+    const post = getWriting(slug);
+    if (!post || !canReadWriting(post)) {
+      const message = post ? `${this.escapeHtml(post.title)} is coming soon.` : 'Not found.';
+      return `
+        <section class="panel page-content">
+          <p class="section-kicker">WRITINGS</p>
+          <p class="blog-soon">${message}</p>
+          <p><a href="/writings" data-route class="blog-back">← Writings</a></p>
+        </section>
+        ${this.renderFooter()}
+      `;
+    }
+
+    const authorLine = post.authors || this.data.name;
+
+    return `
+      <article class="panel page-content blog-post blog-post-layout" data-blog-slug="${this.escapeHtml(post.slug)}">
+        <div class="blog-post-main">
+          <a href="/writings" data-route class="blog-back">← Writings</a>
+          <header class="blog-post-header">
+            <h1 class="blog-post-title">${this.escapeHtml(post.title)}</h1>
+            <p class="blog-post-meta">
+              <span class="blog-post-author">${this.escapeHtml(authorLine)}</span>
+              <span class="blog-post-meta-sep" aria-hidden="true">·</span>
+              <time class="blog-post-date" datetime="${post.date}">${this.formatBlogDate(post.date)}</time>
+              <span class="blog-post-meta-sep" aria-hidden="true">·</span>
+              <span class="blog-post-readtime" data-blog-readtime>…</span>
+            </p>
+          </header>
+          <div class="blog-post-body" data-blog-body></div>
+        </div>
+        <aside class="blog-toc" data-blog-toc hidden aria-label="Contents"></aside>
+      </article>
+      ${this.renderFooter()}
+    `;
+  }
+
+  /** @deprecated */
+  renderBlogPost(slug) {
+    return this.renderWritingPost(slug);
   }
 
   renderWork() {
@@ -415,17 +641,6 @@ class Content {
       `)
       .join("");
 
-    const researchItems = this.data.researchHighlights
-      .map((paper) => `
-        <article class="project-item">
-          <p class="project-title"><a href="${paper.url}" target="_blank" rel="noopener noreferrer">${paper.title}</a>${this.logoHtml(paper.logo, paper.title)}</p>
-          <p class="project-detail">${paper.venue} ${paper.note}</p>
-        </article>
-      `)
-      .join("");
-
-
-
     return `
       <section class="panel panel-projects page-content">
         <p class="section-kicker">BUILDS</p>
@@ -433,13 +648,6 @@ class Content {
           <div class="projects-list">
             ${projectItems}
           </div>
-        </div>
-      </section>
-
-      <section class="panel panel-research page-content">
-        <p class="section-kicker">RESEARCH</p>
-        <div class="projects-list">
-          ${researchItems}
         </div>
       </section>
       ${this.renderFooter()}
@@ -578,10 +786,28 @@ class App {
       { path: "/work", render: () => this.content.renderWork() },
       { path: "/projects", render: () => this.content.renderProjects() },
       { path: "/archive", render: () => this.content.renderArchive() },
-      { path: "/blog", render: () => this.content.renderBlog() }
+      { path: "/writings", render: () => this.content.renderWritings() },
+      {
+        path: "/writings/:slug",
+        match: (path) => /^\/writings\/[^/]+\/?$/.test(path),
+        render: (path) => {
+          const slug = path.replace(/^\/writings\//, '').replace(/\/$/, '');
+          return this.content.renderWritingPost(slug);
+        }
+      },
+      // Legacy /blog aliases
+      { path: "/blog", render: () => this.content.renderWritings() },
+      {
+        path: "/blog/:slug",
+        match: (path) => /^\/blog\/[^/]+\/?$/.test(path),
+        render: (path) => {
+          const slug = path.replace(/^\/blog\//, '').replace(/\/$/, '');
+          return this.content.renderWritingPost(slug);
+        }
+      }
     ];
 
-    this.router = new Router(routes, (route) => this.onNavigate(route));
+    this.router = new Router(routes, (route, path) => this.onNavigate(route, path));
     this.router.resolve();
 
     this.initGlobalCounter();
@@ -693,83 +919,176 @@ class App {
     }, 30000);
   }
 
-  onNavigate(route) {
-    const path = window.location.pathname;
-
+  onNavigate(route, path = window.location.pathname) {
     // Update header with active nav state
     this.headerEl.innerHTML = this.content.renderNav(path);
+
+    this._blogTocObserver?.disconnect();
+    this._blogTocObserver = null;
+    document.querySelector('main')?.classList.remove('main-wide');
 
     // Render page content with fade-in
     if (this.contentRoot) {
       this.contentRoot.classList.remove('page-fade-in');
-      this.contentRoot.innerHTML = route.render();
+      this.contentRoot.innerHTML = route.render(path);
       // Trigger reflow then add animation class
       void this.contentRoot.offsetHeight;
       this.contentRoot.classList.add('page-fade-in');
     }
 
-    // Scroll to top on navigation
-    window.scrollTo(0, 0);
+    // Scroll to top on navigation (hash links handled after blog hydrate)
+    if (!window.location.hash) {
+      window.scrollTo(0, 0);
+    }
 
     // Re-init interactive features
     this.initMilestoneStats();
     this.initPhotoGalleryNav();
-    this.initDemoToggle();
     initHillClimb();
+    this.initWritingPost();
   }
 
-  initDemoToggle() {
-    if (!THESIS_DEMO_ENABLED) return;
+  async initWritingPost() {
+    const body = this.contentRoot?.querySelector('[data-blog-body]');
+    const article = this.contentRoot?.querySelector('[data-blog-slug]');
+    if (!body || !article) return;
 
-    const toggle = document.getElementById('demo-toggle');
-    if (!toggle) return;
+    const slug = article.getAttribute('data-blog-slug');
+    const post = getWriting(slug);
+    if (!post) return;
 
-    toggle.addEventListener('click', () => {
-      // Create modal if it doesn't exist yet
-      let modal = document.getElementById('demo-lightbox');
-      if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'demo-lightbox';
-        modal.className = 'demo-lightbox';
-        modal.innerHTML = `
-          <div class="demo-lightbox-backdrop"></div>
-          <div class="demo-lightbox-content">
-            <button class="demo-lightbox-close" aria-label="Close">✕</button>
-            <video
-              class="demo-video"
-              muted
-              loop
-              playsinline
-              preload="metadata"
-            >
-              <source src="/assets/thesis.mov" type="video/mp4" />
-            </video>
-            <a href="https://thesislabs.ai/" target="_blank" rel="noopener noreferrer" class="demo-lightbox-link">thesislabs.ai<span style="display:inline-block; vertical-align:-0.15em; margin-left: 4px;"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M7 7h8.586L5.293 17.293l1.414 1.414L17 8.414V17h2V5H7v2z"/></svg></span></a>
-          </div>
-        `;
-        document.body.appendChild(modal);
+    const mainEl = document.querySelector('main');
+    mainEl?.classList.add('main-wide');
 
-        // Close handlers
-        const close = () => {
-          modal.classList.remove('is-open');
-          const video = modal.querySelector('video');
-          if (video) video.pause();
-          setTimeout(() => { modal.style.display = 'none'; }, 300);
-        };
-        modal.querySelector('.demo-lightbox-backdrop').addEventListener('click', close);
-        modal.querySelector('.demo-lightbox-close').addEventListener('click', close);
-        document.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape' && modal.classList.contains('is-open')) close();
+    try {
+      const markdown = await loadWritingBody(slug);
+      const readEl = article.querySelector('[data-blog-readtime]');
+      if (readEl) readEl.textContent = `${this.content.estimateReadingTime(markdown)} min read`;
+
+      const parse = await ensureMarked();
+      body.innerHTML = parse(markdown);
+      addHeadingIds(body);
+      this.initBlogToc(article, body);
+
+      const bindInPageNav = (root) => {
+        root.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+          anchor.addEventListener('click', (e) => {
+            const id = decodeURIComponent(anchor.getAttribute('href').slice(1));
+            const target = document.getElementById(id);
+            if (!target) return;
+            e.preventDefault();
+            history.replaceState(null, '', `#${id}`);
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+        });
+      };
+      bindInPageNav(body);
+      bindInPageNav(article.querySelector('[data-blog-toc]') || article);
+
+      await ensureKatex();
+      if (typeof renderMathInElement === 'function') {
+        renderMathInElement(body, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\(', right: '\\)', display: false },
+            { left: '\\[', right: '\\]', display: true }
+          ],
+          throwOnError: false
         });
       }
 
-      // Open
-      modal.style.display = 'flex';
-      void modal.offsetHeight;
-      modal.classList.add('is-open');
-      const video = modal.querySelector('video');
-      if (video) video.play().catch(() => { });
+      if (window.location.hash) {
+        const target = document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    } catch (err) {
+      console.error('Failed to render blog post:', err);
+      body.innerHTML = `<p class="blog-soon">Failed to load post content.</p>`;
+    }
+  }
+
+  initBlogToc(article, body) {
+    const tocEl = article.querySelector('[data-blog-toc]');
+    if (!tocEl) return;
+
+    const headings = [...body.querySelectorAll('h2, h3, h4')].filter((h) => {
+      const text = h.textContent.trim();
+      return text && !/^contents$/i.test(text);
     });
+
+    if (headings.length < 2) {
+      tocEl.hidden = true;
+      return;
+    }
+
+    const items = [];
+    let currentGroup = null;
+    for (const heading of headings) {
+      const level = Number(heading.tagName.slice(1));
+      const entry = {
+        id: heading.id,
+        text: heading.textContent.trim(),
+        level,
+        children: []
+      };
+      if (level <= 3) {
+        currentGroup = entry;
+        items.push(entry);
+      } else if (currentGroup) {
+        currentGroup.children.push(entry);
+      } else {
+        items.push(entry);
+      }
+    }
+
+    const renderItem = (item) => {
+      const kids = item.children.length
+        ? `<ul class="blog-toc-sublist">${item.children.map(renderItem).join('')}</ul>`
+        : '';
+      return `
+        <li class="blog-toc-item" data-toc-level="${item.level}">
+          <a href="#${item.id}" class="blog-toc-link" data-toc-link="${item.id}">${this.content.escapeHtml(item.text)}</a>
+          ${kids}
+        </li>
+      `;
+    };
+
+    tocEl.hidden = false;
+    tocEl.innerHTML = `
+      <p class="blog-toc-kicker">Contents</p>
+      <nav class="blog-toc-nav">
+        <ul class="blog-toc-list">
+          ${items.map(renderItem).join('')}
+        </ul>
+      </nav>
+    `;
+
+    const links = [...tocEl.querySelectorAll('[data-toc-link]')];
+    const setActive = (id) => {
+      links.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('data-toc-link') === id);
+      });
+    };
+
+    if (links.length) setActive(links[0].getAttribute('data-toc-link'));
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]?.target?.id) setActive(visible[0].target.id);
+      },
+      {
+        rootMargin: '-15% 0px -70% 0px',
+        threshold: [0, 1]
+      }
+    );
+
+    headings.forEach((h) => observer.observe(h));
+    this._blogTocObserver?.disconnect();
+    this._blogTocObserver = observer;
   }
 
   /**
