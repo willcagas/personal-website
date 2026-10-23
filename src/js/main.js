@@ -6,8 +6,8 @@
  * All content is managed in the Content class data structure.
  */
 
-import ARCHIVE_DATA from './archive-data.js';
-import { initHillClimb } from './hill-climb.js?v=2';
+import ARCHIVE_DATA from './archive-data.js?v=17';
+import { initGameOfLife } from './game-of-life.js';
 import {
   getBlogPosts,
   getResearchPosts,
@@ -270,7 +270,7 @@ class Content {
         }
       ],
       aboutMeta: "Building cool things to solve real-world problems",
-      location: `San Francisco | <a href="https://en.wikipedia.org/wiki/Hamilton,_Ontario" target="_blank" rel="noopener noreferrer" class="location-link" title="Hamilton, Ontario, Canada">Hamilton<sup class="location-icon"><svg viewBox="0 0 24 24" width="0.8em" height="0.8em" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></sup></a>`,
+      location: `San Francisco | Waterloo | <a href="https://en.wikipedia.org/wiki/Hamilton,_Ontario" target="_blank" rel="noopener noreferrer" class="location-link" title="Hamilton, Ontario, Canada">Hamilton<sup class="location-icon"><svg viewBox="0 0 24 24" width="0.8em" height="0.8em" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></sup></a>`,
       // Preserved for future archive section reintroduction.
       archiveData: ARCHIVE_DATA,
       press: [
@@ -314,16 +314,8 @@ class Content {
           url: "https://github.com/willcagas"
         },
         {
-          name: "Google Scholar",
-          url: "https://scholar.google.com/citations?user=IMaV4_kAAAAJ&hl"
-        },
-        {
           name: "Twitter",
           url: "https://x.com/williamcagas"
-        },
-        {
-          name: "Instagram",
-          url: "https://www.instagram.com/williamcagas"
         }
       ]
     };
@@ -389,14 +381,12 @@ class Content {
   /* ── Pages ── */
 
   renderHome() {
-    const socialOrder = ["Email", "GitHub", "Google Scholar", "LinkedIn", "Twitter", "Instagram"];
+    const socialOrder = ["Email", "GitHub", "LinkedIn", "Twitter"];
     const iconMap = {
       Email: "gmail",
       GitHub: "github",
-      "Google Scholar": "googlescholar",
       LinkedIn: "linkedin",
-      Twitter: "x",
-      Instagram: "instagram"
+      Twitter: "x"
     };
 
     const socialItems = socialOrder
@@ -431,24 +421,10 @@ class Content {
         <p class="location-text">${this.data.location}</p>
       </section>
 
-      <section class="panel panel-hill-climb page-content" aria-label="Hillclimbing visualization">
-        <p class="section-kicker">HILLCLIMBING</p>
-        <div class="hill-climb-frame">
-          <canvas id="hill-climb-canvas" aria-label="An agent hill-climbing a loss landscape toward the global optimum"></canvas>
-        </div>
-      </section>
-
       <section class="panel panel-socials page-content">
         <p class="section-kicker">LINKS</p>
         <div class="social-list">
           ${socialItems}
-        </div>
-        <div class="webring-widget" aria-label="SE '30 Webring">
-          <a href="https://se30webring.com?from=https://wcagas.com&dir=prev" aria-label="Previous site" style="text-decoration: none; color: #FFCE1A; font-size: 1.15rem; line-height: 1; display: flex; align-items: center;">←</a>
-          <a href="https://se30webring.com" target="_blank" rel="noopener noreferrer" aria-label="SE '30 Webring" style="text-decoration: none; display: flex; align-items: center;">
-            <img src="https://se30webring.com/assets/icon-yellow.svg" alt="SE '30 Webring" style="width: 22px; height: 22px;" />
-          </a>
-          <a href="https://se30webring.com?from=https://wcagas.com&dir=next" aria-label="Next site" style="text-decoration: none; color: #FFCE1A; font-size: 1.15rem; line-height: 1; display: flex; align-items: center;">→</a>
         </div>
       </section>
       ${this.renderFooter()}
@@ -505,20 +481,12 @@ class Content {
 
   renderWritings() {
     const blogItems = getBlogPosts().map((p) => this.renderWritingListItem(p)).join('');
-    const researchItems = getResearchPosts().map((p) => this.renderWritingListItem(p)).join('');
 
     return `
       <section class="panel page-content">
         <p class="section-kicker">BLOG</p>
         <div class="projects-list">
           ${blogItems || '<p class="blog-soon">No posts yet.</p>'}
-        </div>
-      </section>
-
-      <section class="panel page-content">
-        <p class="section-kicker">PAPERS</p>
-        <div class="projects-list">
-          ${researchItems || '<p class="blog-soon">No papers yet.</p>'}
         </div>
       </section>
       ${this.renderFooter()}
@@ -549,7 +517,9 @@ class Content {
     return `
       <article class="panel page-content blog-post blog-post-layout" data-blog-slug="${this.escapeHtml(post.slug)}">
         <div class="blog-post-main">
-          <a href="/writings" data-route class="blog-back">← Writings</a>
+          ${post.section === 'research'
+            ? '<a href="/projects" data-route class="blog-back">← Builds</a>'
+            : '<a href="/writings" data-route class="blog-back">← Writings</a>'}
           <header class="blog-post-header">
             <h1 class="blog-post-title">${this.escapeHtml(post.title)}</h1>
             <p class="blog-post-meta">
@@ -641,6 +611,8 @@ class Content {
       `)
       .join("");
 
+    const researchItems = getResearchPosts().map((p) => this.renderWritingListItem(p)).join('');
+
     return `
       <section class="panel panel-projects page-content">
         <p class="section-kicker">BUILDS</p>
@@ -648,6 +620,13 @@ class Content {
           <div class="projects-list">
             ${projectItems}
           </div>
+        </div>
+      </section>
+
+      <section class="panel page-content">
+        <p class="section-kicker">PAPERS</p>
+        <div class="projects-list">
+          ${researchItems || '<p class="blog-soon">No papers yet.</p>'}
         </div>
       </section>
       ${this.renderFooter()}
@@ -694,6 +673,27 @@ class Content {
       `
       : "";
 
+    // Favourites: a Letterboxd-style poster row per group (Shows, Movies, ...)
+    const favouriteGroups = (this.data.archiveData?.favourites ?? [])
+      .filter((group) => group.items.length > 0)
+      .map((group) => `
+        <div class="favourites-group">
+          <p class="subsection-title">${this.escapeHtml(group.title)}</p>
+          <div class="poster-grid${group.shape === "square" ? " poster-grid--square" : ""}">
+            ${group.items.map((item) => `
+              <a class="poster-item" href="${item.url}" target="_blank" rel="noopener noreferrer">
+                <div class="poster-frame">
+                  <img src="${item.poster}" alt="${this.escapeHtml(item.title)} poster" loading="lazy" decoding="async">
+                </div>
+                <p class="poster-title">${this.escapeHtml(item.title)}</p>
+                ${item.subtitle ? `<p class="poster-subtitle">${this.escapeHtml(item.subtitle)}</p>` : ""}
+              </a>
+            `).join("")}
+          </div>
+        </div>
+      `)
+      .join("");
+
     // Videos
     const videos = this.data.archiveData?.videos ?? [];
     const videoItems = videos.map((v) => {
@@ -712,14 +712,6 @@ class Content {
         </div>
       `;
     }).join("");
-
-    // Playlists
-    const playlists = this.data.archiveData?.playlists ?? [];
-    const playlistItems = playlists.map((p) => `
-      <div class="playlist-item">
-        <iframe style="border-radius:12px" src="${p.embedSrc}" width="100%" height="352" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
-      </div>
-    `).join("");
 
     return `
       <section class="panel panel-press page-content">
@@ -747,12 +739,10 @@ class Content {
       </section>
       ` : ""}
 
-      ${playlistItems ? `
-      <section class="panel panel-playlists page-content">
-        <p class="section-kicker">PLAYLISTS</p>
-        <div class="playlists-list">
-          ${playlistItems}
-        </div>
+      ${favouriteGroups ? `
+      <section class="panel panel-favourites page-content">
+        <p class="section-kicker">FAVOURITES</p>
+        ${favouriteGroups}
       </section>
       ` : ""}
       ${this.renderFooter()}
@@ -775,6 +765,9 @@ class App {
     if (!main) return;
 
     this.contentRoot = main.querySelector('#content-root');
+
+    // Site-wide background; lives outside the routed content so it keeps running across pages
+    initGameOfLife();
 
     // Insert header once (will be updated for active nav state)
     this.headerEl = document.createElement('div');
@@ -944,7 +937,6 @@ class App {
     // Re-init interactive features
     this.initMilestoneStats();
     this.initPhotoGalleryNav();
-    initHillClimb();
     this.initWritingPost();
   }
 
