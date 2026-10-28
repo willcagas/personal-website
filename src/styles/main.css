@@ -548,20 +548,20 @@ a:hover {
   color: var(--color-text);
 }
 
-/* Phones: a smaller card; the title takes the full line, and the arrow sits
-   at the right, beside the summary */
+/* Phones: the title runs across the top so it fits on one line; the smaller
+   card, the summary and the arrow sit in a row under it */
 @media (max-width: 640px) {
   .latest-row {
     display: grid;
     grid-template-columns: 88px minmax(0, 1fr) auto;
     column-gap: 12px;
-    row-gap: 2px;
+    row-gap: 8px;
     align-items: center;
   }
 
   .latest-thumb {
     grid-column: 1;
-    grid-row: 1 / span 2;
+    grid-row: 2;
     width: 88px;
   }
 
@@ -570,26 +570,25 @@ a:hover {
   }
 
   .latest-title {
-    grid-column: 2 / 4;
+    grid-column: 1 / -1;
     grid-row: 1;
-    align-self: end;
     font-size: 14.5px;
+    text-wrap: balance;
   }
 
   .latest-sub {
     grid-column: 2;
     grid-row: 2;
-    align-self: start;
     margin-top: 0;
     -webkit-line-clamp: 3;
     line-clamp: 3;
+    text-wrap: balance;
   }
 
-  /* Centred on the whole row (level with the card), a little in from the edge */
+  /* Level with the card, a little in from the edge */
   .latest-arrow {
     grid-column: 3;
-    grid-row: 1 / span 2;
-    align-self: center;
+    grid-row: 2;
     padding-left: 4px;
     margin-right: 8px;
   }

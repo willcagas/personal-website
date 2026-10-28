@@ -36,7 +36,7 @@ function renderOverview(overview) {
       </div>
       <div class="post-overview-text">
         <h2 class="post-overview-label" id="overview">Overview</h2>
-        <p>${escapeHtml(overview.text)}</p>
+        <p>${overview.text}</p>
       </div>
     </section>
   `;

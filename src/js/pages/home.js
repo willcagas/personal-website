@@ -23,7 +23,7 @@ function renderLatest() {
         <div class="latest-thumb">${renderTitleCard(post.hero, { controls: false, minimal: true })}</div>
         <div class="latest-text">
           <p class="latest-title">${keepParensTogether(escapeHtml(post.title))}</p>
-          ${post.summary ? `<p class="latest-sub">${escapeHtml(post.summary)}</p>` : ''}
+          ${post.summary ? `<p class="latest-sub">${keepParensTogether(escapeHtml(post.summary))}</p>` : ''}
         </div>
         <span class="latest-arrow" aria-hidden="true">→</span>
       </a>

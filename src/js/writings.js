@@ -13,17 +13,17 @@
  *   hero        { kind: "title-card", title, subtitle?, background?: "life" | "frontier" }
  *               an animated title card above the article (src/js/title-card.js)
  *   overview    { details: [{ label, value, note? }], text }
- *               a Details / Overview block under the hero
+ *               a Details / Overview block under the hero; `text` may contain HTML
  */
 
 const BLOG_POSTS = [
   {
     section: "blog",
     slug: "thesis-labs-internship",
-    title: "Six Months at Darwin (YC F25)",
+    title: "A Summer of Hillclimbing at Darwin (YC F25)",
     date: "2026-10",
     summary:
-      "My work, experiences, thoughts, and learnings during my internship.",
+      "My work, thoughts, and learnings during my internship at Darwin (YC F25).",
     file: "/content/blog/thesis-labs-internship.md",
     comingSoon: true,
     hero: { kind: "title-card", title: "Darwin", background: "frontier" },
@@ -34,7 +34,7 @@ const BLOG_POSTS = [
         { label: "Dates", value: "March – August 2026" }
       ],
       text:
-        "I spent six months at Thesis (YC F25), now Darwin, working on autonomous AI R&D systems for scientific discovery. My work was centered around Darwin Autoresearch, a hill‑climbing machine that searches a vast combinatorial space of ML experiments where every result steers the next and research compounds toward the frontier. Here, I talk about some of the projects I worked on, thoughts and experiences working my first paid internship, and learnings throughout."
+        "I spent six months at <a href=\"https://darwinrobotics.ai/\" target=\"_blank\" rel=\"noopener noreferrer\">Darwin</a>, formerly Thesis (YC F25), working on autonomous AI R&D systems. I started in March and then moved to SF in June to go full-time and on-site through August. Darwin has since moved into robotics and is backed by the cofounders of OpenAI, xAI, and YC. Here, I talk about some of the projects I worked on, thoughts and experiences during the internship, and learnings throughout."
     }
   },
   {
