@@ -46,7 +46,7 @@ export function renderHome() {
     <section class="panel panel-meta page-content">
       <p class="section-kicker">ABOUT</p>
       <div class="meta-section">
-        <p class="about-bio">I'm a Software Engineering student at the <a href="${university.url}" target="_blank" rel="noopener noreferrer">${university.name}</a> interested in applied ML, healthtech, agentic search, and evolutionary AI.</p>
+        <p class="about-bio">I'm a Software Engineering student at the <a href="${university.url}" target="_blank" rel="noopener noreferrer">${university.name}</a> interested in applied ML, healthtech, agentic AI, evolutionary search, and full-stack development.</p>
         <p class="about-bio">Previously, I was a Member of Technical Staff (Intern) at ${darwinLink()} (formerly Thesis) in San Francisco, working on autonomous AI R&D systems for scientific discovery.</p>
       </div>
     </section>
