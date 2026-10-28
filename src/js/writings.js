@@ -14,6 +14,9 @@
  *               an animated title card above the article (src/js/title-card.js)
  *   overview    { details: [{ label, value, note? }], text }
  *               a Details / Overview block under the hero; `text` may contain HTML
+ *
+ * Research posts are papers' project pages; they're listed under Builds and
+ * live at /projects/<slug>.
  */
 
 const BLOG_POSTS = [
@@ -119,6 +122,11 @@ export function showsFullText(post) {
 
 export function getWriting(slug) {
   return visible(ALL_POSTS).find((p) => p.slug === slug) || null;
+}
+
+/** A post's address: papers under Builds, everything else under Writings. */
+export function postPath(post) {
+  return `${post.section === "research" ? "/projects" : "/writings"}/${post.slug}`;
 }
 
 /** Fetch markdown body for a writing (cached). */

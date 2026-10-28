@@ -1,7 +1,7 @@
 /** Markup shared across pages: escaping, dates, the header, post rows and title cards. */
 
 import { SITE } from '../site-data.js';
-import { showsFullText } from '../writings.js';
+import { postPath, showsFullText } from '../writings.js';
 
 const NAV = [
   { label: 'Home', path: '/' },
@@ -78,7 +78,7 @@ export function renderPostListItem(post) {
   return `
     <article class="project-item writing-list-item">
       <div class="writing-list-header">
-        <p class="project-title"><a href="/writings/${post.slug}" data-route>${escapeHtml(post.title)}</a></p>
+        <p class="project-title"><a href="${postPath(post)}" data-route>${escapeHtml(post.title)}</a></p>
         ${when}
       </div>
       ${post.summary ? `<p class="project-detail">${escapeHtml(post.summary)}</p>` : ''}

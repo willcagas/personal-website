@@ -19,6 +19,9 @@ import { renderWork } from './pages/work.js';
 import { renderProjects } from './pages/projects.js';
 import { renderArchive } from './pages/archive.js';
 import { renderWritings, renderWritingPost } from './pages/writings.js';
+import { getWriting, postPath } from './writings.js';
+
+const POST_PATH = /^\/(?:projects|writings|blog)\/([^/]+)\/?$/;
 
 /** A /prefix/:slug route. */
 const postRoute = (prefix) => ({
@@ -30,6 +33,7 @@ const ROUTES = [
   { path: '/', render: renderHome },
   { path: '/work', render: renderWork },
   { path: '/projects', render: renderProjects },
+  postRoute('/projects'),
   { path: '/archive', render: renderArchive },
   { path: '/writings', render: renderWritings },
   postRoute('/writings'),
@@ -52,6 +56,14 @@ function init() {
   main.insertBefore(header, main.firstChild);
 
   const router = new Router(ROUTES, (route, path) => {
+    // A post opened at another section's address (an old /writings/<paper> link) moves to its own
+    const post = getWriting(path.match(POST_PATH)?.[1]);
+    if (post && postPath(post) !== path.replace(/\/$/, '')) {
+      path = postPath(post);
+      history.replaceState(null, '', path + location.hash);
+      route = router.match(path);
+    }
+
     header.innerHTML = renderNav(path);
 
     root.classList.remove('page-fade-in');
