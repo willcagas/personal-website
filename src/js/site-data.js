@@ -74,25 +74,34 @@ export const SITE = {
       outlet: 'UW Imprint',
       url: 'https://uwimprint.ca/first-year-engineering-students-launch-goose-trials-a-competitive-game-platform/',
       title: 'First-year engineering students launch Goose Trials, a competitive game platform',
-      date: 'Jan. 2026'
+      date: 'Jan. 2026',
+      // Our own launch photo: the Imprint's site blocks fetching theirs
+      image: '/assets/pictures/goosetrials-launch.jpg',
+      imagePosition: '60% 40%'
     },
     {
       outlet: 'Global News',
       url: 'https://globalnews.ca/video/11330376/hamilton-teen-develops-app-to-detect-diagnose-acne/',
       title: 'Hamilton teen develops app to detect, diagnose acne',
-      date: 'Aug. 2025'
+      date: 'Aug. 2025',
+      image: '/assets/press/global-news.jpg'
     },
     {
       outlet: 'HWCDSB',
       url: 'https://www.hwcdsb.ca/news/2024-2025/hammer_hacks_empowers_hamilton_youth_in_s_t_e_m',
       title: 'HammerHacks Empowers Hamilton Youth in STEM',
-      date: 'Jan. 2025'
+      date: 'Jan. 2025',
+      image: '/assets/press/hammerhacks.jpg',
+      imagePosition: '50% 30%'
     },
     {
       outlet: 'The Hamilton Spectator',
       url: 'https://www.thespec.com/news/hamilton-region/hamilton-high-schooler-uses-tech-to-solve-problems-from-gaps-in-medical-data-to-teen/article_35dcda17-4b96-5079-90d5-84625c65f254.html',
       title: 'Hamilton high schooler uses tech to solve problems, from gaps in medical data to teen acne',
-      date: 'Jan. 2025'
+      date: 'Jan. 2025',
+      lead: true,
+      image: '/assets/press/spectator.jpg',
+      imagePosition: '50% 35%'
     }
   ]
 };

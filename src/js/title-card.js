@@ -387,7 +387,7 @@ const BACKGROUNDS = { life: createLife, frontier: createFrontier };
 
 /* ───────────── Mounting ───────────── */
 
-let activeInstance = null;
+let activeInstances = [];
 
 class TitleCard {
   constructor(root) {
@@ -487,15 +487,10 @@ export function createTitleCard(root) {
 }
 
 /**
- * Mount (or remount) the title card on the current page.
- * Safe to call on every navigation; cleans up the previous instance.
+ * Mount the title cards on the current page: a post's hero, or one per post on the Writings list.
+ * Safe to call on every navigation; cleans up the previous page's cards.
  */
-export function initTitleCard() {
-  if (activeInstance) {
-    activeInstance.destroy();
-    activeInstance = null;
-  }
-  const root = document.querySelector('[data-title-card]');
-  if (!root) return;
-  activeInstance = new TitleCard(root);
+export function initTitleCards(root) {
+  activeInstances.forEach((card) => card.destroy());
+  activeInstances = [...root.querySelectorAll('[data-title-card]')].map((el) => new TitleCard(el));
 }

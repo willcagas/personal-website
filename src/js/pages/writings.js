@@ -1,15 +1,31 @@
 import { SITE } from '../site-data.js';
-import { getBlogPosts, getWriting, showsFullText } from '../writings.js';
-import { escapeHtml, keepParensTogether, formatPostDate, renderPostListItem, renderTitleCard } from './shared.js';
+import { getBlogPosts, getWriting, showsFullText, postPath } from '../writings.js';
+import { escapeHtml, keepParensTogether, formatPostDate, formatListDate, renderTitleCard } from './shared.js';
+
+/** A post as a card: its live title card (or a plain dotted panel), then the date, title and summary. */
+function renderPostCard(post) {
+  const when = post.comingSoon
+    ? `<span class="writing-card-soon">Coming soon</span>${showsFullText(post) ? '<span class="writing-card-date">local preview</span>' : ''}`
+    : `<time class="writing-card-date" datetime="${post.date}">${formatListDate(post.date)}</time>`;
+  const art = post.hero?.kind === 'title-card'
+    ? renderTitleCard(post.hero, { controls: false })
+    : '<span class="writing-card-blank" aria-hidden="true"></span>';
+  return `
+    <a class="writing-card" href="${postPath(post)}" data-route>
+      ${art}
+      <span class="writing-card-meta">${when}</span>
+      <span class="writing-card-title" title="${escapeHtml(post.title)}">${keepParensTogether(escapeHtml(post.title))}</span>
+      ${post.summary ? `<span class="writing-card-summary">${keepParensTogether(escapeHtml(post.summary))}</span>` : ''}
+    </a>
+  `;
+}
 
 export function renderWritings() {
-  const posts = getBlogPosts().map(renderPostListItem).join('');
+  const posts = getBlogPosts().map(renderPostCard).join('');
   return `
     <section class="panel page-content">
       <p class="section-kicker">BLOG</p>
-      <div class="projects-list">
-        ${posts || '<p class="blog-soon">No posts yet.</p>'}
-      </div>
+      ${posts ? `<div class="writing-cards">${posts}</div>` : '<p class="blog-soon">No posts yet.</p>'}
     </section>
   `;
 }

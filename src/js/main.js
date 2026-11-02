@@ -8,12 +8,13 @@ import { Router } from './router.js';
 import { initGameOfLife } from './game-of-life.js';
 import { initRangeFooter } from './range-footer.js';
 import { initFlyingGeese } from './flying-geese.js';
-import { initTitleCard } from './title-card.js';
+import { initTitleCards } from './title-card.js';
 import { mountArticleFigures } from './article-figures.js';
 import { initPostPage } from './post-page.js';
 import { initPhotoCarousel } from './photo-carousel.js';
 import { initPostPreviews } from './post-preview.js';
 import { initCoverFollow } from './cover-follow.js';
+import { initVideoLightbox } from './video-lightbox.js';
 import { renderNav } from './pages/shared.js';
 import { renderHome } from './pages/home.js';
 import { renderWork } from './pages/work.js';
@@ -76,9 +77,10 @@ function init() {
     if (!location.hash) window.scrollTo(0, 0);
 
     initPhotoCarousel(root);
-    initTitleCard();
+    initTitleCards(root);
     initPostPreviews(root);
     initCoverFollow(root);
+    initVideoLightbox(root);
     mountArticleFigures(null);
     initPostPage(root);
   });

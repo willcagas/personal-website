@@ -170,13 +170,15 @@ const ARCHIVE_DATA = {
       title: "Global News Interview",
       type: "iframe",
       embedSrc: "https://globalnews.ca/video/embed/11330376/",
-      caption: "Global News interview about AcneCura"
+      caption: "Global News interview about AcneCura",
+      thumbnail: "/assets/press/global-news.jpg"
     },
     {
       title: "HammerHacks Recap",
       type: "youtube",
       videoId: "Jb-2RpDonEs",
-      caption: "HammerHacks recap video"
+      caption: "HammerHacks recap video",
+      thumbnail: "/assets/videos/hammerhacks-recap.jpg"
     }
   ]
 };

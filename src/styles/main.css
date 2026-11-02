@@ -223,6 +223,108 @@ a:hover {
   white-space: nowrap;
 }
 
+/* Writings: a card per post, its live title card on top, two across */
+.writing-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px 20px;
+}
+
+.writing-card {
+  display: block;
+  border-bottom: none;
+  color: inherit;
+}
+
+.writing-card:hover {
+  opacity: 1;
+}
+
+.writing-card .title-card,
+.writing-card-blank {
+  border-radius: 9px;
+  transition: box-shadow 0.15s ease;
+}
+
+.writing-card .title-card-word {
+  font-size: 34px;
+}
+
+.writing-card:hover .title-card,
+.writing-card:hover .writing-card-blank,
+.writing-card:focus-visible .title-card,
+.writing-card:focus-visible .writing-card-blank {
+  box-shadow: 0 0 0 2px var(--color-text);
+}
+
+.writing-card:focus-visible {
+  outline: none;
+}
+
+/* For a post with no title card */
+.writing-card-blank {
+  display: block;
+  aspect-ratio: 16 / 9;
+  background-color: #ece6da;
+  background-image: radial-gradient(rgba(28, 25, 23, 0.12) 1px, transparent 1.2px);
+  background-size: 8px 8px;
+}
+
+.writing-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 11px;
+}
+
+.writing-card-soon {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--color-text);
+  font: 500 10.5px/1.6 var(--font-family-sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--color-bg);
+}
+
+.writing-card-date {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+/* One line: sized so the Darwin title fits a half-width card, and a longer title ends in "…" rather than wrapping */
+.writing-card-title {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--color-text);
+}
+
+.writing-card-summary {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--font-size-small);
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+/* Phones: one card across. The title fits on one line at normal phone widths, and wraps on very narrow ones instead of being cut off */
+@media (max-width: 640px) {
+  .writing-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .writing-card-title {
+    white-space: normal;
+  }
+}
+
 /* Blog post */
 .blog-post-layout {
   display: grid;
@@ -1012,34 +1114,118 @@ a:hover {
   line-height: var(--line-height);
 }
 
-/* Press: outlet + date, full title on hover */
-.press-list {
+/* Press: a small newspaper front page. The lead story sits large on the left, the rest run down the side. */
+.press-front {
+  padding: 10px 0 14px;
+  border-top: 3px solid var(--color-text);
+  border-bottom: 1px solid var(--color-text);
+}
+
+.press-front-mast {
+  font: 600 30px/1 "Newsreader", Georgia, serif;
+  text-align: center;
+  color: var(--color-text);
+}
+
+.press-front-dateline {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0 14px;
+  padding: 4px 0;
+  border-top: 1px solid var(--color-text);
+  border-bottom: 1px solid var(--color-text);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.press-front-grid {
+  display: grid;
+  grid-template-columns: 1.65fr 1fr;
+  gap: 0 20px;
+}
+
+.press-front-side {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.press-item {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   gap: 12px;
-  padding: 6px 0;
+  padding-left: 20px;
+  border-left: 1px solid var(--color-border);
 }
 
-.press-outlet {
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+.press-front-story {
+  display: block;
+  border-bottom: none;
   color: var(--color-text);
-  line-height: var(--line-height);
 }
 
-.press-date {
-  flex-shrink: 0;
-  font-size: var(--font-size-base);
-  font-weight: 400;
+.press-front-story:hover {
+  opacity: 1;
+}
+
+.press-front-side .press-front-story + .press-front-story {
+  padding-top: 4px;
+  border-top: 1px solid var(--color-border);
+}
+
+.press-front-photo {
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+}
+
+.press-front-photo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.press-front-kicker {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--color-text-secondary);
+}
+
+.press-front-title {
+  display: block;
+  margin-top: 2px;
+  font: 600 16px/1.18 "Newsreader", Georgia, serif;
+}
+
+.press-front-lead .press-front-title {
+  margin-top: 3px;
+  font-size: 25px;
+  line-height: 1.1;
+}
+
+.press-front-story:hover .press-front-title {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+/* Phones: one column, the side stories under the lead */
+@media (max-width: 640px) {
+  .press-front-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .press-front-side {
+    margin-top: 14px;
+    padding: 12px 0 0;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .press-front-lead .press-front-title {
+    font-size: 22px;
+  }
 }
 
 /* Photos: arrow navigation, infinite wrap (JS translate) */
@@ -1295,41 +1481,184 @@ a:hover {
   margin-bottom: 6px;
 }
 
-/* Videos */
-.videos-list {
+/* Videos: thumbnails with a play button; the player opens in a pop-up (src/js/video-lightbox.js) */
+.video-thumbs {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start; /* a stretched button centres its contents, which knocks the thumbnails out of line */
   gap: 16px;
 }
 
-.video-item {
+.video-thumb {
+  display: block;
   width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.video-frame {
+.video-thumb-frame {
   position: relative;
-  width: 100%;
-  padding-bottom: 56.25%;
-  border-radius: 4px;
+  display: block;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
-  border: 1px solid var(--color-border);
+  border-radius: 4px;
   background-color: var(--color-border);
+  transition: box-shadow 0.15s ease;
 }
 
-.video-iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
+.video-thumb-frame img {
   width: 100%;
   height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
-.video-caption {
+.video-thumb:hover .video-thumb-frame {
+  box-shadow: 0 0 0 2px var(--color-text);
+}
+
+.video-thumb:focus-visible {
+  outline: none;
+}
+
+.video-thumb:focus-visible .video-thumb-frame {
+  box-shadow: 0 0 0 2px var(--color-text);
+}
+
+.video-thumb-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 54px;
+  height: 54px;
+  margin: -27px 0 0 -27px;
+  border-radius: 50%;
+  background: rgba(253, 250, 246, 0.92);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
+}
+
+/* The triangle */
+.video-thumb-play::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -9px 0 0 -5px;
+  border-style: solid;
+  border-width: 9px 0 9px 15px;
+  border-color: transparent transparent transparent #1c1917;
+}
+
+.video-thumb:hover .video-thumb-play {
+  transform: scale(1.08);
+}
+
+.video-thumb-caption {
+  display: block;
   margin-top: 6px;
   font-size: var(--font-size-small);
-  color: var(--color-text-secondary);
-  text-align: left;
   line-height: var(--line-height);
+  color: var(--color-text-secondary);
+}
+
+.has-video-lightbox {
+  overflow: hidden;
+}
+
+.video-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(28, 25, 23, 0.72);
+  animation: video-lightbox-in 0.16s ease-out;
+}
+
+@keyframes video-lightbox-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.video-lightbox-box {
+  position: relative;
+  width: min(880px, 100%);
+}
+
+.video-lightbox-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #111;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+.video-lightbox-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.video-lightbox-close {
+  position: absolute;
+  top: -44px;
+  right: -8px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 28px;
+  line-height: 1;
+  color: #fdfaf6;
+  cursor: pointer;
+}
+
+.video-lightbox-close:focus-visible {
+  outline: 2px solid #fdfaf6;
+  border-radius: 4px;
+}
+
+.video-lightbox-caption {
+  margin-top: 10px;
+  font-size: var(--font-size-small);
+  color: #e7e2da;
+}
+
+/* Phones: two across like the photos, with a smaller play button */
+@media (max-width: 640px) {
+  .video-thumbs {
+    gap: 12px;
+  }
+
+  .video-thumb-play {
+    width: 40px;
+    height: 40px;
+    margin: -20px 0 0 -20px;
+  }
+
+  .video-thumb-play::before {
+    margin: -7px 0 0 -4px;
+    border-width: 7px 0 7px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video-lightbox {
+    animation: none;
+  }
 }
 
 /* Social links, side by side */
@@ -1462,14 +1791,8 @@ a:hover {
     margin: 0;
   }
 
-  .videos-list {
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
-
   .work-title,
-.project-title,
-.press-outlet {
+.project-title {
     font-size: 0.84rem;
   }
 
