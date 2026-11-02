@@ -99,7 +99,6 @@ export const SITE = {
       url: 'https://www.thespec.com/news/hamilton-region/hamilton-high-schooler-uses-tech-to-solve-problems-from-gaps-in-medical-data-to-teen/article_35dcda17-4b96-5079-90d5-84625c65f254.html',
       title: 'Hamilton high schooler uses tech to solve problems, from gaps in medical data to teen acne',
       date: 'Jan. 2025',
-      lead: true,
       image: '/assets/press/spectator.jpg',
       imagePosition: '50% 35%'
     }

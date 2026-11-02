@@ -180,6 +180,87 @@ const ARCHIVE_DATA = {
       caption: "HammerHacks recap video",
       thumbnail: "/assets/videos/hammerhacks-recap.jpg"
     }
+  ],
+  // Places I've been, by country. `home` marks the home region; `map` is the
+  // country's name in the map data when it differs (Vatican City is too small to be in it).
+  places: [
+    {
+      country: "Canada",
+      continent: "North America",
+      home: true,
+      cities: [
+        { name: "Hamilton", lat: 43.2557, lon: -79.8711 },
+        { name: "Waterloo", lat: 43.4643, lon: -80.5204 },
+        { name: "Toronto", lat: 43.6532, lon: -79.3832 }
+      ]
+    },
+    {
+      country: "United States",
+      map: "United States of America",
+      continent: "North America",
+      cities: [
+        { name: "New York City", lat: 40.7128, lon: -74.006 },
+        { name: "Buffalo", lat: 42.8864, lon: -78.8784 },
+        { name: "Pittsburgh", lat: 40.4406, lon: -79.9959 },
+        { name: "Chicago", lat: 41.8781, lon: -87.6298 },
+        { name: "Orlando", lat: 28.5384, lon: -81.3789 },
+        { name: "Las Vegas", lat: 36.1699, lon: -115.1398 },
+        { name: "Los Angeles", lat: 34.0522, lon: -118.2437 },
+        { name: "San Francisco", lat: 37.7749, lon: -122.4194 },
+        { name: "Honolulu", lat: 21.3069, lon: -157.8583 }
+      ]
+    },
+    {
+      country: "United Kingdom",
+      continent: "Europe",
+      cities: [{ name: "London", lat: 51.5074, lon: -0.1278 }]
+    },
+    {
+      country: "France",
+      continent: "Europe",
+      cities: [{ name: "Paris", lat: 48.8566, lon: 2.3522 }]
+    },
+    {
+      country: "Italy",
+      continent: "Europe",
+      cities: [
+        { name: "Rome", lat: 41.9028, lon: 12.4964 },
+        { name: "Florence", lat: 43.7696, lon: 11.2558 },
+        { name: "Pisa", lat: 43.7228, lon: 10.4017 },
+        { name: "Venice", lat: 45.4408, lon: 12.3155 },
+        { name: "Milan", lat: 45.4642, lon: 9.19 }
+      ]
+    },
+    {
+      country: "Vatican City",
+      continent: "Europe",
+      cities: [{ name: "Vatican City", lat: 41.9029, lon: 12.4534 }]
+    },
+    {
+      country: "Japan",
+      continent: "Asia",
+      cities: [{ name: "Narita", lat: 35.7765, lon: 140.3189 }]
+    },
+    {
+      country: "South Korea",
+      continent: "Asia",
+      cities: [{ name: "Seoul", lat: 37.5665, lon: 126.978 }]
+    },
+    {
+      country: "Philippines",
+      continent: "Asia",
+      cities: [
+        { name: "Manila", lat: 14.5995, lon: 120.9842 },
+        { name: "Cebu", lat: 10.3157, lon: 123.8854 },
+        { name: "Surigao", lat: 9.7843, lon: 125.4888 },
+        { name: "Siargao", lat: 9.8482, lon: 126.0458 }
+      ]
+    },
+    {
+      country: "Vietnam",
+      continent: "Asia",
+      cities: [{ name: "Hanoi", lat: 21.0278, lon: 105.8342 }]
+    }
   ]
 };
 

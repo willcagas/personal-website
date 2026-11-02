@@ -15,6 +15,7 @@ import { initPhotoCarousel } from './photo-carousel.js';
 import { initPostPreviews } from './post-preview.js';
 import { initCoverFollow } from './cover-follow.js';
 import { initVideoLightbox } from './video-lightbox.js';
+import { initPlacesMap } from './places-map.js';
 import { renderNav } from './pages/shared.js';
 import { renderHome } from './pages/home.js';
 import { renderWork } from './pages/work.js';
@@ -81,6 +82,7 @@ function init() {
     initPostPreviews(root);
     initCoverFollow(root);
     initVideoLightbox(root);
+    initPlacesMap(root);
     mountArticleFigures(null);
     initPostPage(root);
   });

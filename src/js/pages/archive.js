@@ -2,41 +2,24 @@ import { SITE } from '../site-data.js';
 import ARCHIVE from '../archive-data.js';
 import { escapeHtml } from './shared.js';
 
-// Where the stories come from, for the line under the masthead
-const PRESS_DATELINE = 'Hamilton · Waterloo';
-
-/** A small newspaper front page: the lead story large on the left, the rest down the side, the first of those with its photo. */
+/** Press: a row per story with its photo, the outlet and headline, then the date. */
 function renderPress(stories) {
-  if (!stories.length) return '';
-  const lead = stories.find((s) => s.lead) || stories[0];
-  const rest = stories.filter((s) => s !== lead);
-  const years = stories.map((s) => Number(s.date?.match(/\d{4}/)?.[0])).filter(Boolean);
-  const span = [...new Set([Math.min(...years), Math.max(...years)])].filter(Number.isFinite).join('–');
-  const photo = ({ image, imagePosition }) => (image ? `
-    <span class="press-front-photo">
-      <img src="${image}" alt="" loading="lazy" decoding="async"${imagePosition ? ` style="object-position: ${imagePosition};"` : ''}>
-    </span>` : '');
-  const story = (s, withPhoto) => `
-    <a class="press-front-story" href="${s.url}" target="_blank" rel="noopener noreferrer">
-      ${withPhoto ? photo(s) : ''}
-      <span class="press-front-kicker">${escapeHtml(s.outlet)}${s.date ? ` · ${s.date}` : ''}</span>
-      <span class="press-front-title">${escapeHtml(s.title)}</span>
+  if (!stories?.length) return '';
+  const rows = stories.map(({ outlet, url, title, date, image, imagePosition }) => `
+    <a class="press-row" href="${url}" target="_blank" rel="noopener noreferrer">
+      <span class="press-row-photo">${image ? `<img src="${image}" alt="" loading="lazy" decoding="async"${imagePosition ? ` style="object-position: ${imagePosition};"` : ''}>` : ''}</span>
+      <span class="press-row-text">
+        <span class="press-row-outlet">${escapeHtml(outlet)}</span>
+        <span class="press-row-title">${escapeHtml(title)}</span>
+      </span>
+      ${date ? `<span class="press-row-date">${date}</span>` : ''}
     </a>
-  `;
+  `).join('');
   return `
     <section class="panel panel-press page-content">
       <p class="section-kicker">PRESS</p>
-      <div class="press-front">
-        <p class="press-front-mast">In the Press</p>
-        <p class="press-front-dateline">
-          <span>${stories.length} ${stories.length === 1 ? 'story' : 'stories'}</span>
-          <span>${PRESS_DATELINE}</span>
-          <span>${span}</span>
-        </p>
-        <div class="press-front-grid">
-          <div class="press-front-lead">${story(lead, true)}</div>
-          ${rest.length ? `<div class="press-front-side">${rest.map((s, i) => story(s, i === 0)).join('')}</div>` : ''}
-        </div>
+      <div class="press-rows">
+        ${rows}
       </div>
     </section>
   `;
@@ -44,7 +27,7 @@ function renderPress(stories) {
 
 /** The carousel's markup; src/js/photo-carousel.js makes it scroll. */
 function renderPhotos(photos) {
-  if (!photos.length) return '';
+  if (!photos?.length) return '';
   const slides = photos.map(({ image, caption, objectPosition }) => `
     <figure class="photo-carousel-item">
       <div class="photo-carousel-frame">
@@ -54,8 +37,6 @@ function renderPhotos(photos) {
     </figure>
   `).join('');
   return `
-    <section class="panel panel-photos page-content">
-      <p class="section-kicker">PHOTOS</p>
       <div class="photo-carousel">
         <div class="photo-carousel-nav" role="group" aria-label="Photo gallery">
           <button type="button" class="photo-nav photo-nav-prev" aria-label="Previous photo"><span class="photo-nav-icon" aria-hidden="true">‹</span></button>
@@ -67,13 +48,12 @@ function renderPhotos(photos) {
           <button type="button" class="photo-nav photo-nav-next" aria-label="Next photo"><span class="photo-nav-icon" aria-hidden="true">›</span></button>
         </div>
       </div>
-    </section>
   `;
 }
 
 /** Video thumbnails; src/js/video-lightbox.js plays one in a pop-up when it's clicked, so no player loads until then. */
 function renderVideos(videos) {
-  if (!videos.length) return '';
+  if (!videos?.length) return '';
   const items = videos.map(({ type, title, videoId, embedSrc, caption, thumbnail }) => {
     const src = type === 'youtube' ? `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0` : embedSrc;
     return `
@@ -87,11 +67,55 @@ function renderVideos(videos) {
     `;
   }).join('');
   return `
-    <section class="panel panel-videos page-content">
-      <p class="section-kicker">VIDEOS</p>
       <div class="video-thumbs">
         ${items}
       </div>
+  `;
+}
+
+/** Photos and videos under one heading: the photo carousel, then the videos. */
+function renderMedia(photos, videos) {
+  const media = renderPhotos(photos) + renderVideos(videos);
+  if (!media.trim()) return '';
+  return `
+    <section class="panel panel-media page-content">
+      <p class="section-kicker">MEDIA</p>
+      ${media}
+    </section>
+  `;
+}
+
+/**
+ * Where I've been: a dot map (src/js/places-map.js draws it), then a chip per country.
+ * Hovering or focusing a chip picks out that country's pins and names its cities, which
+ * are also in the chip's label for screen readers.
+ */
+function renderPlaces(places) {
+  if (!places?.length) return '';
+  const cityCount = places.reduce((n, p) => n + p.cities.length, 0);
+  const continents = [...new Set(places.map((p) => p.continent))];
+  // A city-state (Vatican City) is listed once, not as "Vatican City: Vatican City"
+  const label = (p) => (p.cities.length === 1 && p.cities[0].name === p.country ? p.country : `${p.country}: ${p.cities.map((c) => c.name).join(', ')}`);
+  const chips = places.map((p, i) => `
+    <button type="button" class="places-country" data-country="${i}" aria-label="${escapeHtml(label(p))}">
+      ${escapeHtml(p.country)}${p.cities.length > 1 ? `<span class="places-country-count" aria-hidden="true">${p.cities.length}</span>` : ''}
+    </button>
+  `).join('');
+  return `
+    <section class="panel panel-places page-content">
+      <p class="section-kicker">TRAVELS</p>
+      <div class="places-map" data-places-map>
+        <canvas aria-hidden="true"></canvas>
+        <p class="places-tip" aria-hidden="true"></p>
+      </div>
+      <p class="places-stats">
+        <span><b>${cityCount}</b> cities</span>
+        <span><b>${places.length}</b> countries</span>
+        <span><b>${continents.length}</b> continents</span>
+        <span class="places-key places-key--home">Home</span>
+        <span class="places-key">Visited</span>
+      </p>
+      <div class="places-countries">${chips}</div>
     </section>
   `;
 }
@@ -122,9 +146,9 @@ function renderFavourites(groups) {
 
 export function renderArchive() {
   return `
-    ${renderFavourites(ARCHIVE.favourites)}
-    ${renderPhotos(ARCHIVE.photos)}
-    ${renderVideos(ARCHIVE.videos)}
     ${renderPress(SITE.press)}
+    ${renderMedia(ARCHIVE.photos, ARCHIVE.videos)}
+    ${renderFavourites(ARCHIVE.favourites)}
+    ${renderPlaces(ARCHIVE.places)}
   `;
 }

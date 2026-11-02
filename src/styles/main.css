@@ -1030,9 +1030,10 @@ a:hover {
   margin-bottom: 42px;
 }
 
-/* Offset for the flex-track overhang in the photo carousel */
-.panel.panel-photos {
-  margin-bottom: 24px;
+/* Photos and videos share the Media section: the videos sit just under the carousel,
+   whose height already leaves room for its longest (three-line) caption */
+.panel-media .video-thumbs {
+  margin-top: 8px;
 }
 
 .section-kicker {
@@ -1114,117 +1115,92 @@ a:hover {
   line-height: var(--line-height);
 }
 
-/* Press: a small newspaper front page. The lead story sits large on the left, the rest run down the side. */
-.press-front {
-  padding: 10px 0 14px;
-  border-top: 3px solid var(--color-text);
-  border-bottom: 1px solid var(--color-text);
-}
-
-.press-front-mast {
-  font: 600 30px/1 "Newsreader", Georgia, serif;
-  text-align: center;
-  color: var(--color-text);
-}
-
-.press-front-dateline {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 8px 0 14px;
-  padding: 4px 0;
-  border-top: 1px solid var(--color-text);
-  border-bottom: 1px solid var(--color-text);
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
-}
-
-.press-front-grid {
+/* Press: a row per story with its photo, the outlet and headline, then the date */
+.press-row {
   display: grid;
-  grid-template-columns: 1.65fr 1fr;
-  gap: 0 20px;
-}
-
-.press-front-side {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding-left: 20px;
-  border-left: 1px solid var(--color-border);
-}
-
-.press-front-story {
-  display: block;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--color-border);
   border-bottom: none;
   color: var(--color-text);
 }
 
-.press-front-story:hover {
+.press-row:last-child {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.press-row:hover {
   opacity: 1;
 }
 
-.press-front-side .press-front-story + .press-front-story {
-  padding-top: 4px;
-  border-top: 1px solid var(--color-border);
+.press-row:focus-visible {
+  outline: none;
 }
 
-.press-front-photo {
+.press-row-photo {
   display: block;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
+  border-radius: 4px;
+  background: var(--color-border);
+  transition: box-shadow 0.15s ease;
 }
 
-.press-front-photo img {
+.press-row-photo img {
   width: 100%;
   height: 100%;
   display: block;
   object-fit: cover;
 }
 
-.press-front-kicker {
+.press-row:hover .press-row-photo,
+.press-row:focus-visible .press-row-photo {
+  box-shadow: 0 0 0 2px var(--color-text);
+}
+
+.press-row-text {
+  min-width: 0;
+}
+
+.press-row-outlet {
   display: block;
-  margin-top: 8px;
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-secondary);
 }
 
-.press-front-title {
+.press-row-title {
   display: block;
   margin-top: 2px;
-  font: 600 16px/1.18 "Newsreader", Georgia, serif;
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.3;
 }
 
-.press-front-lead .press-front-title {
-  margin-top: 3px;
-  font-size: 25px;
-  line-height: 1.1;
+.press-row-date {
+  font-size: 12.5px;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
 }
 
-.press-front-story:hover .press-front-title {
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
-}
-
-/* Phones: one column, the side stories under the lead */
+/* Phones: the date moves under the headline */
 @media (max-width: 640px) {
-  .press-front-grid {
-    grid-template-columns: minmax(0, 1fr);
+  .press-row {
+    grid-template-columns: 88px minmax(0, 1fr);
+    align-items: start;
+    row-gap: 2px;
   }
 
-  .press-front-side {
-    margin-top: 14px;
-    padding: 12px 0 0;
-    border-left: none;
-    border-top: 1px solid var(--color-border);
+  .press-row-photo {
+    grid-row: 1 / span 2;
+    align-self: center;
   }
 
-  .press-front-lead .press-front-title {
-    font-size: 22px;
+  .press-row-date {
+    grid-column: 2;
   }
 }
 
@@ -1479,6 +1455,121 @@ a:hover {
 
 .about-bio:last-of-type {
   margin-bottom: 6px;
+}
+
+/* Places: a dot map of where I've been (src/js/places-map.js), then the list by continent */
+.places-map {
+  position: relative;
+}
+
+/* The map's shape, held before the dots load so the page doesn't jump */
+.places-map canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 360 / 142;
+}
+
+.places-tip {
+  position: absolute;
+  z-index: 2;
+  padding: 3px 7px;
+  border-radius: 3px;
+  background: var(--color-text);
+  font-size: 11.5px;
+  line-height: 1.3;
+  white-space: nowrap;
+  color: var(--color-bg);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, calc(-100% - 10px));
+  transition: opacity 0.12s ease;
+}
+
+.places-tip.is-open {
+  opacity: 1;
+}
+
+.places-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 18px;
+  margin-top: 12px;
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+}
+
+.places-stats b {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* The pin colours, as a key */
+.places-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.places-key:first-of-type {
+  margin-left: auto;
+}
+
+.places-key::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e0a43a;
+}
+
+.places-key--home::before {
+  background: var(--color-text);
+}
+
+/* A chip per country; hovering one picks out its pins on the map */
+.places-countries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.places-country {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: none;
+  font: inherit;
+  font-size: var(--font-size-small);
+  line-height: 1.3;
+  color: var(--color-text-secondary);
+  cursor: default;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.places-country-count {
+  font-size: 11.5px;
+  color: #b8b0a3;
+}
+
+.places-country:hover,
+.places-country:focus-visible,
+.places-country.is-on {
+  border-color: var(--color-text);
+  color: var(--color-text);
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  .places-key:first-of-type {
+    margin-left: 0;
+  }
 }
 
 /* Videos: thumbnails with a play button; the player opens in a pop-up (src/js/video-lightbox.js) */
@@ -1779,8 +1870,8 @@ a:hover {
     margin-bottom: 32px;
   }
 
-  .panel.panel-photos {
-    margin-bottom: 14px;
+  .panel-media .video-thumbs {
+    margin-top: 6px;
   }
 
   .projects-layout {
