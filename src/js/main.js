@@ -13,6 +13,7 @@ import { mountArticleFigures } from './article-figures.js';
 import { initPostPage } from './post-page.js';
 import { initPhotoCarousel } from './photo-carousel.js';
 import { initPostPreviews } from './post-preview.js';
+import { initCoverFollow } from './cover-follow.js';
 import { renderNav } from './pages/shared.js';
 import { renderHome } from './pages/home.js';
 import { renderWork } from './pages/work.js';
@@ -77,6 +78,7 @@ function init() {
     initPhotoCarousel(root);
     initTitleCard();
     initPostPreviews(root);
+    initCoverFollow(root);
     mountArticleFigures(null);
     initPostPage(root);
   });

@@ -67,30 +67,26 @@ function renderVideos(videos) {
   `;
 }
 
-/** A column of small covers per group (Shows, Movies, Books, Music), titles on hover. */
+/** A line of title chips per group (Shows, Movies, Books, Music), each with a tiny cover; src/js/cover-follow.js shows it bigger on hover. */
 function renderFavourites(groups) {
-  const columns = groups.filter((g) => g.items.length).map((group) => `
-    <div class="favourites-group">
-      <p class="subsection-title">${escapeHtml(group.title)}</p>
-      <div class="poster-grid${group.shape === 'square' ? ' poster-grid--square' : ''}">
+  const rows = groups.filter((g) => g.items.length).map((group) => `
+    <div class="favourites-row">
+      <p class="favourites-label">${escapeHtml(group.title)}</p>
+      <div class="favourites-chips">
         ${group.items.map((item) => `
-          <a class="poster-item" href="${item.url}" target="_blank" rel="noopener noreferrer">
-            <div class="poster-frame">
-              <img src="${item.poster}" alt="${escapeHtml(item.title)} poster" loading="lazy" decoding="async">
-            </div>
-            <p class="poster-title">${escapeHtml(item.subtitle ? `${item.title} · ${item.subtitle}` : item.title)}</p>
+          <a class="fav-chip${group.shape === 'square' ? ' fav-chip--square' : ''}" href="${item.url}" target="_blank" rel="noopener noreferrer">
+            <img class="fav-chip-thumb" src="${item.poster}" alt="" loading="lazy" decoding="async">
+            <span>${escapeHtml(item.title)}</span>
           </a>
         `).join('')}
       </div>
     </div>
   `).join('');
-  if (!columns) return '';
+  if (!rows) return '';
   return `
     <section class="panel panel-favourites page-content">
       <p class="section-kicker">FAVOURITES</p>
-      <div class="favourites-columns">
-        ${columns}
-      </div>
+      ${rows}
     </section>
   `;
 }

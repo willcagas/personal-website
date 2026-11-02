@@ -128,7 +128,7 @@ const ARCHIVE_DATA = {
           url: "https://www.goodreads.com/book/show/41733839-the-great-gatsby"
         },
         {
-          title: "Arsène Lupin, Gentleman-Thief",
+          title: "Arsène Lupin",
           poster: "/assets/books/arsene-lupin.jpg",
           url: "https://www.goodreads.com/book/show/141270.Ars_ne_Lupin_Gentleman_Thief"
         }
@@ -145,10 +145,10 @@ const ARCHIVE_DATA = {
           url: "https://open.spotify.com/track/6Fe3Flc9SjE03pqwD6PVQl"
         },
         {
-          title: "Dreams",
-          subtitle: "Fleetwood Mac",
-          poster: "/assets/music/dreams.jpg",
-          url: "https://open.spotify.com/track/0ofHAoxe9vBkTCp2UQIavz"
+          title: "Softcore",
+          subtitle: "The Neighbourhood",
+          poster: "/assets/music/softcore.jpg",
+          url: "https://open.spotify.com/track/2K7xn816oNHJZ0aVqdQsha"
         },
         {
           title: "Pyramids",
@@ -157,10 +157,10 @@ const ARCHIVE_DATA = {
           url: "https://open.spotify.com/track/4QhWbupniDd44EDtnh2bFJ"
         },
         {
-          title: "(Only) About Love",
-          subtitle: "grentperez",
-          poster: "/assets/music/only-about-love.jpg",
-          url: "https://open.spotify.com/track/0T3pyPYtHAsxIRymAZsTkX"
+          title: "Exit Music (For a Film)",
+          subtitle: "Radiohead",
+          poster: "/assets/music/exit-music.jpg",
+          url: "https://open.spotify.com/track/0z1o5L7HJx562xZSATcIpY"
         }
       ]
     }

@@ -1112,7 +1112,7 @@ a:hover {
   overflow: hidden;
   outline: none;
   --photo-gap: 12px;
-  --photo-slides-visible: 2;
+  --photo-slides-visible: 3;
 }
 
 .photo-strip:focus-visible {
@@ -1162,121 +1162,120 @@ a:hover {
   text-align: left;
   line-height: var(--line-height);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-/* Favourites: a titled column per group (Shows, Movies, ...) */
-.favourites-columns {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 20px;
+/* Favourites: a line of title chips per group (Shows, Movies, ...) */
+.favourites-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
 
-.subsection-title {
-  margin-bottom: 10px;
-  font-size: 0.92rem;
+.favourites-row + .favourites-row {
+  margin-top: 8px;
+}
+
+/* Padding lines the label up with the middle of the first line of chips */
+.favourites-label {
+  flex: 0 0 56px;
+  padding-top: 10px;
+  font-size: var(--font-size-small);
   font-weight: 500;
   color: var(--color-text);
 }
 
-/* Two small covers across in each column */
-.poster-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.favourites-chips {
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
 }
 
-.poster-item {
+.fav-chip {
   position: relative;
-  display: block;
-  border-bottom: none;
-}
-
-.poster-item:hover {
-  opacity: 1;
-  z-index: 1;
-}
-
-.poster-frame {
-  position: relative;
-  aspect-ratio: 2 / 3;
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--color-border);
-  transition: box-shadow 0.15s ease;
-}
-
-/* Thin inner border drawn over the image */
-.poster-frame::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
-  pointer-events: none;
-}
-
-.poster-frame img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-}
-
-.poster-item:hover .poster-frame {
-  box-shadow: 0 0 0 2px var(--color-text);
-}
-
-/* Title label under the cover, lined up with the cover's outer edge so it stays in the column.
-   display: none until shown, so a hidden label can't widen the page on phones. */
-.poster-title {
-  display: none;
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  z-index: 1;
-  padding: 3px 6px;
-  border-radius: 3px;
-  background: var(--color-text);
-  color: var(--color-bg);
-  font-size: 11.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px 3px 3px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  font-size: var(--font-size-small);
   line-height: 1.3;
-  white-space: nowrap;
-  pointer-events: none;
+  color: var(--color-text-secondary);
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 
-.poster-item:nth-child(even) .poster-title {
-  left: auto;
-  right: 0;
+.fav-chip-thumb {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 30px;
+  object-fit: cover;
+  border-radius: 2px;
 }
 
-/* Hover only: on touch screens a hover change makes the first tap show the label instead of following the link */
+.fav-chip--square .fav-chip-thumb {
+  width: 26px;
+  height: 26px;
+}
+
+/* Hover only: on touch screens a hover change makes the first tap restyle the chip instead of following the link */
 @media (hover: hover) {
-  .poster-item:hover .poster-title {
-    display: block;
+  .fav-chip:hover {
+    opacity: 1;
+    color: var(--color-text);
+    border-color: var(--color-text);
   }
 }
 
-.poster-item:focus-visible {
-  z-index: 1;
+.fav-chip:focus-visible {
+  color: var(--color-text);
+  border-color: var(--color-text);
 }
 
-.poster-item:focus-visible .poster-title {
-  display: block;
+/* The bigger cover that follows the pointer over a chip (src/js/cover-follow.js) */
+.cover-follow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  width: 110px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 4px;
+  box-shadow: 0 10px 24px rgba(28, 25, 23, 0.28);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease, visibility 0.12s;
 }
 
-/* Album art is square */
-.poster-grid--square .poster-frame {
+.cover-follow.is-square {
+  width: 120px;
   aspect-ratio: 1 / 1;
 }
 
+.cover-follow.is-open {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Phones: the label sits above its chips */
 @media (max-width: 640px) {
-  .favourites-columns {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px 14px;
+  .favourites-row {
+    display: block;
+  }
+
+  .favourites-row + .favourites-row {
+    margin-top: 14px;
+  }
+
+  .favourites-label {
+    padding-top: 0;
+    margin-bottom: 6px;
   }
 }
 
@@ -1480,7 +1479,7 @@ a:hover {
   }
 
   .photo-strip {
-    --photo-slides-visible: 1;
+    --photo-slides-visible: 2;
   }
 
   .photo-nav {
