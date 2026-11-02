@@ -293,12 +293,12 @@ a:hover {
   color: var(--color-text-secondary);
 }
 
-/* One line: sized so the Darwin title fits a half-width card, and a longer title ends in "…" rather than wrapping */
+/* One line: a title too long for the card ends in "…" rather than wrapping */
 .writing-card-title {
   display: block;
   margin-top: 4px;
   overflow: hidden;
-  font-size: 14.5px;
+  font-size: 15.5px;
   font-weight: 600;
   line-height: 1.3;
   white-space: nowrap;

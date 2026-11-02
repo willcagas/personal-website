@@ -23,7 +23,7 @@ const BLOG_POSTS = [
   {
     section: "blog",
     slug: "thesis-labs-internship",
-    title: "A Summer of Hillclimbing at Darwin (YC F25)",
+    title: "A Summer of Hillclimbing",
     date: "2026-10",
     summary:
       "My work, thoughts, and learnings during my internship at Darwin (YC F25).",
