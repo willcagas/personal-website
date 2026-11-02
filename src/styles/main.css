@@ -1168,9 +1168,11 @@ a:hover {
   overflow: hidden;
 }
 
-/* Favourites: titled groups (Shows, Movies, ...) */
-.favourites-group + .favourites-group {
-  margin-top: 26px;
+/* Favourites: a titled column per group (Shows, Movies, ...) */
+.favourites-columns {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
 }
 
 .subsection-title {
@@ -1180,21 +1182,22 @@ a:hover {
   color: var(--color-text);
 }
 
-/* Poster row: up to five across; a short group keeps the same poster size */
+/* Two small covers across in each column */
 .poster-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .poster-item {
+  position: relative;
   display: block;
   border-bottom: none;
-  color: var(--color-text-secondary);
 }
 
 .poster-item:hover {
   opacity: 1;
+  z-index: 1;
 }
 
 .poster-frame {
@@ -1227,15 +1230,42 @@ a:hover {
   box-shadow: 0 0 0 2px var(--color-text);
 }
 
+/* Title label under the cover, lined up with the cover's outer edge so it stays in the column.
+   display: none until shown, so a hidden label can't widen the page on phones. */
 .poster-title {
-  margin-top: 6px;
-  font-size: var(--font-size-small);
-  line-height: 1.35;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 1;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-size: 11.5px;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.poster-item:nth-child(even) .poster-title {
+  left: auto;
+  right: 0;
+}
+
+/* Hover only: on touch screens a hover change makes the first tap show the label instead of following the link */
+@media (hover: hover) {
+  .poster-item:hover .poster-title {
+    display: block;
+  }
+}
+
+.poster-item:focus-visible {
+  z-index: 1;
+}
+
+.poster-item:focus-visible .poster-title {
+  display: block;
 }
 
 /* Album art is square */
@@ -1243,35 +1273,11 @@ a:hover {
   aspect-ratio: 1 / 1;
 }
 
-.poster-subtitle {
-  font-size: 12px;
-  line-height: 1.35;
-  opacity: 0.75;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Five across leaves narrow posters on phones: tighten the gap and titles */
 @media (max-width: 640px) {
-  .poster-grid {
-    gap: 6px;
+  .favourites-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 14px;
   }
-
-  .poster-title {
-    margin-top: 4px;
-    font-size: 11px;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-  }
-
-  .poster-subtitle {
-    font-size: 10px;
-  }
-}
-
-.poster-item:hover .poster-title {
-  color: var(--color-text);
 }
 
 /* Meta block */

@@ -67,9 +67,9 @@ function renderVideos(videos) {
   `;
 }
 
-/** A Letterboxd-style poster row per group (Shows, Movies, Books, Music). */
+/** A column of small covers per group (Shows, Movies, Books, Music), titles on hover. */
 function renderFavourites(groups) {
-  const rows = groups.filter((g) => g.items.length).map((group) => `
+  const columns = groups.filter((g) => g.items.length).map((group) => `
     <div class="favourites-group">
       <p class="subsection-title">${escapeHtml(group.title)}</p>
       <div class="poster-grid${group.shape === 'square' ? ' poster-grid--square' : ''}">
@@ -78,18 +78,19 @@ function renderFavourites(groups) {
             <div class="poster-frame">
               <img src="${item.poster}" alt="${escapeHtml(item.title)} poster" loading="lazy" decoding="async">
             </div>
-            <p class="poster-title">${escapeHtml(item.title)}</p>
-            ${item.subtitle ? `<p class="poster-subtitle">${escapeHtml(item.subtitle)}</p>` : ''}
+            <p class="poster-title">${escapeHtml(item.subtitle ? `${item.title} · ${item.subtitle}` : item.title)}</p>
           </a>
         `).join('')}
       </div>
     </div>
   `).join('');
-  if (!rows) return '';
+  if (!columns) return '';
   return `
     <section class="panel panel-favourites page-content">
       <p class="section-kicker">FAVOURITES</p>
-      ${rows}
+      <div class="favourites-columns">
+        ${columns}
+      </div>
     </section>
   `;
 }
