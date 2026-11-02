@@ -81,11 +81,6 @@ const ARCHIVE_DATA = {
           title: "Sherlock",
           poster: "/assets/shows/sherlock.jpg",
           url: "https://www.imdb.com/title/tt1475582/"
-        },
-        {
-          title: "Silo",
-          poster: "/assets/shows/silo.jpg",
-          url: "https://www.imdb.com/title/tt14688458/"
         }
       ]
     },
@@ -143,12 +138,6 @@ const ARCHIVE_DATA = {
       title: "Music",
       shape: "square", // album art
       items: [
-        {
-          title: "Sicilienne",
-          subtitle: "Gabriel Fauré",
-          poster: "/assets/music/sicilienne.jpg",
-          url: "https://open.spotify.com/track/45KoohfVJ1KkwazDTWNyuN"
-        },
         {
           title: "Amber",
           subtitle: "311",
