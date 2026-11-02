@@ -1387,9 +1387,10 @@ a:hover {
   border-bottom: none;
 }
 
-/* Buttons stay exactly as drawn, without the links' hover fade */
+/* Buttons stay exactly as drawn: an outline on hover, not the links' fade */
 .site-button:hover {
   opacity: 1;
+  outline: 2px solid var(--color-text);
 }
 
 .site-button img {
