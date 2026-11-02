@@ -40,6 +40,14 @@ function renderLinks() {
   `).join('');
 }
 
+function renderButtons() {
+  return SITE.buttons.map(({ name, url, image }) => `
+    <a href="${url}" target="_blank" rel="noopener noreferrer" class="site-button">
+      <img src="${image}" alt="${name}" width="88" height="31">
+    </a>
+  `).join('');
+}
+
 export function renderHome() {
   const { university } = SITE;
   return `
@@ -57,6 +65,13 @@ export function renderHome() {
       <p class="section-kicker">LINKS</p>
       <div class="social-list">
         ${renderLinks()}
+      </div>
+    </section>
+
+    <section class="panel panel-friends page-content">
+      <p class="section-kicker">FRIENDS</p>
+      <div class="site-buttons">
+        ${renderButtons()}
       </div>
     </section>
   `;

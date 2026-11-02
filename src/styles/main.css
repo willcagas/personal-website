@@ -475,6 +475,10 @@ a:hover {
 }
 
 .panel.panel-socials {
+  margin-bottom: 14px;
+}
+
+.panel.panel-friends {
   margin-bottom: 28px;
 }
 
@@ -1369,6 +1373,30 @@ a:hover {
     width: 13px;
     height: 13px;
   }
+}
+
+/* Friends: 88×31 web buttons, side by side, pixels kept sharp */
+.site-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.site-button {
+  display: block;
+  border-bottom: none;
+}
+
+/* Buttons stay exactly as drawn, without the links' hover fade */
+.site-button:hover {
+  opacity: 1;
+}
+
+.site-button img {
+  display: block;
+  width: 88px;
+  height: 31px;
+  image-rendering: pixelated;
 }
 
 /* Responsive */
