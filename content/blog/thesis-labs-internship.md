@@ -9,7 +9,7 @@ summary: "My work, thoughts, and learnings during my internship at Darwin (YC F2
 
 At Darwin, my main focus was building systems that could conduct AI research autonomously. The core idea is to take a research objective, say creating a model to predict how proteins fold, and instead of coming up with the architecture, tuning hyperparameters, running ablations, debugging training runs, and iterating on it by hand, you let AI agents propose ideas, write programs, run experiments, and read the results to try and solve it. 
 
-Each experiment builds on the best one so far, eventually “hillclimbing” towards a model that reaches the frontier. Untraditionally, this is not gradient descent but [gradient-free optimization](https://en.wikipedia.org/wiki/Derivative-free_optimization), where no gradient can be calculated to point toward an optimum.
+Each experiment builds on the best one so far, eventually **“hillclimbing”** towards a model that reaches the frontier. Untraditionally, this is not gradient descent but [gradient-free optimization](https://en.wikipedia.org/wiki/Derivative-free_optimization), where no gradient can be calculated to point toward an optimum.
 
 <figure class="blog-figure" data-figure="climb">
 <div class="live-figure"><canvas aria-label="Experiments land one at a time and most score below the best so far. A gold line steps up each time one beats it, until it crosses the frontier"></canvas></div>
@@ -27,7 +27,7 @@ Inspired by biology, it uses **evolutionary algorithms (EAs)**, which treat cand
 
 In early EAs, candidates were proposed through low-level mutations such as flipping a bit or nudging a parameter. That works on simple encodings like bit-strings, but not on code, where random perturbations in syntax do not produce meaningful programs.
 
-The solution? Use the LLM as a mutation operator, and the variation becomes semantic. The most popular example of this is Google DeepMind's **AlphaEvolve** ([Novikov et al. 2025](https://arxiv.org/abs/2506.13131)), which found a way to multiply 4×4 complex matrices in only 48 scalar multiplications, the first improvement on Strassen's 1969 method in 56 years!
+The solution? Use the **LLM as a mutation operator**, and the variation becomes semantic. The most popular example of this is Google DeepMind's **AlphaEvolve** ([Novikov et al. 2025](https://arxiv.org/abs/2506.13131)), which found a way to multiply 4×4 complex matrices in only 48 scalar multiplications, the first improvement on Strassen's 1969 method in 56 years!
 
 Formally, we are given a search space $\mathcal{X}$ and a fitness function $f$ : $\mathcal{X} \to \mathbb{R}$, and we seek:
 
@@ -41,7 +41,7 @@ Most EAs can roughly be outlined in a general procedure, mimicking evolutionary 
 4. Mutate each offspring via a variation operator $m$.
 5. Select individuals from the parents and offspring as survivors $P_{t+1}$.
 
-This loop is repeated until a goal is reached and termination criteria are met. There are two major parts of EAs that determine how the search behaves. Steps 3 and 4 are the variation operators, which include both mutation and crossover (recombination), deciding what new candidates are produced. Steps 2 and 5 are the selection strategies, which decide what candidates are kept and bred from.
+This loop is repeated until a goal is reached and termination criteria are met. There are two major parts of EAs that determine how the search behaves. Steps 3 and 4 are the **variation operators**, which include both mutation and crossover (recombination), deciding what new candidates are produced. Steps 2 and 5 are the **selection strategies**, which decide what candidates are kept and bred from.
 
 <figure class="blog-figure" data-figure="generation">
 <div class="live-figure"><canvas aria-label="A population of candidate programs, taller meaning fitter, going through the five steps four times, which are evaluate, select parents, cross over, mutate, and select survivors, with the weakest cut each generation"></canvas></div>
@@ -120,13 +120,13 @@ The coding agent uses these tools while it writes candidates, and cites a paper 
 
 Before the engine starts on a problem, it can run a deep-research pass over that corpus. It is modeled on [Anthropic's multi-agent research approach](https://www.anthropic.com/engineering/multi-agent-research-system). My first version was a single pass, with two fixed queries, one retrieval and one synthesis call. Its briefs read well but leaned on the model's memory and on abstracts. The rebuild splits the work into roles that check each other.
 
-A planner turns the task into facets. Most come from a fixed checklist every review covers, from how the problem is framed to known failure modes, and a few are specific to the task. Its queries name problems, not methods, so the corpus has to supply the methods instead of the model's memory.
+A **planner** turns the task into facets. Most come from a fixed checklist every review covers, from how the problem is framed to known failure modes, and a few are specific to the task. Its queries name problems, not methods, so the corpus has to supply the methods instead of the model's memory.
 
-Each facet gets an explorer and a verifier, and all facets run in parallel. The explorer sweeps the corpus, runs one search ranked by citations per year to surface the canonical paper that relevance tends to bury, and one for recent work. Then it reads the methods, appendix and ablation sections of the best few papers and extracts each reusable idea with a verbatim quote.
+Each facet gets an **explorer** and a **verifier**, and all facets run in parallel. The explorer sweeps the corpus, runs one search ranked by citations per year to surface the canonical paper that relevance tends to bury, and one for recent work. Then it reads the methods, appendix and ablation sections of the best few papers and extracts each reusable idea with a verbatim quote.
 
 The verifier tries to refute each idea against its cited passage and marks it supported, partial or unsupported. A claim like "X beats Y" also gets a search for counter-evidence.
 
-A critic then looks for kinds of ideas the passages imply but nobody extracted, looping until nothing new turns up. A consolidation step merges duplicates, and a synthesizer writes the brief, covering the frontier, failure modes, contested findings and open gaps.
+A **critic** then looks for kinds of ideas the passages imply but nobody extracted, looping until nothing new turns up. A consolidation step merges duplicates, and a **synthesizer** writes the brief, covering the frontier, failure modes, contested findings and open gaps.
 
 <figure class="blog-figure" data-figure="agents">
 <div class="live-figure"><canvas aria-label="The deep-research pass. A planner fans out into four directions, explorers read papers along each in parallel, verifiers check every find against its source and strike one, a critic pulls in a paper nobody opened, and a synthesizer files the rest under known, contested and open"></canvas></div>
@@ -141,7 +141,7 @@ The review also takes minutes, so it runs alongside data preparation instead of 
 
 To evaluate it, every paper ID a role retrieves is captured at the tool boundary. Each run then reports two numbers. One is the share of citations pointing at papers actually retrieved that run, not recalled from memory. The other is the share backed by a full-text passage rather than an abstract.
 
-I also used a canary. Self-distillation matters for RNA folding and no prompt mentions it, so I checked whether the review found it on its own, and how many papers it found behind it. On a larger corpus, the same task came back with the same number of ideas but far more distinct papers behind them.
+I also used a **canary**. Self-distillation matters for RNA folding and no prompt mentions it, so I checked whether the review found it on its own, and how many papers it found behind it. On a larger corpus, the same task came back with the same number of ideas but far more distinct papers behind them.
 
 In one run it produced 92 distinct ideas across 9 facets in about 15 minutes, every one cited to a real paper (100% cited, 96% to full text). The output separates what is well-supported from what is contested or still an open gap, so the search knows where the real frontier is.
 
@@ -152,24 +152,30 @@ In one run it produced 92 distinct ideas across 9 facets in about 15 minutes, ev
 
 ### Exploration vs. Exploitation
 
-Exploration versus exploitation is one of the oldest trade-offs in search. Exploitation means refining what already works, taking the best candidate so far and making it a little better. Exploration means trying something genuinely different, which might score worse now but could lead somewhere better. Lean too hard on exploitation and the search climbs the nearest hill and gets stuck on top of it. Lean too hard on exploration and it never improves anything long enough to win.
+Exploration versus exploitation is one of the oldest trade-offs in search. **Exploitation** means refining what already works, taking the best candidate so far and making it a little better. **Exploration** means trying something genuinely different, which might score worse now but could lead somewhere better. Lean too hard on exploitation and the search climbs the nearest hill and gets stuck on top of it. Lean too hard on exploration and it never improves anything long enough to win.
+
+Most search methods turn this into a dial. A common way to pick parents is to sample them by fitness, softened by a temperature $\tau$,
+
+$$p(x_i) = \frac{e^{f(x_i)/\tau}}{\sum_j e^{f(x_j)/\tau}}.$$
+
+A low $\tau$ almost always picks the best candidate, which is pure exploitation, and a high $\tau$ picks nearly at random, which is pure exploration.
 
 An autoresearcher feels this trade-off sharply. Every candidate costs a full training run, so wasted exploration is expensive. LLM agents also have a strong pull toward the same familiar ideas, so left alone the search exploits by default. A lot of my work on the search side was about keeping that balance.
 
-The main tool for it is islands. Instead of one population, the search runs several separate populations of candidates that each evolve on their own and only now and then trade their best candidates, which is called migration.
+#### Starting Apart
 
-Islands are meant to keep the search diverse, but they don't guarantee it. An island can stall, where its best score stops improving and the population just churns, and islands can drift onto the same idea as each other. Most of what I built here is how the search gets unstuck when that happens.
+The main tool for keeping that balance is **islands**. Instead of one population, the search runs several separate populations of candidates that each evolve on their own and only now and then trade their best candidates, which is called **migration**.
 
 <figure class="blog-figure" data-figure="islands">
 <div class="live-figure"><canvas aria-label="Four island populations of candidate programs evolving in parallel, with the best migrating between islands"></canvas></div>
 <figcaption>Four island populations searching in parallel. Darker dots score higher and gold marks each island's best. The best candidates migrate between islands, and an island that stalls gets reseeded with fresh ideas.</figcaption>
 </figure>
 
-#### Starting Apart
+Islands are meant to keep the search diverse, but they don't guarantee it. An island can stall, where its best score stops improving and the population just churns, and islands can drift onto the same idea as each other. The rest of this section is how I kept islands apart, and how the search gets unstuck when they stall or converge.
 
 Diversity has to start at the beginning. Start every island from the same seed program, hand each one the same research grounding, and more often than not the agents converge on the same ideas anyway. That's the whole reason exploration has to start at the island level.
 
-When I got there, every founding seed was copied onto every island, so the islands began as clones. I changed it so each island gets its own seed, and a critic checks that each new island's seed is actually different from the ones before it.
+When I got there, every **founding seed** was copied onto every island, so the islands began as clones. I changed it so each island gets its own seed, and a critic checks that each new island's seed is actually different from the ones before it.
 
 The FM Agent makes the case for starting this way, splitting a diverse pool of first solutions across its islands so each explores its own path ([Li et al. 2025](https://arxiv.org/abs/2510.26144)). FM Agent stops at splitting the pool. The critic is my addition, so a seed that's too close to one already placed gets redrawn instead of quietly starting a clone.
 
@@ -193,13 +199,13 @@ One bug taught me to check the map against the code. For a while it embedded eac
 
 #### When Islands Stall or Converge
 
-Islands fail in two ways. They converge, when two islands that started apart end up building the same thing, and they stall, when every island stops improving at once.
+Islands fail in two ways. They **converge**, when two islands that started apart end up building the same thing, and they **stall**, when every island stops improving at once.
 
-Convergence is the subtler one, and I built the check for it. An LLM judge reads a brief of what each island has tried, compiled from the research map, and decides whether they've piled onto the same idea and used it up, not just adopted it. Because the map sorts techniques into approaches, ingredients and tweaks, the judge can see two islands sharing one approach even when all their tweaks differ, which a plain overlap count misses.
+Convergence is the subtler one, and I built the check for it. An **LLM-as-a-judge** reads a brief of what each island has tried, compiled from the research map, and decides whether they've piled onto the same idea and used it up, not just adopted it. Because the map sorts techniques into approaches, ingredients and tweaks, the judge can see two islands sharing one approach even when all their tweaks differ, which a plain overlap count misses.
 
 When it fires, one island is reseeded in a direction the map shows nobody has tried. Early reseeds kept drifting back to the old idea by borrowing from the rest of the population, so a reseeded island now breeds only from its own lineage until it has warmed up, the same way NEAT gives a new innovation its own niche to mature in before it has to compete ([Stanley and Miikkulainen 2002](https://doi.org/10.1162/106365602320169811)).
 
-When every island stalls at once, redirecting one isn't enough, so the system founds a new island. It has two ways to do it, and it tries synthesis spawn first.
+When every island stalls at once, redirecting one isn't enough, so the system founds a new island. It has two ways to do it, and it tries **synthesis spawn** first.
 
 Synthesis spawn starts from MLEvolve's multi-branch aggregation ([Du et al. 2026](https://arxiv.org/abs/2606.06473)), but their version is simple. When the global best stops improving, MLEvolve pools the best ideas from each branch into a new one.
 
@@ -207,7 +213,7 @@ Mine leans on the research map. For the top candidates on each island, it walks 
 
 Then it picks a set of ideas that cover different families, rather than just the top scores, and fuses them into one new seed. A critic approves the seed only if that combination never appeared together in an earlier lineage.
 
-If synthesis can't find a new combination, the system falls back to orthogonal spawn, which is my own design. It reads the map for a direction no island has tried and seeds the new island there, with the history of what failed passed in as things to avoid. The new island gets a protected warm-up, where it runs ahead of the others and nothing migrates in.
+If synthesis can't find a new combination, the system falls back to **orthogonal spawn**, which is my own design. It reads the map for a direction no island has tried and seeds the new island there, with the history of what failed passed in as things to avoid. The new island gets a protected warm-up, where it runs ahead of the others and nothing migrates in.
 
 <figure class="blog-figure" data-figure="spawn">
 <div class="live-figure"><canvas aria-label="Every island has stalled. Synthesis traces the best lineages, pulls out the ideas behind them and fuses a new combination into a new island. In a second round the combination has been seen before, so orthogonal spawn founds an island in an untried part of the map and fences it off while it warms up"></canvas></div>
@@ -218,9 +224,13 @@ The best finding came from testing them. New islands drifted. Their descendants 
 
 #### Code Novelty
 
-The system loves to re-propose ideas it has already tried. ShinkaEvolve handles this with novelty rejection sampling ([Lange et al. 2025](https://arxiv.org/abs/2509.19349)). It embeds each new program, compares it with the programs on its island, and when the closest match is too similar, asks an LLM judge whether it's really new. Rejected programs get resampled.
+The system loves to re-propose ideas it has already tried. ShinkaEvolve handles this with **novelty rejection sampling** ([Lange et al. 2025](https://arxiv.org/abs/2509.19349)). It embeds each new program, compares it with the programs on its island, and when the closest match is too similar, asks an LLM-as-a-judge whether it's really new. Rejected programs get resampled.
 
-We started from that, and my part was making it work inside an agent that writes and trains its own code. The gate sits right before training, inside the coding agent's loop. It embeds the whole training script with Voyage's code embeddings, and a close match only calls the judge in. If the judge blocks it, the agent gets the judge's reasons and revises, and after a few blocks it trains anyway, so no work is thrown away.
+We started from that, and my part was making it work inside an agent that writes and trains its own code. The gate sits right before training, inside the coding agent's loop. It embeds the whole training script with Voyage's code embeddings, and a close match only calls the judge in. Written out, with $e(\cdot)$ as the code embedding and $x_j$ as the other candidates on the same island, the judge is called in only when
+
+$$\max_j \, \cos\big(e(x),\, e(x_j)\big) > \theta.$$
+
+Below $\theta$, the candidate trains without a second look. If the judge blocks it, the agent gets the judge's reasons and revises, and after a few blocks it trains anyway, so no work is thrown away.
 
 Running it live showed the embeddings can only shortlist. A cosmetic edit and a real change can score almost the same, and two different ideas can look identical when they share a code scaffold, so the judge makes every real call.
 
@@ -292,7 +302,7 @@ Then the search cheated. A few candidates reported scores above the record by pu
 
 We entered our engine in the International Olympiad in Artificial Intelligence (IOAI), in its track for AI labs. Each of the six tasks was a self-contained machine-learning problem in a different domain, and for each one the engine wrote and trained its own candidate models, then submitted them to a hidden leaderboard.
 
-We placed 7th of 15 AI systems from 14 labs and took a Master Trophy, the AI track's equivalent of a bronze medal, finishing just ahead of Sakana AI (505.72 to 504.25 out of 600). We were also named an IOAI² Founding AI Participant and invited to give an oral talk on our system at the IOAI Symposium.
+We placed 7th of 15 AI systems from 14 labs and took a **Master Trophy**, the AI track's equivalent of a bronze medal, finishing just ahead of Sakana AI (505.72 to 504.25 out of 600). We were also named an IOAI² Founding AI Participant and invited to give an oral talk on our system at the IOAI Symposium.
 
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin:1.5em 0">
 <span style="border:1px solid #b8860b;color:#b8860b;border-radius:999px;padding:4px 13px;font-size:var(--font-size-small)">🥉 Master Trophy · 7th of 15</span>
@@ -462,7 +472,7 @@ I enforced the contest rules on every run, like the limits on external data and 
 
 ### What I Read
 
-These are the papers I kept coming back to. I didn't read most of them cover to cover. I'd skim one for the main idea, then go deep on the one section that mattered when we needed the feature it described. For MLEvolve that was the aggregation step, when I was building synthesis spawn, and for ShinkaEvolve it was the novelty filter, when I was building ours.
+These are the papers I kept coming back to. I didn't read most of them cover to cover. I'd skim one for the main idea, then go deep on the one section that mattered when we needed the feature it described.
 
 <div class="reading-chips" data-reading-chips>
 <div class="favourites-chips">
@@ -532,7 +542,7 @@ Evaluation is the whole game. The search optimizes exactly what you measure, loo
 
 The hard part of an automated researcher is not generating ideas. Getting an agent to propose something is easy. Getting it to not repeat itself, to know what has already been tried, and to tell a real improvement from a lucky score is where the actual work is.
 
-It's also worth being honest about where this goes. Point the same loop at the training algorithms, architectures, and AI agents that build these systems, and you get AI improving AI itself, which is called recursive self-improvement (RSI). That is the most exciting direction this work can take and probably the most dangerous, and it's why I think getting the measurement right matters so much.
+It's also worth being honest about where this goes. Point the same loop at the training algorithms, architectures, and AI agents that build these systems, and you get AI improving AI itself, which is called **recursive self-improvement (RSI)**. That is the most exciting direction this work can take and probably the most dangerous, and it's why I think getting the measurement right matters so much.
 
 I got to work on a genuinely ambitious version of automating research, and I came away more convinced that this line of work is going somewhere. Thank you to the team for the trust and the ownership. I'm excited to see what they build next in robotics.
 
