@@ -21,9 +21,13 @@ Keep in mind, before this internship, I had no experience with autonomous AI res
 
 ### Background
 
-Autoresearch is a field that grows faster every day, so here is some quick background knowledge to understand part of what I was building. A lot of autoresearch is based on something called **evolutionary computation (EC)**. Inspired by biology, it uses **evolutionary algorithms (EAs)**, which treat candidate solutions as organisms that compete to survive and reproduce, and in doing so can traverse combinatorial search spaces and progressively "hillclimb" toward the optimal solution. Turing ideated evolutionary search as a path toward machine intelligence in 1950, and by the '60s and '70s it had become a working method ([Turing 1950](https://doi.org/10.1093/mind/LIX.236.433), [Bäck et al. 1997](https://doi.org/10.1109/4235.585888)).
+Autoresearch is a field that grows faster every day, so here is some quick background knowledge to understand part of what I was building. A lot of autoresearch is based on something called **evolutionary computation (EC)**.
 
-In early EAs, candidates were proposed through low-level mutations such as flipping a bit or nudging a parameter. That works on simple encodings like bit-strings, but not on code, where random perturbations in syntax do not produce meaningful programs. The solution? Use the LLM as a mutation operator, and the variation becomes semantic. The most popular example of this is Google DeepMind's **AlphaEvolve** ([Novikov et al. 2025](https://arxiv.org/abs/2506.13131)), which found a way to multiply 4×4 complex matrices in only 48 scalar multiplications, the first improvement on Strassen's 1969 method in 56 years!
+Inspired by biology, it uses **evolutionary algorithms (EAs)**, which treat candidate solutions as organisms that compete to survive and reproduce, and in doing so can traverse combinatorial search spaces and progressively "hillclimb" toward the optimal solution. Turing ideated evolutionary search as a path toward machine intelligence in 1950, and by the '60s and '70s it had become a working method ([Turing 1950](https://doi.org/10.1093/mind/LIX.236.433), [Bäck et al. 1997](https://doi.org/10.1109/4235.585888)).
+
+In early EAs, candidates were proposed through low-level mutations such as flipping a bit or nudging a parameter. That works on simple encodings like bit-strings, but not on code, where random perturbations in syntax do not produce meaningful programs.
+
+The solution? Use the LLM as a mutation operator, and the variation becomes semantic. The most popular example of this is Google DeepMind's **AlphaEvolve** ([Novikov et al. 2025](https://arxiv.org/abs/2506.13131)), which found a way to multiply 4×4 complex matrices in only 48 scalar multiplications, the first improvement on Strassen's 1969 method in 56 years!
 
 Formally, we are given a search space $\mathcal{X}$ and a fitness function $f$ : $\mathcal{X} \to \mathbb{R}$, and we seek:
 
@@ -45,19 +49,25 @@ This loop is repeated until a goal is reached and termination criteria are met. 
 
 Since AlphaEvolve, systems like **ShinkaEvolve** ([Lange et al. 2025](https://arxiv.org/abs/2509.19349)), **OpenEvolve** ([Sharma 2025](https://github.com/algorithmicsuperintelligence/openevolve)), and **GEPA** ([Agrawal et al. 2025](https://arxiv.org/abs/2507.19457)) have pushed the loop in a lot of directions.
 
-Darwin's autoresearcher roughly follows the same outline. It starts off with a population of candidate programs. Each one aims to solve the research objective. A fitness function evaluates the candidate and returns a score where better candidates more likely to be selected as parents, and where an agent edits a parent into a child.
+Darwin's autoresearcher roughly follows the same outline. It starts off with a population of candidate programs. Each one aims to solve the research objective. A fitness function evaluates each candidate and returns a score. Better candidates are more likely to be selected as parents, and an agent edits a parent into a child.
 
-Sounds simple, but each step comes with its own problems. A complex evolving search like this can fail in different ways. It has no idea what has already been tried. It gets stuck and plateaus. It rediscovers and reimplements the same idea over and over. It learns to game the score and does some reward-hacking instead of solving the problem at hand. My summer was a mix of building pieces of the autoresearcher, fixing different ways it broke, and then running it on a real competition.
+Sounds simple, but each step comes with its own problems. A complex evolving search like this can fail in different ways. It has no idea what has already been tried. It gets stuck and plateaus. It rediscovers and reimplements the same idea over and over. It learns to game the score and does some reward-hacking instead of solving the problem at hand.
+
+My summer was a mix of building pieces of the autoresearcher, fixing different ways it broke, and then running it on a real competition.
 
 ### Research Engine
 
-The largest project I worked on was giving Darwin's autoresearcher access to research papers. Most AI models answer from what they absorbed during training, and that knowledge stops at a cutoff and blurs the details. A model remembers that a method exists, not what its ablations showed. An automated researcher that has never read a paper is going to reinvent a lot of wheels, and here every reinvented wheel costs a training run. ASI-Evolve has a small version of this result. With a handful of hand-written priors, including what earlier systems had done, the full system climbed to about the circle-packing record. Without the priors it climbed more slowly and was still short of it after 400 steps ([Xu et al. 2026](https://arxiv.org/abs/2603.29640), Fig. 5).
+The largest project I worked on was giving Darwin's autoresearcher access to research papers. Most AI models answer from what they absorbed during training, and that knowledge stops at a cutoff and blurs the details. A model remembers that a method exists, not what its ablations showed. An automated researcher that has never read a paper is going to reinvent a lot of wheels, and here every reinvented wheel costs a training run.
+
+ASI-Evolve has a small version of this result. With a handful of hand-written priors, including what earlier systems had done, the full system climbed to about the circle-packing record. Without the priors it climbed more slowly and was still short of it after 400 steps ([Xu et al. 2026](https://arxiv.org/abs/2603.29640), Fig. 5).
 
 So I built a research engine that lets the search read actual papers and cite them while it works. It has three parts, a literature database, retrieval tools, and deep-research agents that review the literature before a run starts.
 
 #### Literature DB
 
-The corpus covers machine learning and robotics from arXiv, plus biology, mostly from arXiv's q-bio section with smaller hand-built sets from bioRxiv and journals for problems like RNA folding and protein function. It lives in Postgres with pgvector, the extension that adds vector columns and a nearest-neighbour index to Postgres. A teammate scaffolded the service and a first arXiv scraper and later deployed it to the cloud. I built the pipeline in between. This was the most conventional full-stack part of the job, with TypeScript and NestJS for the service, Python for the ML pieces, and Postgres underneath.
+The corpus covers machine learning and robotics from arXiv, plus biology, mostly from arXiv's q-bio section with smaller hand-built sets from bioRxiv and journals for problems like RNA folding and protein function. It lives in Postgres with pgvector, the extension that adds vector columns and a nearest-neighbour index to Postgres.
+
+A teammate scaffolded the service and a first arXiv scraper and later deployed it to the cloud. I built the pipeline in between. This was the most conventional full-stack part of the job, with TypeScript and NestJS for the service, Python for the ML pieces, and Postgres underneath.
 
 <figure class="blog-figure" data-figure="corpus">
 <div class="live-figure"><canvas aria-label="One paper goes through the pipeline, from its source to parsed sections, chunks and embeddings, then the view pulls back to the whole corpus of 337,000 papers in machine learning, robotics and biology, lighting up as full text is backfilled"></canvas></div>
@@ -66,17 +76,25 @@ The corpus covers machine learning and robotics from arXiv, plus biology, mostly
 
 Papers arrive in two passes. The first is metadata. A scheduled scraper walks arXiv forward for new papers and backward through the archive, keeping a cursor so a crash resumes where it stopped. When rate limits slowed the backward walk to a crawl, I loaded the gap from arXiv's public metadata snapshot instead. Every paper gets a title-and-abstract embedding, so the whole corpus is searchable by meaning before any full text is parsed.
 
-The second pass is full text. It runs as a backfill, and it was still working through the corpus when the summer ended. Parsing tries the cleanest source first. For arXiv that is the HTML arXiv generates from the LaTeX source, which keeps equations as TeX. Otherwise the PDF goes through Docling, a layout-aware parser, with MarkItDown as a fallback. bioRxiv and journal papers come as JATS, the XML format publishers use. I chose Docling after a bakeoff on real arXiv PDFs. MarkItDown was far faster but returned flat text with no headings, and headings are what let a search go straight to a paper's methods or ablations. Text is split at headings, then at paragraph breaks into chunks of a few hundred words, with tables kept whole. Each vector records the model that produced it, so a re-embed can run beside the old one.
+The second pass is full text. It runs as a backfill, and it was still working through the corpus when the summer ended. Parsing tries the cleanest source first. For arXiv that is the HTML arXiv generates from the LaTeX source, which keeps equations as TeX. Otherwise the PDF goes through Docling, a layout-aware parser, with MarkItDown as a fallback. bioRxiv and journal papers come as JATS, the XML format publishers use.
+
+I chose Docling after a bakeoff on real arXiv PDFs. MarkItDown was far faster but returned flat text with no headings, and headings are what let a search go straight to a paper's methods or ablations.
+
+Text is split at headings, then at paragraph breaks into chunks of a few hundred words, with tables kept whole. Each vector records the model that produced it, so a re-embed can run beside the old one.
 
 I used pgvector instead of a dedicated vector database because we already ran Postgres. That meant one migration rather than another service to operate. Its HNSW index, an approximate nearest-neighbour graph, holds up well to a few million vectors, which is this corpus's range.
 
-Two decisions came from measuring first. I checked a sample of bioRxiv papers for math. About a quarter had any display equation, and it was biology and statistics, not ML. Keeping it meant OCR at maybe 90% accuracy, so bioRxiv goes in as prose only. Then coverage. Seeding a domain corpus from arXiv search gave me recent papers that cite the classics, but not the classics themselves. Even a query naming a method could miss the paper that introduced it. So each domain corpus now starts from a hand-checked spine of foundational papers, added by ID and grown through the citation graph. Journal-only landmarks like AlphaFold 2 and 3 have no preprint, so they came in through PubMed Central.
+Two decisions came from measuring first. I checked a sample of bioRxiv papers for math. About a quarter had any display equation, and it was biology and statistics, not ML. Keeping it meant OCR at maybe 90% accuracy, so bioRxiv goes in as prose only.
+
+Then coverage. Seeding a domain corpus from arXiv search gave me recent papers that cite the classics, but not the classics themselves. Even a query naming a method could miss the paper that introduced it. So each domain corpus now starts from a hand-checked spine of foundational papers, added by ID and grown through the citation graph. Journal-only landmarks like AlphaFold 2 and 3 have no preprint, so they came in through PubMed Central.
 
 The long tail took real time. Docling crashed on some images, a batch of 29 papers hit edge cases, and one came out as two chunks because arXiv's own HTML for it was broken.
 
 #### Retrieval Tools
 
-On top of the database sit five tools the agents can call. They cover paper search, chunk search, full-paper reads, literature Q&A, and fetching a paper's code. Paper search runs two retrievers over titles and abstracts. Dense vector search matches meaning, and Postgres full-text search matches exact words. Reciprocal rank fusion (RRF) merges the two lists by scoring each paper 1/(k + rank) in each list, so anything near the top of either survives. A cross-encoder then reorders the pool. It reads the query and each candidate together and scores the pair, which is slower than comparing vectors but much more accurate. Chunk search is dense search over body text, scoped to one paper or section on request, and also reranked.
+On top of the database sit five tools the agents can call. They cover paper search, chunk search, full-paper reads, literature Q&A, and fetching a paper's code. Paper search runs two retrievers over titles and abstracts. Dense vector search matches meaning, and Postgres full-text search matches exact words.
+
+Reciprocal rank fusion (RRF) merges the two lists by scoring each paper 1/(k + rank) in each list, so anything near the top of either survives. A cross-encoder then reorders the pool. It reads the query and each candidate together and scores the pair, which is slower than comparing vectors but much more accurate. Chunk search is dense search over body text, scoped to one paper or section on request, and also reranked.
 
 I measured it on [LitSearch](https://arxiv.org/abs/2407.18940), a public benchmark of about 600 literature-search questions with known answer papers. Its papers sit in the same database behind a filter the agents never see, so the eval runs through production code. Hit@10 is how often a correct paper lands in the top ten. nDCG@10 also rewards ranking it higher.
 
@@ -88,9 +106,13 @@ I measured it on [LitSearch](https://arxiv.org/abs/2407.18940), a public benchma
 | Dense, stronger embedding model | 78.1% | 0.65 |
 | Stronger model + cross-encoder rerank | 82.5% | 0.71 |
 
-The table corrects a story I used to tell. Most of the gain came from a better embedding model, and the reranker added the rest. Hybrid search did nothing on LitSearch, whose questions are long and descriptive. I kept the keyword side because dense search kept missing exact names like acronyms, benchmarks and new methods, and on a small hand-built set of those queries it fixed nearly every miss. The cross-encoder still sets the final order, so the keyword score only widens the pool. Having a model rewrite the query several ways scored slightly below the plain query. And at full scale, pgvector's approximate index started dropping true neighbours until I widened its search, which was worth about six points of Hit@10.
+The table corrects a story I used to tell. Most of the gain came from a better embedding model, and the reranker added the rest. Hybrid search did nothing on LitSearch, whose questions are long and descriptive. I kept the keyword side because dense search kept missing exact names like acronyms, benchmarks and new methods, and on a small hand-built set of those queries it fixed nearly every miss.
 
-Full text needed its own test, and my first one was rigged by accident. Chunks searched a couple of hundred parsed papers while abstracts searched everything. So I fixed the haystack at 5,000 LitSearch papers and changed only the representation. Body chunks put a correct paper in the top ten 92.8% of the time, against 80.2% for abstracts, and found answers abstracts missed on 91 questions versus 16 the other way. In the live corpus that only pays off once most papers have full text. With sparse coverage, the few parsed papers crowded out better matches.
+The cross-encoder still sets the final order, so the keyword score only widens the pool. Having a model rewrite the query several ways scored slightly below the plain query. And at full scale, pgvector's approximate index started dropping true neighbours until I widened its search, which was worth about six points of Hit@10.
+
+Full text needed its own test, and my first one was rigged by accident. Chunks searched a couple of hundred parsed papers while abstracts searched everything. So I fixed the haystack at 5,000 LitSearch papers and changed only the representation.
+
+Body chunks put a correct paper in the top ten 92.8% of the time, against 80.2% for abstracts, and found answers abstracts missed on 91 questions versus 16 the other way. In the live corpus that only pays off once most papers have full text. With sparse coverage, the few parsed papers crowded out better matches.
 
 The coding agent uses these tools while it writes candidates, and cites a paper by arXiv ID or DOI when a change rests on one. Literature Q&A is a small agent in its own process. It splits the question, searches, reads, and returns one cited answer, dropping any citation it never retrieved, and the papers it reads stay out of the coding agent's context.
 
@@ -98,16 +120,28 @@ The coding agent uses these tools while it writes candidates, and cites a paper 
 
 Before the engine starts on a problem, it can run a deep-research pass over that corpus. It is modeled on [Anthropic's multi-agent research approach](https://www.anthropic.com/engineering/multi-agent-research-system). My first version was a single pass, with two fixed queries, one retrieval and one synthesis call. Its briefs read well but leaned on the model's memory and on abstracts. The rebuild splits the work into roles that check each other.
 
-A planner turns the task into facets. Most come from a fixed checklist every review covers, from how the problem is framed to known failure modes, and a few are specific to the task. Its queries name problems, not methods, so the corpus has to supply the methods instead of the model's memory. Each facet gets an explorer and a verifier, and all facets run in parallel. The explorer sweeps the corpus, runs one search ranked by citations per year to surface the canonical paper that relevance tends to bury, and one for recent work. Then it reads the methods, appendix and ablation sections of the best few papers and extracts each reusable idea with a verbatim quote. The verifier tries to refute each idea against its cited passage and marks it supported, partial or unsupported. A claim like "X beats Y" also gets a search for counter-evidence. A critic then looks for kinds of ideas the passages imply but nobody extracted, looping until nothing new turns up. A consolidation step merges duplicates, and a synthesizer writes the brief, covering the frontier, failure modes, contested findings and open gaps.
+A planner turns the task into facets. Most come from a fixed checklist every review covers, from how the problem is framed to known failure modes, and a few are specific to the task. Its queries name problems, not methods, so the corpus has to supply the methods instead of the model's memory.
+
+Each facet gets an explorer and a verifier, and all facets run in parallel. The explorer sweeps the corpus, runs one search ranked by citations per year to surface the canonical paper that relevance tends to bury, and one for recent work. Then it reads the methods, appendix and ablation sections of the best few papers and extracts each reusable idea with a verbatim quote.
+
+The verifier tries to refute each idea against its cited passage and marks it supported, partial or unsupported. A claim like "X beats Y" also gets a search for counter-evidence.
+
+A critic then looks for kinds of ideas the passages imply but nobody extracted, looping until nothing new turns up. A consolidation step merges duplicates, and a synthesizer writes the brief, covering the frontier, failure modes, contested findings and open gaps.
 
 <figure class="blog-figure" data-figure="agents">
 <div class="live-figure"><canvas aria-label="The deep-research pass. A planner fans out into four directions, explorers read papers along each in parallel, verifiers check every find against its source and strike one, a critic pulls in a paper nobody opened, and a synthesizer files the rest under known, contested and open"></canvas></div>
 <figcaption>The deep-research pass runs before the engine starts coding. It plans research directions, explores them in parallel, verifies claims against their sources, looks for what was missed, and then writes one cited brief of what is known, what is contested, and what is still open.</figcaption>
 </figure>
 
-Most of that shape came from failures. Explorers kept finding the same method under different names, which bloated the brief. The fix was a pass where the model only groups ideas by number and code does the merge, so it can't invent or drop a citation. Early briefs promoted single-paper claims to the frontier, so now a claim is stated flatly only if it is supported and backed by more than one paper. The critic's finds used to skip verification and come out labeled as gaps in the corpus, which on practice runs sent us hunting for papers we already had. They go through the verifier now. The review also takes minutes, so it runs alongside data preparation instead of in front of it, under a time budget that can cut exploration short but never the synthesis.
+Most of that shape came from failures. Explorers kept finding the same method under different names, which bloated the brief. The fix was a pass where the model only groups ideas by number and code does the merge, so it can't invent or drop a citation. Early briefs promoted single-paper claims to the frontier, so now a claim is stated flatly only if it is supported and backed by more than one paper.
 
-To evaluate it, every paper ID a role retrieves is captured at the tool boundary. Each run then reports two numbers. One is the share of citations pointing at papers actually retrieved that run, not recalled from memory. The other is the share backed by a full-text passage rather than an abstract. I also used a canary. Self-distillation matters for RNA folding and no prompt mentions it, so I checked whether the review found it on its own, and how many papers it found behind it. On a larger corpus, the same task came back with the same number of ideas but far more distinct papers behind them.
+The critic's finds used to skip verification and come out labeled as gaps in the corpus, which on practice runs sent us hunting for papers we already had. They go through the verifier now.
+
+The review also takes minutes, so it runs alongside data preparation instead of in front of it, under a time budget that can cut exploration short but never the synthesis.
+
+To evaluate it, every paper ID a role retrieves is captured at the tool boundary. Each run then reports two numbers. One is the share of citations pointing at papers actually retrieved that run, not recalled from memory. The other is the share backed by a full-text passage rather than an abstract.
+
+I also used a canary. Self-distillation matters for RNA folding and no prompt mentions it, so I checked whether the review found it on its own, and how many papers it found behind it. On a larger corpus, the same task came back with the same number of ideas but far more distinct papers behind them.
 
 In one run it produced 92 distinct ideas across 9 facets in about 15 minutes, every one cited to a real paper (100% cited, 96% to full text). The output separates what is well-supported from what is contested or still an open gap, so the search knows where the real frontier is.
 
@@ -122,7 +156,9 @@ Exploration versus exploitation is one of the oldest trade-offs in search. Explo
 
 An autoresearcher feels this trade-off sharply. Every candidate costs a full training run, so wasted exploration is expensive. LLM agents also have a strong pull toward the same familiar ideas, so left alone the search exploits by default. A lot of my work on the search side was about keeping that balance.
 
-The main tool for it is islands. Instead of one population, the search runs several separate populations of candidates that each evolve on their own and only now and then trade their best candidates, which is called migration. Islands are meant to keep the search diverse, but they don't guarantee it. An island can stall, where its best score stops improving and the population just churns, and islands can drift onto the same idea as each other. Most of what I built here is how the search gets unstuck when that happens.
+The main tool for it is islands. Instead of one population, the search runs several separate populations of candidates that each evolve on their own and only now and then trade their best candidates, which is called migration.
+
+Islands are meant to keep the search diverse, but they don't guarantee it. An island can stall, where its best score stops improving and the population just churns, and islands can drift onto the same idea as each other. Most of what I built here is how the search gets unstuck when that happens.
 
 <figure class="blog-figure" data-figure="islands">
 <div class="live-figure"><canvas aria-label="Four island populations of candidate programs evolving in parallel, with the best migrating between islands"></canvas></div>
@@ -131,7 +167,11 @@ The main tool for it is islands. Instead of one population, the search runs seve
 
 #### Starting Apart
 
-Diversity has to start at the beginning. Start every island from the same seed program, hand each one the same research grounding, and more often than not the agents converge on the same ideas anyway. That's the whole reason exploration has to start at the island level. When I got there, every founding seed was copied onto every island, so the islands began as clones. I changed it so each island gets its own seed, and a critic checks that each new island's seed is actually different from the ones before it. The FM Agent makes the case for starting this way, splitting a diverse pool of first solutions across its islands so each explores its own path ([Li et al. 2025](https://arxiv.org/abs/2510.26144)). FM Agent stops at splitting the pool. The critic is my addition, so a seed that's too close to one already placed gets redrawn instead of quietly starting a clone.
+Diversity has to start at the beginning. Start every island from the same seed program, hand each one the same research grounding, and more often than not the agents converge on the same ideas anyway. That's the whole reason exploration has to start at the island level.
+
+When I got there, every founding seed was copied onto every island, so the islands began as clones. I changed it so each island gets its own seed, and a critic checks that each new island's seed is actually different from the ones before it.
+
+The FM Agent makes the case for starting this way, splitting a diverse pool of first solutions across its islands so each explores its own path ([Li et al. 2025](https://arxiv.org/abs/2510.26144)). FM Agent stops at splitting the pool. The critic is my addition, so a seed that's too close to one already placed gets redrawn instead of quietly starting a clone.
 
 I also found that migration wasn't doing anything. Migrants were logged as arriving, but every step that picks parents only looked at an island's own members, so a migrant was never bred. After the fix, migrants actually got used in their new island. Different seeds didn't guarantee better results, though. On one IOAI task, the islands founded on unusual ideas simply lost to the obvious one.
 
@@ -142,7 +182,9 @@ I also found that migration wasn't doing anything. Migrants were logged as arriv
 
 #### A Map of What's Been Tried
 
-The map lists the techniques that could apply to a problem, grouped into families, and fills in as candidates actually build them. It separates a technique that was only suggested from one that was tried, and one a candidate built itself from one it inherited from a parent. The next section leans on it heavily. One bug taught me to check the map against the code. For a while it embedded each candidate's parent instead of the candidate, which made the population look like a monoculture when it wasn't.
+The map lists the techniques that could apply to a problem, grouped into families, and fills in as candidates actually build them. It separates a technique that was only suggested from one that was tried, and one a candidate built itself from one it inherited from a parent. The next section leans on it heavily.
+
+One bug taught me to check the map against the code. For a while it embedded each candidate's parent instead of the candidate, which made the population look like a monoculture when it wasn't.
 
 <figure class="blog-figure" data-figure="research-map">
 <div class="live-figure"><canvas aria-label="An invented research map for RNA folding. Techniques in four families, sized as approaches, ingredients and tweaks, fill in as a run of candidates builds them, and most of the builds land on one approach"></canvas></div>
@@ -153,11 +195,17 @@ The map lists the techniques that could apply to a problem, grouped into familie
 
 Islands fail in two ways. They converge, when two islands that started apart end up building the same thing, and they stall, when every island stops improving at once.
 
-Convergence is the subtler one, and I built the check for it. An LLM judge reads a brief of what each island has tried, compiled from the research map, and decides whether they've piled onto the same idea and used it up, not just adopted it. Because the map sorts techniques into approaches, ingredients and tweaks, the judge can see two islands sharing one approach even when all their tweaks differ, which a plain overlap count misses. When it fires, one island is reseeded in a direction the map shows nobody has tried. Early reseeds kept drifting back to the old idea by borrowing from the rest of the population, so a reseeded island now breeds only from its own lineage until it has warmed up, the same way NEAT gives a new innovation its own niche to mature in before it has to compete ([Stanley and Miikkulainen 2002](https://doi.org/10.1162/106365602320169811)).
+Convergence is the subtler one, and I built the check for it. An LLM judge reads a brief of what each island has tried, compiled from the research map, and decides whether they've piled onto the same idea and used it up, not just adopted it. Because the map sorts techniques into approaches, ingredients and tweaks, the judge can see two islands sharing one approach even when all their tweaks differ, which a plain overlap count misses.
+
+When it fires, one island is reseeded in a direction the map shows nobody has tried. Early reseeds kept drifting back to the old idea by borrowing from the rest of the population, so a reseeded island now breeds only from its own lineage until it has warmed up, the same way NEAT gives a new innovation its own niche to mature in before it has to compete ([Stanley and Miikkulainen 2002](https://doi.org/10.1162/106365602320169811)).
 
 When every island stalls at once, redirecting one isn't enough, so the system founds a new island. It has two ways to do it, and it tries synthesis spawn first.
 
-Synthesis spawn starts from MLEvolve's multi-branch aggregation ([Du et al. 2026](https://arxiv.org/abs/2606.06473)), but their version is simple. When the global best stops improving, MLEvolve pools the best ideas from each branch into a new one. Mine leans on the research map. For the top candidates on each island, it walks their lineages step by step and uses the map to see what each step actually built, whether an approach, an ingredient or a tweak, and in which family, and which of those changes moved the score. Then it picks a set of ideas that cover different families, rather than just the top scores, and fuses them into one new seed. A critic approves the seed only if that combination never appeared together in an earlier lineage.
+Synthesis spawn starts from MLEvolve's multi-branch aggregation ([Du et al. 2026](https://arxiv.org/abs/2606.06473)), but their version is simple. When the global best stops improving, MLEvolve pools the best ideas from each branch into a new one.
+
+Mine leans on the research map. For the top candidates on each island, it walks their lineages step by step and uses the map to see what each step actually built, whether an approach, an ingredient or a tweak, and in which family, and which of those changes moved the score.
+
+Then it picks a set of ideas that cover different families, rather than just the top scores, and fuses them into one new seed. A critic approves the seed only if that combination never appeared together in an earlier lineage.
 
 If synthesis can't find a new combination, the system falls back to orthogonal spawn, which is my own design. It reads the map for a direction no island has tried and seeds the new island there, with the history of what failed passed in as things to avoid. The new island gets a protected warm-up, where it runs ahead of the others and nothing migrates in.
 
@@ -168,11 +216,13 @@ If synthesis can't find a new combination, the system falls back to orthogonal s
 
 The best finding came from testing them. New islands drifted. Their descendants quietly dropped the founding idea and went back to known methods. In one forced test, none of a new island's descendants still contained the idea it was founded on. So before every training run, a check now confirms the founding idea is still in the code, and after that the idea held. I never got a clean comparison of the two modes, so I can't tell you which one works better.
 
-#### Code Novelty Rejection Sampling
+#### Code Novelty
 
 The system loves to re-propose ideas it has already tried. ShinkaEvolve handles this with novelty rejection sampling ([Lange et al. 2025](https://arxiv.org/abs/2509.19349)). It embeds each new program, compares it with the programs on its island, and when the closest match is too similar, asks an LLM judge whether it's really new. Rejected programs get resampled.
 
-We started from that, and my part was making it work inside an agent that writes and trains its own code. The gate sits right before training, inside the coding agent's loop. It embeds the whole training script with Voyage's code embeddings, and a close match only calls the judge in. If the judge blocks it, the agent gets the judge's reasons and revises, and after a few blocks it trains anyway, so no work is thrown away. Running it live showed the embeddings can only shortlist. A cosmetic edit and a real change can score almost the same, and two different ideas can look identical when they share a code scaffold, so the judge makes every real call.
+We started from that, and my part was making it work inside an agent that writes and trains its own code. The gate sits right before training, inside the coding agent's loop. It embeds the whole training script with Voyage's code embeddings, and a close match only calls the judge in. If the judge blocks it, the agent gets the judge's reasons and revises, and after a few blocks it trains anyway, so no work is thrown away.
+
+Running it live showed the embeddings can only shortlist. A cosmetic edit and a real change can score almost the same, and two different ideas can look identical when they share a code scaffold, so the judge makes every real call.
 
 <figure class="blog-figure" data-figure="novelty">
 <div class="live-figure"><canvas aria-label="A candidate that only renames variables scores as similar as one that adds a real change. The judge calls the first a cosmetic copy and sends it back with reasons, the agent revises it, and it trains. The second is ruled a new idea and trains"></canvas></div>
@@ -240,7 +290,8 @@ Then the search cheated. A few candidates reported scores above the record by pu
 
 #### A Master Trophy at IOAI
 
-We entered our engine in the International Olympiad in Artificial Intelligence (IOAI), in its track for AI labs. Each of the six tasks was a self-contained machine-learning problem in a different domain, and for each one the engine wrote and trained its own candidate models, then submitted them to a hidden leaderboard. 
+We entered our engine in the International Olympiad in Artificial Intelligence (IOAI), in its track for AI labs. Each of the six tasks was a self-contained machine-learning problem in a different domain, and for each one the engine wrote and trained its own candidate models, then submitted them to a hidden leaderboard.
+
 We placed 7th of 15 AI systems from 14 labs and took a Master Trophy, the AI track's equivalent of a bronze medal, finishing just ahead of Sakana AI (505.72 to 504.25 out of 600). We were also named an IOAI² Founding AI Participant and invited to give an oral talk on our system at the IOAI Symposium.
 
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin:1.5em 0">
@@ -401,9 +452,13 @@ We placed 7th of 15 AI systems from 14 labs and took a Master Trophy, the AI tra
 <figcaption>From IOAI's [inaugural edition review of the AI Models Track](https://ioai-official.org/wp-content/uploads/2026/09/IOAI%C2%B2-AI-Models-Track_updated.pdf), its trophy table and cost table.</figcaption>
 </figure>
 
-The field was strong. On all six tasks, the top score used for normalization was set by an AI lab, not the organizers' own reference solution. All 15 systems scored at or above the student gold-medal threshold, and 13 beat the best student total, though IOAI is careful to note that the AI systems ran under different conditions, with more compute and internet access. We ran on a single H100, while Sakana, one place behind us, used eight H200s. IOAI wrote up the track in [What happens when autonomous AI takes on the same tasks as the world's top young AI talents?](https://ioai-official.org/what-happens-when-autonomous-ai-takes-on-the-same-tasks-as-the-worlds-top-young-ai-talents/)
+The field was strong. On all six tasks, the top score used for normalization was set by an AI lab, not the organizers' own reference solution. All 15 systems scored at or above the student gold-medal threshold, and 13 beat the best student total, though IOAI is careful to note that the AI systems ran under different conditions, with more compute and internet access.
 
-For IOAI, I ran our campaign end to end. I prepared the research corpus for each task's domain, pointed the engine at the tasks, and built the pipeline that packaged its solutions and submitted them through the competition's Kaggle flow. I enforced the contest rules on every run, like the limits on external data and pretrained weights, and audited the results to separate real progress from infrastructure failures so we could fix what was actually breaking. The track requires that all training code be written and submitted by the AI agents autonomously, with no human in the loop. You can read the rules on the [official IOAI AI Models Track page](https://ioai-official.org/ai-models-track/rules-format/).
+We ran on a single H100, while Sakana, one place behind us, used eight H200s. IOAI wrote up the track in [What happens when autonomous AI takes on the same tasks as the world's top young AI talents?](https://ioai-official.org/what-happens-when-autonomous-ai-takes-on-the-same-tasks-as-the-worlds-top-young-ai-talents/)
+
+For IOAI, I ran our campaign end to end. I prepared the research corpus for each task's domain, pointed the engine at the tasks, and built the pipeline that packaged its solutions and submitted them through the competition's Kaggle flow.
+
+I enforced the contest rules on every run, like the limits on external data and pretrained weights, and audited the results to separate real progress from infrastructure failures so we could fix what was actually breaking. The track requires that all training code be written and submitted by the AI agents autonomously, with no human in the loop. You can read the rules on the [official IOAI AI Models Track page](https://ioai-official.org/ai-models-track/rules-format/).
 
 ### What I Read
 
@@ -479,7 +534,7 @@ The hard part of an automated researcher is not generating ideas. Getting an age
 
 It's also worth being honest about where this goes. Point the same loop at the training algorithms, architectures, and AI agents that build these systems, and you get AI improving AI itself, which is called recursive self-improvement (RSI). That is the most exciting direction this work can take and probably the most dangerous, and it's why I think getting the measurement right matters so much.
 
-I got to work on a genuinely ambitious version of automating research, and I came away more convinced that this line of work is going somewhere. Thank you to the team for the trust and the ownership. I am excited to see where the system goes from here.
+I got to work on a genuinely ambitious version of automating research, and I came away more convinced that this line of work is going somewhere. Thank you to the team for the trust and the ownership. I'm excited to see what they build next in robotics.
 
 ### References
 
