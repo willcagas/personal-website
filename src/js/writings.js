@@ -28,7 +28,6 @@ const BLOG_POSTS = [
     summary:
       "My work, thoughts, and learnings during my internship at Darwin (YC F25).",
     file: "/content/blog/thesis-labs-internship.md",
-    comingSoon: true,
     hero: { kind: "title-card", title: "Darwin", background: "frontier" },
     overview: {
       details: [

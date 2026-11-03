@@ -788,14 +788,82 @@ a:hover {
   height: 100%;
 }
 
+.blog-post-body [data-figure="research-map"] .live-figure {
+  aspect-ratio: 4 / 3;
+}
+
+/* An inline chart can ship a phone layout beside its wide one */
+.blog-post-body .chart-narrow {
+  display: none;
+}
+
 /* Phones: taller frames so the figures keep room for their labels */
 @media (max-width: 640px) {
+  .blog-post-body .chart-wide {
+    display: none;
+  }
+
+  .blog-post-body .chart-narrow {
+    display: block;
+  }
+
+  .blog-post-body [data-figure="research-map"] .live-figure {
+    aspect-ratio: 3 / 4;
+  }
+
+  .blog-post-body [data-figure="climb"] .live-figure,
+  .blog-post-body [data-figure="generation"] .live-figure,
+  .blog-post-body [data-figure="corpus"] .live-figure {
+    aspect-ratio: 4 / 3;
+  }
+
+  .blog-post-body [data-figure="agents"] .live-figure,
+  .blog-post-body [data-figure="seeds"] .live-figure,
+  .blog-post-body [data-figure="spawn"] .live-figure,
+  .blog-post-body [data-figure="novelty"] .live-figure {
+    aspect-ratio: 3 / 4;
+  }
+
   .blog-post-body [data-figure="islands"] .live-figure {
     aspect-ratio: 1 / 1;
   }
 
   .blog-post-body [data-figure="reading"] .live-figure {
     aspect-ratio: 4 / 5;
+  }
+
+  .blog-post-body [data-figure="circle-packing"] .live-figure {
+    aspect-ratio: 4 / 5;
+  }
+}
+
+/* Charts that draw in when first scrolled to (data-grow, src/js/article-figures.js) */
+.blog-post-body [data-grow] [data-bar] {
+  transform: scaleX(0);
+  transform-box: fill-box;
+  transform-origin: left center;
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.blog-post-body [data-grow] [data-reveal] {
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+
+.blog-post-body [data-grow].is-grown [data-bar] {
+  transform: scaleX(1);
+}
+
+.blog-post-body [data-grow].is-grown [data-reveal] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blog-post-body [data-grow] [data-bar],
+  .blog-post-body [data-grow] [data-reveal] {
+    transform: none;
+    opacity: 1;
+    transition: none;
   }
 }
 
@@ -830,6 +898,40 @@ a:hover {
 
 .blog-post-body > *:first-child {
   margin-top: 0;
+}
+
+/* Tables in posts: hairline rows; marked sets each column's alignment */
+.blog-post-body table {
+  width: 100%;
+  margin: 1.5em 0;
+  border-collapse: collapse;
+  font-size: var(--font-size-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.blog-post-body th,
+.blog-post-body td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+  line-height: 1.45;
+  vertical-align: top;
+}
+
+.blog-post-body th {
+  font-weight: 600;
+  color: var(--color-text);
+  border-bottom-color: var(--color-text-secondary);
+}
+
+.blog-post-body th:not([align]) {
+  text-align: left;
+}
+
+@media (max-width: 640px) {
+  .blog-post-body th,
+  .blog-post-body td {
+    padding: 7px 6px;
+  }
 }
 
 .blog-post-body h2,
@@ -1423,6 +1525,111 @@ a:hover {
 .cover-follow.is-open {
   opacity: 1;
   visibility: visible;
+}
+
+/* A paper's first page is 3:4 (fav-chip--page, used by a post's reading list) */
+.cover-follow.is-page {
+  width: 132px;
+  aspect-ratio: 3 / 4;
+  object-position: 50% 0;
+  background: #fff;
+}
+
+/* A post's reading list (src/js/reading-chips.js): favourites-style chips, then a card for the chosen paper */
+.blog-post-body .reading-chips {
+  margin: 1.5em 0 2em;
+}
+
+.reading-chips .fav-chip {
+  appearance: none;
+  margin: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--font-size-small);
+  line-height: 1.3;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fav-chip--page .fav-chip-thumb {
+  width: 22px;
+  height: 29px;
+  object-position: 50% 0;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--color-border);
+}
+
+.reading-chips .fav-chip[aria-pressed="true"] {
+  color: var(--color-text);
+  border-color: var(--color-text);
+  background: #fff;
+}
+
+.reading-card {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.reading-card:empty {
+  display: none;
+}
+
+.blog-post-body .reading-card-cover {
+  display: block;
+  align-self: start;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border: none;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(28, 25, 23, 0.1), 0 6px 14px -8px rgba(28, 25, 23, 0.35);
+}
+
+.reading-card-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+}
+
+.blog-post-body .reading-card p {
+  margin: 0;
+}
+
+.reading-card-head {
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+
+.blog-post-body .reading-card-head a {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.reading-card-head span {
+  margin-left: 4px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+.blog-post-body .reading-card-line {
+  margin-top: 5px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .reading-card {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+  }
 }
 
 /* Phones: the label sits above its chips */

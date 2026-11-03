@@ -30,6 +30,7 @@ export function initCoverFollow(root) {
     chip.addEventListener('mouseenter', (ev) => {
       el.src = chip.querySelector('.fav-chip-thumb').src;
       el.classList.toggle('is-square', chip.classList.contains('fav-chip--square'));
+      el.classList.toggle('is-page', chip.classList.contains('fav-chip--page'));
       place(ev.clientX, ev.clientY);
       el.classList.add('is-open');
     });

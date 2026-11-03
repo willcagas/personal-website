@@ -4,7 +4,6 @@
 
 # Draft writings (kept local until published; see `draft: true` in src/js/writings.js)
 content/blog/llm-driven-evolutionary-ai.md
-content/blog/thesis-labs-internship.md
 assets/blog/evolutionary-ai/
 
 # Design sketches kept on hand, not part of the site

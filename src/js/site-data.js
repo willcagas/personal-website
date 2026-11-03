@@ -15,7 +15,8 @@ export const SITE = {
   // 88×31 web buttons, in display order
   buttons: [
     { name: 'William Cagas', url: 'https://www.wcagas.com/', image: '/assets/buttons/button.gif' },
-    { name: 'Ethan Tran', url: 'https://www.ethantran.ca', image: 'https://www.ethantran.ca/button.gif' }
+    { name: 'Ethan Tran', url: 'https://www.ethantran.ca', image: 'https://www.ethantran.ca/button.gif' },
+    { name: 'Mikael Gomez', url: 'https://mikael.codes', image: 'https://www.mikael.codes/button.gif' }
   ],
 
   // `detail` may contain HTML

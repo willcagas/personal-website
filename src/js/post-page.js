@@ -1,18 +1,22 @@
 /**
  * Fills in a post page after it renders: loads the markdown, shows the read
- * time, mounts live figures, builds the contents sidebar and typesets math.
+ * time, mounts live figures and reading lists, builds the contents sidebar and
+ * typesets math.
  */
 
 import { getWriting, loadWritingBody } from './writings.js';
 import { renderMarkdown, typesetMath, addHeadingIds } from './markdown.js';
 import { mountArticleFigures } from './article-figures.js';
+import { initReadingChips } from './reading-chips.js';
+import { initCoverFollow } from './cover-follow.js';
 import { escapeHtml } from './pages/shared.js';
 
 let tocObserver = null;
 
-/** Minutes to read, from the words in the markdown (ignoring math, code and link targets). */
+/** Minutes to read, from the words in the markdown (ignoring math, code, link targets and HTML tags). */
 function readingMinutes(markdown, wpm = 220) {
   const text = markdown
+    .replace(/<[^>]+>/g, ' ')
     .replace(/\$\$[\s\S]+?\$\$/g, ' ')
     .replace(/\$[^$\n]+?\$/g, ' ')
     .replace(/```[\s\S]*?```/g, ' ')
@@ -115,6 +119,8 @@ export async function initPostPage(root) {
     body.innerHTML = await renderMarkdown(markdown);
     addHeadingIds(body);
     mountArticleFigures(body);
+    initReadingChips(body);
+    initCoverFollow(body);
     buildToc(article, body);
     smoothAnchors(body);
 
