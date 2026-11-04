@@ -26,7 +26,7 @@ const BLOG_POSTS = [
     title: "DeepSeek-V3 From Scratch",
     date: "2026-11",
     summary:
-      "What DeepSeek-V3 does differently, rebuilt one piece at a time.",
+      "Building a miniature DeepSeek-V3, piece by piece.",
     file: "/content/blog/deepseek-v3-from-scratch.md",
     comingSoon: true,
     hero: { kind: "title-card", title: "DeepSeek-V3", background: "latent" },
