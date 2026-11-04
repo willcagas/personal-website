@@ -10,7 +10,7 @@
  *   hidden      hidden everywhere, localhost included
  *   comingSoon  the page (title, date, hero, overview) is public with "Coming
  *               soon" in place of the article; localhost shows the full text
- *   hero        { kind: "title-card", title, subtitle?, background?: "life" | "frontier" }
+ *   hero        { kind: "title-card", title, subtitle?, background?: "life" | "frontier" | "latent" }
  *               an animated title card above the article (src/js/title-card.js)
  *   overview    { details: [{ label, value, note? }], text }
  *               a Details / Overview block under the hero; `text` may contain HTML
@@ -20,6 +20,26 @@
  */
 
 const BLOG_POSTS = [
+  {
+    section: "blog",
+    slug: "deepseek-v3-from-scratch",
+    title: "DeepSeek-V3 From Scratch",
+    date: "2026-11",
+    summary:
+      "What DeepSeek-V3 does differently, rebuilt one piece at a time.",
+    file: "/content/blog/deepseek-v3-from-scratch.md",
+    comingSoon: true,
+    hero: { kind: "title-card", title: "DeepSeek-V3", background: "latent" },
+    overview: {
+      details: [
+        { label: "Model", value: "DeepSeek-V3" },
+        { label: "Code", value: "GitHub (coming soon)" },
+        { label: "Demo", value: "Coming soon" }
+      ],
+      text:
+        "A technical deep dive where I implement a miniature <a href=\"https://arxiv.org/abs/2412.19437\" target=\"_blank\" rel=\"noopener noreferrer\">DeepSeek-V3</a> from scratch. It features multiple parts, including multi-head latent attention (MLA), compressed KV caching, DeepSeekMoE, RoPE, RMSNorm, and SwiGLU. With those in place, I pretrain it from scratch, fine-tune it to follow instructions, and build an interactive demo you can prompt."
+    }
+  },
   {
     section: "blog",
     slug: "thesis-labs-internship",

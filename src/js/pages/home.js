@@ -12,9 +12,9 @@ function darwinLink() {
     : '<a href="https://darwinrobotics.ai/" target="_blank" rel="noopener noreferrer">Darwin</a>';
 }
 
-/** The newest post with a title card, as a row that opens it. */
+/** The newest published post with a title card, as a row that opens it (coming-soon posts wait until they're out). */
 function renderLatest() {
-  const post = getBlogPosts().find((p) => p.hero?.kind === 'title-card');
+  const post = getBlogPosts().find((p) => p.hero?.kind === 'title-card' && !p.comingSoon);
   if (!post) return '';
   return `
     <section class="panel panel-latest page-content">

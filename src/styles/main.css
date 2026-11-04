@@ -727,6 +727,11 @@ a:hover {
   bottom: 50%;
 }
 
+/* On the latent bow-tie, the wordmark sits on the waist, above the two caches */
+.title-card[data-background="latent"] .title-card-text {
+  bottom: 8%;
+}
+
 .title-card-word {
   margin: 0;
   /* Sized by the card's width, so the same card works as a hero and as a small preview */

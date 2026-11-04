@@ -8,6 +8,11 @@
  *            slopes, downhill steps are discarded, and a dashed frontier line
  *            rises whenever the best climber passes it. The wordmark sits in
  *            the sky above the range.
+ * latent   — multi-head latent attention as a bow-tie: per-head key/value
+ *            lines pinch into one thin latent behind the wordmark and fan back
+ *            out. Each token is a pulse that turns gold while it's latent, and
+ *            adds a block to two caches along the bottom: a long one for
+ *            standard attention, a short gold one for the latent.
  *
  * Zero dependencies. Pauses offscreen / in hidden tabs.
  */
@@ -19,6 +24,22 @@ const GOLD = '214, 165, 72';
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, k) => a + (b - a) * k;
 const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
+/** How far t is through [a, b], from 0 to 1 */
+const span = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+/** Mix two "r, g, b" colours */
+const mix = (a, b, k) => {
+  const pb = b.split(',').map(Number);
+  return a.split(',').map((v, i) => Math.round(lerp(Number(v), pb[i], k))).join(', ');
+};
+
+/** Canvas text with a halo of the card's background, so it reads over linework. */
+function haloText(ctx, text, x, y) {
+  ctx.lineWidth = 4;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = `rgb(${BG})`;
+  ctx.strokeText(text, x, y);
+  ctx.fillText(text, x, y);
+}
 
 /* ───────────── Game of Life ───────────── */
 
@@ -310,14 +331,6 @@ function createFrontier(W, H, dpr, { minimal = false } = {}) {
     if (frontier >= range.best * 0.985) holdUntil = clock + HOLD_MS;
   }
 
-  function haloText(ctx, text, x, y) {
-    ctx.lineWidth = 4;
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = `rgb(${BG})`;
-    ctx.strokeText(text, x, y);
-    ctx.fillText(text, x, y);
-  }
-
   function draw(ctx) {
     ctx.fillStyle = `rgb(${BG})`;
     ctx.fillRect(0, 0, W, H);
@@ -383,7 +396,159 @@ function createFrontier(W, H, dpr, { minimal = false } = {}) {
   return { step, draw };
 }
 
-const BACKGROUNDS = { life: createLife, frontier: createFrontier };
+/* ───────────── The latent bottleneck ───────────── */
+
+function createLatent(W, H, dpr, { minimal = false } = {}) {
+  const s = clamp(W / 680, 0.17, 1);   // labels and strokes shrink on small cards
+  const N = W < 260 ? 9 : 15;          // per-head key/value lines
+  const TOP = H * 0.1;
+  const BOT = H * 0.8;
+  const MID = (TOP + BOT) / 2;         // the wordmark sits here (main.css)
+  const WAIST = H * 0.022;
+  const RATIO = 7;                     // how much more the standard cache holds per token (illustrative)
+  const TOKEN_MS = 760;
+  const TRAVEL_MS = 3000;              // one pulse, edge to edge
+  const SEQ = 14;                      // tokens before both caches empty
+  const BAR_X0 = W * 0.31;
+  const BAR_X1 = W * 0.69;
+  const BAR_H = Math.max(1.5, 4 * s);
+  const UNIT = (BAR_X1 - BAR_X0) / (SEQ * RATIO);
+  const labels = !minimal && W >= 260;
+  const LABEL_PX = Math.max(10, 12.5 * s);
+  const PREWARM_MS = 9300;        // a moment with no pulse half off the edge (the still under reduced motion)
+
+  // Quiet behind the wordmark, as on the Game of Life card
+  const calm = (x) => clamp(Math.hypot((x - W / 2) / (W * 0.3), (MID - H / 2) / (H * 0.26)) ** 1.6, 0.06, 1);
+  // How pinched the lines are at x: 0 at the edges, 1 behind the wordmark
+  const pinch = (x) => ease(clamp((1 - Math.abs(x - W / 2) / (W / 2)) / 0.64, 0, 1));
+  const lineY = (i, x) => {
+    const f = i / (N - 1) - 0.5;
+    const p = pinch(x);
+    return lerp(MID + f * (BOT - TOP), MID + f * WAIST, p) + Math.sin(x * 0.012 + i) * 1.5 * s * (1 - p);
+  };
+  const headX = (p) => ((clock - p.born) / TRAVEL_MS) * (W + 60) - 30;
+
+  // The lines never move, so they're drawn once
+  const lines = document.createElement('canvas');
+  lines.width = Math.round(W * dpr);
+  lines.height = Math.round(H * dpr);
+  const g = lines.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.lineCap = 'round';
+  g.lineWidth = Math.max(0.6, 0.9 * s);
+  for (let i = 0; i < N; i++) {
+    for (let x = 0; x < W; x += 6) {
+      g.strokeStyle = `rgba(${LIGHT}, ${0.17 * calm(x) * (1 - 0.65 * pinch(x))})`;
+      g.beginPath();
+      g.moveTo(x, lineY(i, x));
+      g.lineTo(x + 6, lineY(i, x + 6));
+      g.stroke();
+    }
+  }
+
+  let clock = 0;
+  let pulses = [];
+  let nextAt = 0;
+  let cached = 0;
+  let emptyAt = 0;
+  let cacheFade = 1;
+
+  function step(dt) {
+    clock += dt;
+    while (clock >= nextAt) {
+      pulses.push({ born: nextAt, counted: false });
+      nextAt += TOKEN_MS;
+    }
+    // A token is cached as it passes the waist
+    for (const p of pulses) {
+      if (p.counted || headX(p) < W / 2) continue;
+      p.counted = true;
+      if (emptyAt) continue;
+      cached++;
+      if (cached >= SEQ) emptyAt = clock + 1800;
+    }
+    if (emptyAt) {
+      cacheFade = 1 - span(clock, emptyAt, emptyAt + 500);
+      if (clock > emptyAt + 500) {
+        cached = 0;
+        emptyAt = 0;
+        cacheFade = 1;
+      }
+    }
+    pulses = pulses.filter((p) => clock - p.born < TRAVEL_MS + 200);
+  }
+
+  function draw(ctx) {
+    ctx.fillStyle = `rgb(${BG})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(lines, 0, 0, W, H);
+    ctx.lineCap = 'round';
+
+    // Pulses: light while per-head, gold while latent
+    const tail = Math.max(10, 30 * s);
+    ctx.lineWidth = Math.max(1, 1.6 * s);
+    for (const p of pulses) {
+      const head = headX(p);
+      const pk = pinch(head);
+      const latent = span(pk, 0.72, 0.95);
+      const k = Math.max(0.3, calm(head));
+      if (latent > 0) {
+        const r = Math.max(8, 38 * s);
+        const glow = ctx.createRadialGradient(head, MID, 0, head, MID, r);
+        glow.addColorStop(0, `rgba(${GOLD}, ${0.28 * latent})`);
+        glow.addColorStop(1, `rgba(${GOLD}, 0)`);
+        ctx.fillStyle = glow;
+        ctx.fillRect(head - r, MID - r, r * 2, r * 2);
+      }
+      // Once the lines are closer together than they are thick, each is fainter, so the bundle doesn't pile into a bar
+      const spacing = lerp(BOT - TOP, WAIST, pk) / (N - 1);
+      const overlap = Math.max(1, (ctx.lineWidth * 1.5) / spacing);
+      ctx.strokeStyle = `rgba(${mix(LIGHT, GOLD, latent)}, ${clamp((lerp(0.75, 0.95, latent) * k) / overlap, 0, 1)})`;
+      for (let i = 0; i < N; i++) {
+        ctx.beginPath();
+        for (let d = 0; d <= tail; d += 3) {
+          const x = head - d;
+          if (d) ctx.lineTo(x, lineY(i, x));
+          else ctx.moveTo(x, lineY(i, x));
+        }
+        ctx.stroke();
+      }
+    }
+
+    // The two caches, one block per token
+    const y0 = H * 0.865;
+    const y1 = y0 + Math.max(BAR_H + 9 * s, labels ? LABEL_PX * 1.3 : BAR_H + 3);
+    ctx.fillStyle = `rgba(${LIGHT}, 0.06)`;
+    ctx.fillRect(BAR_X0 + cached * RATIO * UNIT, y0, Math.max(0, BAR_X1 - BAR_X0 - cached * RATIO * UNIT), BAR_H);
+    ctx.globalAlpha = cacheFade;
+    for (let t = 0; t < cached; t++) {
+      const fresh = t === cached - 1 ? 1 : 0;
+      ctx.fillStyle = `rgba(${LIGHT}, ${0.42 + 0.3 * fresh})`;
+      ctx.fillRect(BAR_X0 + t * RATIO * UNIT, y0, RATIO * UNIT - Math.max(1, s), BAR_H);
+      ctx.fillStyle = `rgba(${GOLD}, ${0.8 + 0.2 * fresh})`;
+      ctx.fillRect(BAR_X0 + t * UNIT, y1, Math.max(1, UNIT - Math.max(0.6, 0.8 * s)), BAR_H);
+    }
+    ctx.globalAlpha = 1;
+
+    if (labels) {
+      const wide = W >= 480;
+      ctx.font = `italic 400 ${LABEL_PX}px Newsreader, Georgia, serif`;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'right';
+      ctx.fillStyle = `rgba(${LIGHT}, 0.55)`;
+      haloText(ctx, wide ? 'KV cache, every head' : 'every head', BAR_X0 - 10 * s, y0 + BAR_H / 2);
+      ctx.fillStyle = `rgba(${GOLD}, 0.8)`;
+      haloText(ctx, wide ? 'KV cache, latent' : 'latent', BAR_X0 - 10 * s, y1 + BAR_H / 2);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+    }
+  }
+
+  for (let t = 0; t < PREWARM_MS; t += 16) step(16);
+  return { step, draw };
+}
+
+const BACKGROUNDS = { life: createLife, frontier: createFrontier, latent: createLatent };
 
 /* ───────────── Mounting ───────────── */
 
