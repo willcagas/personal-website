@@ -11,7 +11,8 @@ import { initReadingChips } from './reading-chips.js';
 import { initCoverFollow } from './cover-follow.js';
 import { escapeHtml } from './pages/shared.js';
 
-let tocObserver = null;
+let tocCleanup = null;
+let tocFocus = null;
 
 /** Minutes to read, from the words in the markdown (ignoring math, code, link targets and HTML tags). */
 function readingMinutes(markdown, wpm = 220) {
@@ -39,12 +40,18 @@ function smoothAnchors(root) {
       if (!target) return;
       e.preventDefault();
       history.replaceState(null, '', `#${id}`);
+      tocFocus?.(id);
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
 }
 
-/** The contents sidebar: the post's headings (Overview first), highlighting the one in view. */
+/**
+ * The contents sidebar: the post's headings (Overview first), highlighting the
+ * last one scrolled past. A heading jumped to stays highlighted while the page
+ * scrolls to it, even when the next heading sits just below it or the page
+ * ends before it can reach the top.
+ */
 function buildToc(article, body) {
   const tocEl = article.querySelector('[data-blog-toc]');
   if (!tocEl) return;
@@ -87,20 +94,75 @@ function buildToc(article, body) {
 
   const links = [...tocEl.querySelectorAll('[data-toc-link]')];
   const setActive = (id) => links.forEach((link) => link.classList.toggle('active', link.dataset.tocLink === id));
-  setActive(links[0].dataset.tocLink);
 
-  tocObserver = new IntersectionObserver((entries) => {
-    const topmost = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-    if (topmost?.target.id) setActive(topmost.target.id);
-  }, { rootMargin: '-15% 0px -70% 0px', threshold: [0, 1] });
-  headings.forEach((h) => tocObserver.observe(h));
+  // While a jump scrolls the page, the highlight holds on its target
+  let locked = false;
+  let idle = null;
+  let frame = 0;
+  const unlock = () => {
+    locked = false;
+    clearTimeout(idle);
+  };
+
+  const update = () => {
+    if (locked) return;
+    const root = document.documentElement;
+    if (window.innerHeight + window.scrollY >= root.scrollHeight - 2) {
+      setActive(headings[headings.length - 1].id);
+      return;
+    }
+    const line = Math.min(window.innerHeight * 0.3, 200);
+    let current = headings[0];
+    for (const h of headings) {
+      if (h.getBoundingClientRect().top > line) break;
+      current = h;
+    }
+    setActive(current.id);
+  };
+
+  const onScroll = () => {
+    if (locked) {
+      clearTimeout(idle);
+      idle = setTimeout(unlock, 160);
+      return;
+    }
+    if (!frame) frame = requestAnimationFrame(() => {
+      frame = 0;
+      update();
+    });
+  };
+  // Wheel, touch or keys mean the reader has taken over from the jump
+  const onReader = () => {
+    if (locked) unlock();
+  };
+
+  tocFocus = (id) => {
+    if (!links.some((link) => link.dataset.tocLink === id)) return;
+    setActive(id);
+    locked = true;
+    clearTimeout(idle);
+    idle = setTimeout(unlock, 400); // in case the page doesn't need to scroll at all
+  };
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
+  ['wheel', 'touchstart', 'keydown'].forEach((type) => window.addEventListener(type, onReader, { passive: true }));
+  tocCleanup = () => {
+    window.removeEventListener('scroll', onScroll);
+    window.removeEventListener('resize', onScroll);
+    ['wheel', 'touchstart', 'keydown'].forEach((type) => window.removeEventListener(type, onReader));
+    cancelAnimationFrame(frame);
+    clearTimeout(idle);
+    tocFocus = null;
+  };
+  update();
   smoothAnchors(tocEl);
 }
 
 /** Call after every navigation; does nothing off post pages. */
 export async function initPostPage(root) {
-  tocObserver?.disconnect();
-  tocObserver = null;
+  tocCleanup?.();
+  tocCleanup = null;
   const main = document.querySelector('main');
   main?.classList.remove('main-wide');
 
@@ -125,7 +187,14 @@ export async function initPostPage(root) {
     smoothAnchors(body);
 
     await typesetMath(body);
-    if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (location.hash) {
+      const id = decodeURIComponent(location.hash.slice(1));
+      const target = document.getElementById(id);
+      if (target) {
+        tocFocus?.(id);
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
   } catch (err) {
     console.error('Failed to render post:', err);
     body.innerHTML = '<p class="blog-soon">Failed to load post content.</p>';
