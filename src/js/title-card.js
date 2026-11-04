@@ -8,11 +8,12 @@
  *            slopes, downhill steps are discarded, and a dashed frontier line
  *            rises whenever the best climber passes it. The wordmark sits in
  *            the sky above the range.
- * latent   — multi-head latent attention as a bow-tie: per-head key/value
- *            lines pinch into one thin latent behind the wordmark and fan back
- *            out. Each token is a pulse that turns gold while it's latent, and
- *            adds a block to two caches along the bottom: a long one for
- *            standard attention, a short gold one for the latent.
+ * latent   — multi-head latent attention as a bow-tie, on a light paper card:
+ *            per-head key/value lines pinch into one thin latent behind the
+ *            wordmark and fan back out. Each token is a pulse that turns
+ *            DeepSeek blue while it's latent, and adds a block to two caches
+ *            along the bottom: a long one for standard attention, a short blue
+ *            one for the latent.
  *
  * Zero dependencies. Pauses offscreen / in hidden tabs.
  */
@@ -33,10 +34,10 @@ const mix = (a, b, k) => {
 };
 
 /** Canvas text with a halo of the card's background, so it reads over linework. */
-function haloText(ctx, text, x, y) {
+function haloText(ctx, text, x, y, halo = BG) {
   ctx.lineWidth = 4;
   ctx.lineJoin = 'round';
-  ctx.strokeStyle = `rgb(${BG})`;
+  ctx.strokeStyle = `rgb(${halo})`;
   ctx.strokeText(text, x, y);
   ctx.fillText(text, x, y);
 }
@@ -399,6 +400,10 @@ function createFrontier(W, H, dpr, { minimal = false } = {}) {
 /* ───────────── The latent bottleneck ───────────── */
 
 function createLatent(W, H, dpr, { minimal = false } = {}) {
+  // A light card (main.css gives it the same paper background and a dark wordmark)
+  const PAPER = '241, 236, 226';
+  const INK = '28, 25, 23';
+  const BLUE = '77, 107, 254';      // DeepSeek's blue
   const s = clamp(W / 680, 0.17, 1);   // labels and strokes shrink on small cards
   const N = W < 260 ? 9 : 15;          // per-head key/value lines
   const TOP = H * 0.1;
@@ -438,7 +443,7 @@ function createLatent(W, H, dpr, { minimal = false } = {}) {
   g.lineWidth = Math.max(0.6, 0.9 * s);
   for (let i = 0; i < N; i++) {
     for (let x = 0; x < W; x += 6) {
-      g.strokeStyle = `rgba(${LIGHT}, ${0.17 * calm(x) * (1 - 0.65 * pinch(x))})`;
+      g.strokeStyle = `rgba(${INK}, ${0.17 * calm(x) * (1 - 0.65 * pinch(x))})`;
       g.beginPath();
       g.moveTo(x, lineY(i, x));
       g.lineTo(x + 6, lineY(i, x + 6));
@@ -479,12 +484,12 @@ function createLatent(W, H, dpr, { minimal = false } = {}) {
   }
 
   function draw(ctx) {
-    ctx.fillStyle = `rgb(${BG})`;
+    ctx.fillStyle = `rgb(${PAPER})`;
     ctx.fillRect(0, 0, W, H);
     ctx.drawImage(lines, 0, 0, W, H);
     ctx.lineCap = 'round';
 
-    // Pulses: light while per-head, gold while latent
+    // Pulses: ink while per-head, blue while latent
     const tail = Math.max(10, 30 * s);
     ctx.lineWidth = Math.max(1, 1.6 * s);
     for (const p of pulses) {
@@ -495,15 +500,15 @@ function createLatent(W, H, dpr, { minimal = false } = {}) {
       if (latent > 0) {
         const r = Math.max(8, 38 * s);
         const glow = ctx.createRadialGradient(head, MID, 0, head, MID, r);
-        glow.addColorStop(0, `rgba(${GOLD}, ${0.28 * latent})`);
-        glow.addColorStop(1, `rgba(${GOLD}, 0)`);
+        glow.addColorStop(0, `rgba(${BLUE}, ${0.28 * latent})`);
+        glow.addColorStop(1, `rgba(${BLUE}, 0)`);
         ctx.fillStyle = glow;
         ctx.fillRect(head - r, MID - r, r * 2, r * 2);
       }
       // Once the lines are closer together than they are thick, each is fainter, so the bundle doesn't pile into a bar
       const spacing = lerp(BOT - TOP, WAIST, pk) / (N - 1);
       const overlap = Math.max(1, (ctx.lineWidth * 1.5) / spacing);
-      ctx.strokeStyle = `rgba(${mix(LIGHT, GOLD, latent)}, ${clamp((lerp(0.75, 0.95, latent) * k) / overlap, 0, 1)})`;
+      ctx.strokeStyle = `rgba(${mix(INK, BLUE, latent)}, ${clamp((lerp(0.75, 0.95, latent) * k) / overlap, 0, 1)})`;
       for (let i = 0; i < N; i++) {
         ctx.beginPath();
         for (let d = 0; d <= tail; d += 3) {
@@ -518,14 +523,14 @@ function createLatent(W, H, dpr, { minimal = false } = {}) {
     // The two caches, one block per token
     const y0 = H * 0.865;
     const y1 = y0 + Math.max(BAR_H + 9 * s, labels ? LABEL_PX * 1.3 : BAR_H + 3);
-    ctx.fillStyle = `rgba(${LIGHT}, 0.06)`;
+    ctx.fillStyle = `rgba(${INK}, 0.08)`;
     ctx.fillRect(BAR_X0 + cached * RATIO * UNIT, y0, Math.max(0, BAR_X1 - BAR_X0 - cached * RATIO * UNIT), BAR_H);
     ctx.globalAlpha = cacheFade;
     for (let t = 0; t < cached; t++) {
       const fresh = t === cached - 1 ? 1 : 0;
-      ctx.fillStyle = `rgba(${LIGHT}, ${0.42 + 0.3 * fresh})`;
+      ctx.fillStyle = `rgba(${INK}, ${0.42 + 0.3 * fresh})`;
       ctx.fillRect(BAR_X0 + t * RATIO * UNIT, y0, RATIO * UNIT - Math.max(1, s), BAR_H);
-      ctx.fillStyle = `rgba(${GOLD}, ${0.8 + 0.2 * fresh})`;
+      ctx.fillStyle = `rgba(${BLUE}, ${0.85 + 0.15 * fresh})`;
       ctx.fillRect(BAR_X0 + t * UNIT, y1, Math.max(1, UNIT - Math.max(0.6, 0.8 * s)), BAR_H);
     }
     ctx.globalAlpha = 1;
@@ -535,10 +540,10 @@ function createLatent(W, H, dpr, { minimal = false } = {}) {
       ctx.font = `italic 400 ${LABEL_PX}px Newsreader, Georgia, serif`;
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'right';
-      ctx.fillStyle = `rgba(${LIGHT}, 0.55)`;
-      haloText(ctx, wide ? 'KV cache, every head' : 'every head', BAR_X0 - 10 * s, y0 + BAR_H / 2);
-      ctx.fillStyle = `rgba(${GOLD}, 0.8)`;
-      haloText(ctx, wide ? 'KV cache, latent' : 'latent', BAR_X0 - 10 * s, y1 + BAR_H / 2);
+      ctx.fillStyle = `rgba(${INK}, 0.6)`;
+      haloText(ctx, wide ? 'KV cache, every head' : 'every head', BAR_X0 - 10 * s, y0 + BAR_H / 2, PAPER);
+      ctx.fillStyle = `rgba(${BLUE}, 0.9)`;
+      haloText(ctx, wide ? 'KV cache, latent' : 'latent', BAR_X0 - 10 * s, y1 + BAR_H / 2, PAPER);
       ctx.textAlign = 'left';
       ctx.textBaseline = 'alphabetic';
     }

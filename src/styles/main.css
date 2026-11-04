@@ -727,9 +727,26 @@ a:hover {
   bottom: 50%;
 }
 
-/* On the latent bow-tie, the wordmark sits on the waist, above the two caches */
+/* The latent card is light: paper, dark ink, DeepSeek blue (src/js/title-card.js).
+   Its wordmark sits on the bow-tie's waist, above the two caches. */
+.title-card[data-background="latent"] {
+  background: #f1ece2;
+}
+
 .title-card[data-background="latent"] .title-card-text {
   bottom: 8%;
+}
+
+.title-card[data-background="latent"] .title-card-word {
+  color: #1c1917;
+}
+
+.title-card[data-background="latent"] .title-card-toggle {
+  color: rgba(28, 25, 23, 0.6);
+}
+
+.title-card[data-background="latent"] .title-card-toggle:hover {
+  color: #1c1917;
 }
 
 .title-card-word {
