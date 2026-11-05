@@ -796,6 +796,11 @@ a:hover {
   aspect-ratio: 4 / 3;
 }
 
+/* The three-methods figure is a single row of squares, so it needs less height */
+.blog-post-body [data-figure="methods"] .live-figure {
+  aspect-ratio: 2 / 1;
+}
+
 /* An inline chart can ship a phone layout beside its wide one */
 .blog-post-body .chart-narrow {
   display: none;
@@ -825,7 +830,8 @@ a:hover {
   .blog-post-body [data-figure="seeds"] .live-figure,
   .blog-post-body [data-figure="spawn"] .live-figure,
   .blog-post-body [data-figure="novelty"] .live-figure,
-  .blog-post-body [data-figure="ioai"] .live-figure {
+  .blog-post-body [data-figure="ioai"] .live-figure,
+  .blog-post-body [data-figure="methods"] .live-figure {
     aspect-ratio: 3 / 4;
   }
 
@@ -837,9 +843,6 @@ a:hover {
     aspect-ratio: 4 / 5;
   }
 
-  .blog-post-body [data-figure="circle-packing"] .live-figure {
-    aspect-ratio: 4 / 5;
-  }
 }
 
 /* Charts that draw in when first scrolled to (data-grow, src/js/article-figures.js) */

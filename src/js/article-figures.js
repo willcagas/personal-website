@@ -13,14 +13,13 @@
  * corpus — one paper through parse, chunk and embed, then the whole 337K-paper corpus by field
  * seeds, spawn, novelty — islands dealt different seeds, the two ways to found a new
  *           island, and the code-novelty gate with its LLM judge
+ * methods — three methods (jamming, DC programming, Arrow–Hurwicz) reaching the same 26-circle packing
  * ioai — the IOAI² results as a race, task by task, ending on the trophy tiers
  * agents — the deep-research pass: planner, parallel explorers, verifiers, critic,
  *           synthesizer, ending in a brief of what is known, contested and open
  * islands — four island populations evolving in parallel; the best migrate
  *           between islands and a stalled island gets reseeded
  * reading — papers feeding a cited landscape of ideas across nine facets
- * circle-packing — 26 circles settling into the best-known packing, then the
- *           1e-6 tolerance cheat, magnified, failing a strict check
  * research-map — an invented map of techniques in four families, filling in as a
  *           made-up run of candidates builds them; hover or tap a mark for its name
  *
@@ -3433,6 +3432,880 @@ const createIOAIRace = (() => {
   };
 })();
 
+/* ───────────── Three roads to one packing ───────────── */
+
+// The three ways the engine matched the circle-packing record, side by side, all ending on the
+// same packing: Lubachevsky–Stillinger jamming (a real simulation, then an eased polish), a damped
+// Arrow–Hurwicz iteration (real primal-dual steps, started near the record and eased in at the end)
+// and DC programming (illustrative iterates). Drawn at 680 px (360 on phones), then scaled.
+const createPackingMethods = (() => {
+  const { PACKING_SUM, N, FRAME_MS, PAIRS, AH_RHO, sumOf, buildJam, buildAH, buildDCIterates } = (() => {
+    /**
+     * The three methods, as trajectories in the unit square. Each build*() returns a list of
+     * frames (Float64Array of [x, y, r] per circle, 26 circles, sampled every FRAME_MS of
+     * figure time) that ends exactly on PACKING_26, circle k on target k. Pure and seeded:
+     * no DOM, no Math.random, so every loop and every recording is the same.
+     *
+     * - Jamming is a real time-stepped Lubachevsky–Stillinger run: equal disks with random
+     *   positions and velocities, elastic collisions with each other and the walls, radii
+     *   growing at a common rate until the disks jam. The polish that follows (jammed disks
+     *   matched to the targets, then eased onto them) is illustrative.
+     * - Arrow–Hurwicz is a real damped primal-dual iteration on the actual augmented
+     *   Lagrangian (one multiplier per pair and per wall, radii on a larger step than
+     *   centres), from small scattered circles near the record. A weak pull toward the record
+     *   keeps it in that basin, so the motion is the method's but the landing spot is chosen,
+     *   and its last 1.5 s are eased onto the record (it creeps along a soft direction for a
+     *   long while otherwise). Its iterates overlap, so `valid` holds each frame's sum with
+     *   the overlaps trimmed off.
+     * - DC programming is illustrative: iterates are constructed (geometric steps toward the
+     *   record with a decaying zigzag, radii trimmed until no two circles overlap), not
+     *   solved as linear programs.
+     */
+
+    // The best-known packing of 26 circles in the unit square, as [x, y, r] (copied from
+    // src/js/article-figures.js: DeepMind's later strict construction, Georgiev et al. 2025)
+    const PACKING_26 = [[0.70261, 0.381666, 0.115149], [0.313116, 0.907608, 0.092392], [0.726906, 0.596043, 0.1006], [0.894817, 0.273953, 0.105183], [0.903849, 0.68208, 0.096151], [0.103061, 0.484601, 0.103061], [0.27163, 0.597635, 0.099898], [0.239711, 0.763674, 0.069181], [0.759352, 0.762959, 0.06944], [0.915074, 0.084926, 0.084926], [0.495532, 0.275343, 0.11763], [0.896533, 0.482596, 0.103467], [0.497284, 0.07886, 0.07886], [0.110779, 0.889221, 0.110779], [0.888844, 0.888844, 0.111156], [0.499428, 0.906073, 0.093927], [0.498668, 0.529963, 0.13701], [0.08464, 0.08464, 0.08464], [0.294609, 0.130221, 0.130221], [0.403359, 0.742417, 0.095842], [0.685943, 0.907408, 0.092592], [0.70231, 0.133259, 0.133259], [0.59522, 0.742049, 0.096019], [0.095732, 0.683259, 0.095732], [0.294746, 0.386924, 0.112077], [0.10679, 0.274783, 0.10679]];
+    const PACKING_SUM = 2.6359830849;
+    const N = PACKING_26.length;
+    const FRAME_MS = 1000 / 60;
+    const RSUM = PACKING_26.reduce((a, c) => a + c[2], 0);
+
+    /** Sum of radii of a frame, scaled so the record's own coordinates read PACKING_SUM */
+    const sumOf = (f) => {
+      let s = 0;
+      for (let i = 0; i < N; i++) s += f[3 * i + 2];
+      return (s / RSUM) * PACKING_SUM;
+    };
+
+    function mulberry32(seed) {
+      let a = seed >>> 0;
+      return () => {
+        a = (a + 0x6d2b79f5) >>> 0;
+        let t = a;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    const smooth = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    /** A frame holding the record itself */
+    function targetFrame() {
+      const f = new Float64Array(3 * N);
+      PACKING_26.forEach(([x, y, r], i) => f.set([x, y, r], 3 * i));
+      return f;
+    }
+
+    /**
+     * Match points to the record's circles: globally greedy on squared distance (closest
+     * pair first), then pairwise swaps while they shorten the total. Returns target index
+     * per point.
+     */
+    function assign(pts, w = 0) {
+      const cost = (i, j) => {
+        const [x, y, r] = PACKING_26[j];
+        return (pts[i][0] - x) ** 2 + (pts[i][1] - y) ** 2 + w * ((pts[i][2] || 0) - r) ** 2;
+      };
+      const pairs = [];
+      for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) pairs.push([cost(i, j), i, j]);
+      pairs.sort((a, b) => a[0] - b[0]);
+      const to = new Array(N).fill(-1);
+      const taken = new Array(N).fill(false);
+      for (const [, i, j] of pairs) {
+        if (to[i] < 0 && !taken[j]) {
+          to[i] = j;
+          taken[j] = true;
+        }
+      }
+      for (let pass = 0, better = true; better && pass < 50; pass++) {
+        better = false;
+        for (let a = 0; a < N; a++) {
+          for (let b = a + 1; b < N; b++) {
+            if (cost(a, to[b]) + cost(b, to[a]) < cost(a, to[a]) + cost(b, to[b]) - 1e-12) {
+              [to[a], to[b]] = [to[b], to[a]];
+              better = true;
+            }
+          }
+        }
+      }
+      return to;
+    }
+
+    /** Reorder a frame's circles so circle k sits at index to[k] */
+    function permute(f, to) {
+      const g = new Float64Array(3 * N);
+      for (let i = 0; i < N; i++) g.set(f.subarray(3 * i, 3 * i + 3), 3 * to[i]);
+      return g;
+    }
+
+    /* ───────────── Lubachevsky–Stillinger jamming (a real simulation) ───────────── */
+
+    /**
+     * Equal disks, random positions and velocities, radius r = lambda growing at a common
+     * rate. Time-stepped: move, grow, exchange normal velocity on contact (equal masses,
+     * elastic, plus the surfaces' growth speed so touching disks part), reflect off the
+     * walls, then project out any overlap. Kinetic energy is held fixed (growth pumps it in).
+     * When the projection can no longer clear the overlaps the growth rate is cut, and once
+     * it has fallen to a hundredth the disks are jammed: growth stops and they rattle down
+     * (damped) to rest.
+     */
+    function simulateJam(seed, { seconds = 6, speed = 0.32, grow = 0.02, sub = 12, damp = 2.5 } = {}) {
+      const rnd = mulberry32(seed);
+      const x = new Float64Array(N);
+      const y = new Float64Array(N);
+      const vx = new Float64Array(N);
+      const vy = new Float64Array(N);
+      for (let n = 0, tries = 0; n < N && tries < 100000; tries++) {
+        const px = 0.04 + 0.92 * rnd();
+        const py = 0.04 + 0.92 * rnd();
+        let ok = true;
+        for (let m = 0; m < n; m++) if ((x[m] - px) ** 2 + (y[m] - py) ** 2 < 0.11 ** 2) ok = false;
+        if (!ok) continue;
+        x[n] = px;
+        y[n] = py;
+        const a = rnd() * Math.PI * 2;
+        const s = speed * (0.6 + 0.8 * rnd());
+        vx[n] = Math.cos(a) * s;
+        vy[n] = Math.sin(a) * s;
+        n++;
+      }
+      let KE0 = 0;
+      for (let i = 0; i < N; i++) KE0 += vx[i] ** 2 + vy[i] ** 2;
+      let lam = 0;
+      let g = grow;
+      let jammedAt = -1;
+      let KE = KE0;
+      const dt = FRAME_MS / 1000 / sub;
+      const frames = [];
+      const total = Math.round((seconds * 1000) / FRAME_MS);
+      for (let fr = 0; fr <= total; fr++) {
+        const f = new Float64Array(3 * N);
+        for (let i = 0; i < N; i++) f.set([x[i], y[i], lam], 3 * i);
+        frames.push(f);
+        for (let s = 0; s < sub; s++) {
+          for (let i = 0; i < N; i++) {
+            x[i] += vx[i] * dt;
+            y[i] += vy[i] * dt;
+          }
+          const grew = jammedAt < 0 ? g * dt : 0;
+          lam += grew;
+          const r = lam;
+          const sep = jammedAt < 0 ? 2 * g : 0; // surfaces approach at 2g
+          // Collisions: elastic exchange of the normal components
+          for (let i = 0; i < N; i++) {
+            for (let j = i + 1; j < N; j++) {
+              const dx = x[j] - x[i];
+              const dy = y[j] - y[i];
+              const d2 = dx * dx + dy * dy;
+              if (d2 >= (2 * r) ** 2 || d2 === 0) continue;
+              const d = Math.sqrt(d2);
+              const nx = dx / d;
+              const ny = dy / d;
+              const vn = (vx[j] - vx[i]) * nx + (vy[j] - vy[i]) * ny;
+              if (vn < sep) {
+                const extra = Math.max(0, sep - (vn < 0 ? -vn : vn)) / 2;
+                const kick = (vn < 0 ? -vn : 0) + extra;
+                vx[i] -= kick * nx;
+                vy[i] -= kick * ny;
+                vx[j] += kick * nx;
+                vy[j] += kick * ny;
+              }
+            }
+          }
+          for (let i = 0; i < N; i++) {
+            const w = jammedAt < 0 ? g : 0;
+            if (x[i] - r < 0 && vx[i] < w) vx[i] = Math.max(-vx[i], w);
+            if (x[i] + r > 1 && vx[i] > -w) vx[i] = Math.min(-vx[i], -w);
+            if (y[i] - r < 0 && vy[i] < w) vy[i] = Math.max(-vy[i], w);
+            if (y[i] + r > 1 && vy[i] > -w) vy[i] = Math.min(-vy[i], -w);
+          }
+          // Project out overlaps
+          let worst = 0;
+          for (let it = 0; it < 6; it++) {
+            worst = 0;
+            for (let i = 0; i < N; i++) {
+              for (let j = i + 1; j < N; j++) {
+                const dx = x[j] - x[i];
+                const dy = y[j] - y[i];
+                const d2 = dx * dx + dy * dy;
+                if (d2 >= (2 * r) ** 2 || d2 === 0) continue;
+                const d = Math.sqrt(d2);
+                const o = 2 * r - d;
+                worst = Math.max(worst, o);
+                const m = o / 2 / d;
+                x[i] -= dx * m;
+                y[i] -= dy * m;
+                x[j] += dx * m;
+                y[j] += dy * m;
+              }
+            }
+            for (let i = 0; i < N; i++) {
+              x[i] = clamp(x[i], r, 1 - r);
+              y[i] = clamp(y[i], r, 1 - r);
+            }
+          }
+          // Growth control: back off when the overlaps stop clearing
+          if (jammedAt < 0) {
+            if (worst > 2e-4) {
+              lam -= grew;
+              g *= 0.93;
+            } else g = Math.min(grow, g * 1.004);
+            if (g < grow * 0.01) jammedAt = fr;
+          }
+          // Hold the kinetic energy fixed while compressing; after the jam let it die away
+          let ke = 0;
+          for (let i = 0; i < N; i++) ke += vx[i] ** 2 + vy[i] ** 2;
+          if (jammedAt < 0) KE = KE0;
+          else KE *= Math.exp(-damp * dt);
+          const sc = ke > 0 ? Math.sqrt(KE / ke) : 0;
+          for (let i = 0; i < N; i++) {
+            vx[i] *= sc;
+            vy[i] *= sc;
+          }
+        }
+      }
+      return { frames, jammedAt, radius: lam };
+    }
+
+    /**
+     * The jamming panel: the simulation, then the polish. Jammed disks are matched to the
+     * record's circles and eased onto them over polishMs.
+     */
+    function buildJam({ seed = 7, simMs = 8000, restMs = 600, polishMs = 1500, ...opts } = {}) {
+      const sim = simulateJam(seed, { seconds: simMs / 1000, ...opts });
+      // Stop a moment after the jam, once the rattling has died down
+      if (sim.jammedAt >= 0) sim.frames.length = Math.min(sim.frames.length, sim.jammedAt + Math.round(restMs / FRAME_MS) + 1);
+      const last = sim.frames[sim.frames.length - 1];
+      const pts = [];
+      for (let i = 0; i < N; i++) pts.push([last[3 * i], last[3 * i + 1], last[3 * i + 2]]);
+      const to = assign(pts);
+      const frames = sim.frames.map((f) => permute(f, to));
+      const end = targetFrame();
+      const from = frames[frames.length - 1];
+      const steps = Math.round(polishMs / FRAME_MS);
+      for (let s = 1; s <= steps; s++) {
+        const k = smooth(s / steps);
+        const f = new Float64Array(3 * N);
+        for (let q = 0; q < 3 * N; q++) f[q] = from[q] + (end[q] - from[q]) * k;
+        frames.push(f);
+      }
+      return { frames, jamFrame: sim.jammedAt, polishFrom: sim.frames.length - 1, radius: sim.radius };
+    }
+
+    /* ───────────── Damped Arrow–Hurwicz (a real primal-dual iteration) ───────────── */
+
+    const PAIRS = [];
+    for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) PAIRS.push([i, j]);
+
+    /**
+     * maximize sum r  s.t.  g_ij = r_i + r_j - |c_i - c_j| <= 0, and r_i <= x_i <= 1 - r_i,
+     * same for y. Primal: gradient steps on the augmented Lagrangian; dual: one multiplier
+     * per pair and per wall, rising with the overlap and falling (to zero, never below) with
+     * the gap. A weak pull toward the record (`anchor`, a rate per second) keeps it in the
+     * record's basin; the record is a fixed point with or without it.
+     * Returns frames plus each frame's pair and wall multipliers.
+     */
+    const AH_RHO = 2;
+
+    function simulateAH(seed, { seconds = 6, steps = 8, lr = 0.07, rScale = 3, dual = 15, rho = AH_RHO, anchor = 0.5, spread = 0.12, swell = 0.6 } = {}) {
+      const dt = FRAME_MS / 1000 / steps;
+      const tau = dt * lr;
+      const sigma = dual / lr;
+      const rnd = mulberry32(seed);
+      const z = new Float64Array(3 * N);
+      PACKING_26.forEach(([x, y, r], i) => {
+        const a = rnd() * Math.PI * 2;
+        const d = spread * (0.4 + 0.6 * rnd());
+        z[3 * i] = clamp(x + Math.cos(a) * d, 0.08, 0.92);
+        z[3 * i + 1] = clamp(y + Math.sin(a) * d, 0.08, 0.92);
+        z[3 * i + 2] = r * swell * (0.8 + 0.4 * rnd());
+      });
+      const target = targetFrame();
+      const mu = new Float64Array(PAIRS.length);
+      const wall = new Float64Array(4 * N);
+      const grad = new Float64Array(3 * N);
+      const frames = [];
+      const duals = [];
+      const walls = [];
+      const total = Math.round((seconds * 1000) / FRAME_MS);
+      for (let fr = 0; fr <= total; fr++) {
+        frames.push(Float64Array.from(z));
+        duals.push(Float32Array.from(mu));
+        walls.push(Float32Array.from(wall));
+        const pull = anchor * dt / tau; // a rate per second, like lr
+        for (let s = 0; s < steps; s++) {
+          grad.fill(0);
+          for (let i = 0; i < N; i++) grad[3 * i + 2] = -1; // d(-sum r)/dr
+          for (let p = 0; p < PAIRS.length; p++) {
+            const [i, j] = PAIRS[p];
+            const dx = z[3 * j] - z[3 * i];
+            const dy = z[3 * j + 1] - z[3 * i + 1];
+            const d = Math.hypot(dx, dy) || 1e-9;
+            const gij = z[3 * i + 2] + z[3 * j + 2] - d;
+            mu[p] = Math.max(0, mu[p] + tau * sigma * gij);
+            const w = mu[p] + rho * Math.max(0, gij);
+            if (w === 0) continue;
+            const ux = dx / d;
+            const uy = dy / d;
+            grad[3 * i] += w * ux;
+            grad[3 * i + 1] += w * uy;
+            grad[3 * j] -= w * ux;
+            grad[3 * j + 1] -= w * uy;
+            grad[3 * i + 2] += w;
+            grad[3 * j + 2] += w;
+          }
+          for (let i = 0; i < N; i++) {
+            const x = z[3 * i];
+            const y = z[3 * i + 1];
+            const r = z[3 * i + 2];
+            const gs = [r - x, r + x - 1, r - y, r + y - 1];
+            const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            for (let k = 0; k < 4; k++) {
+              const q = 4 * i + k;
+              wall[q] = Math.max(0, wall[q] + tau * sigma * gs[k]);
+              const w = wall[q] + rho * Math.max(0, gs[k]);
+              if (w === 0) continue;
+              grad[3 * i] += w * dirs[k][0];
+              grad[3 * i + 1] += w * dirs[k][1];
+              grad[3 * i + 2] += w;
+            }
+          }
+          for (let q = 0; q < 3 * N; q++) {
+            const step = q % 3 === 2 ? tau * rScale : tau; // radii can take their own step
+            z[q] -= step * (grad[q] + pull * (z[q] - target[q]));
+          }
+          for (let i = 0; i < N; i++) z[3 * i + 2] = Math.max(0.005, z[3 * i + 2]);
+        }
+      }
+      return { frames, duals, walls };
+    }
+
+    /** The Arrow–Hurwicz panel: the iteration, with its last stretch blended exactly onto the record */
+    function buildAH({ seed = 3, blendMs = 1500, ...opts } = {}) {
+      const sim = simulateAH(seed, opts);
+      const end = targetFrame();
+      const n = sim.frames.length;
+      const steps = Math.round(blendMs / FRAME_MS);
+      let err = 0;
+      for (let q = 0; q < 3 * N; q++) err = Math.max(err, Math.abs(sim.frames[n - 1][q] - end[q]));
+      for (let s = 0; s < steps; s++) {
+        const fr = n - steps + s;
+        const k = smooth((s + 1) / steps);
+        const f = sim.frames[fr];
+        for (let q = 0; q < 3 * N; q++) f[q] += (end[q] - f[q]) * k;
+      }
+      // What a strict checker would accept: the same circles with any overlap trimmed off
+      const valid = sim.frames.map((f) => sumOf(trim(Float64Array.from(f))));
+      valid[n - 1] = PACKING_SUM;
+      return { ...sim, err, valid };
+    }
+
+    /* ───────────── DC programming (illustrative iterates) ───────────── */
+
+    /**
+     * Shrink radii, pair by pair, until no two circles overlap and none crosses a wall (past
+     * the record's own rounding, 1e-6)
+     */
+    function trim(f) {
+      for (let it = 0; it < 200; it++) {
+        let bad = false;
+        for (let i = 0; i < N; i++) {
+          const x = f[3 * i];
+          const y = f[3 * i + 1];
+          const lim = Math.min(x, 1 - x, y, 1 - y);
+          if (f[3 * i + 2] > lim + 1e-6) {
+            f[3 * i + 2] = Math.max(0.004, lim);
+            bad = true;
+          }
+        }
+        for (const [i, j] of PAIRS) {
+          const d = Math.hypot(f[3 * j] - f[3 * i], f[3 * j + 1] - f[3 * i + 1]);
+          const s = f[3 * i + 2] + f[3 * j + 2];
+          if (s > d + 1e-6) {
+            const k = d / s;
+            f[3 * i + 2] *= k;
+            f[3 * j + 2] *= k;
+            bad = true;
+          }
+        }
+        if (!bad) break;
+      }
+      return f;
+    }
+
+    /**
+     * Iterates of a sequential-LP scheme, constructed: each one a fixed fraction closer to the
+     * record (per-circle rates differ a little) plus a sideways zigzag that shrinks as it
+     * goes, with the radii trimmed to a valid packing. The last iterate is the record.
+     */
+    function buildDCIterates(seed, { iters = 13, rate = 0.58, zig = 0.05, r0 = 0.03 } = {}) {
+      const rnd = mulberry32(seed);
+      const start = [];
+      for (let n = 0, tries = 0; n < N && tries < 100000; tries++) {
+        const px = 0.08 + 0.84 * rnd();
+        const py = 0.08 + 0.84 * rnd();
+        if (start.some(([x, y]) => (x - px) ** 2 + (y - py) ** 2 < 0.1 ** 2)) continue;
+        start.push([px, py, r0 * (0.6 + 0.8 * rnd())]);
+      }
+      const to = assign(start);
+      const s0 = new Float64Array(3 * N);
+      start.forEach((c, i) => s0.set(c, 3 * to[i]));
+      const end = targetFrame();
+      const rates = Array.from({ length: N }, () => rate * (0.85 + 0.3 * rnd()));
+      const phase = Array.from({ length: N }, () => (rnd() < 0.5 ? -1 : 1));
+      const zigs = Array.from({ length: N }, () => zig * (0.4 + 0.6 * rnd()));
+      const its = [trim(Float64Array.from(s0))];
+      for (let k = 1; k <= iters; k++) {
+        const f = new Float64Array(3 * N);
+        for (let i = 0; i < N; i++) {
+          const left = rates[i] ** k; // how much of the way is still to go
+          const x0 = s0[3 * i];
+          const y0 = s0[3 * i + 1];
+          const dx = end[3 * i] - x0;
+          const dy = end[3 * i + 1] - y0;
+          const len = Math.hypot(dx, dy) || 1;
+          const side = phase[i] * (k % 2 ? 1 : -1) * zigs[i] * left * Math.min(1, len / 0.1);
+          f[3 * i] = end[3 * i] - dx * left + (-dy / len) * side;
+          f[3 * i + 1] = end[3 * i + 1] - dy * left + (dx / len) * side;
+          f[3 * i + 2] = end[3 * i + 2] - (end[3 * i + 2] - s0[3 * i + 2]) * left ** 0.8;
+        }
+        its.push(k === iters ? end : trim(f));
+      }
+      return its;
+    }
+
+    return { PACKING_SUM, N, FRAME_MS, PAIRS, AH_RHO, sumOf, buildJam, buildAH, buildDCIterates };
+  })();
+
+  const INK = '28, 25, 23';
+  const GOLD = '184, 134, 11';
+  const SERIF = 'Newsreader, Georgia, serif';
+  const SANS = 'Inter, sans-serif';
+  const FEATHER = 28;
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
+  const easeOut = (k) => 1 - (1 - k) ** 3;
+  /** How far t is through [a, b], from 0 to 1 */
+  const span = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+  const ink = (a) => `rgba(${INK}, ${a})`;
+  const gold = (a = 1) => `rgba(${GOLD}, ${a})`;
+  const INK_RGB = INK.split(',').map(Number);
+  const GOLD_RGB = GOLD.split(',').map(Number);
+  /** Ink turning gold as k goes 0 → 1 */
+  const inkToGold = (k, a) => {
+    const c = INK_RGB.map((v, i) => Math.round(lerp(v, GOLD_RGB[i], k)));
+    return `rgba(${c.join(', ')}, ${a})`;
+  };
+  /** The alpha each of n stacked copies needs so together they read as one at alpha a */
+  const share = (a, n) => 1 - (1 - a) ** (1 / n);
+
+  function pageColor() {
+    return getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() || '#fdfaf6';
+  }
+
+  function makeLayer(W, H, dpr) {
+    const c = document.createElement('canvas');
+    c.width = Math.round(W * dpr);
+    c.height = Math.round(H * dpr);
+    const g = c.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { canvas: c, ctx: g };
+  }
+
+  /** Erase toward each edge of a layer, so whatever it holds fades out there. */
+  function featherEdges(g, W, H, size, sides = 'tblr') {
+    g.save();
+    g.globalCompositeOperation = 'destination-out';
+    const edges = {
+      t: [0, 0, 0, size, 0, 0, W, size],
+      b: [0, H, 0, H - size, 0, H - size, W, size],
+      l: [0, 0, size, 0, 0, 0, size, H],
+      r: [W, 0, W - size, 0, W - size, 0, size, H]
+    };
+    for (const side of sides) {
+      const [x0, y0, x1, y1, rx, ry, rw, rh] = edges[side];
+      const grad = g.createLinearGradient(x0, y0, x1, y1);
+      grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+      grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.35)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      g.fillStyle = grad;
+      g.fillRect(rx, ry, rw, rh);
+    }
+    g.restore();
+  }
+
+  /** The page colour, opaque in the middle and dissolving at the edges. */
+  function makeBackdrop(W, H, dpr) {
+    const layer = makeLayer(W, H, dpr);
+    layer.ctx.fillStyle = pageColor();
+    layer.ctx.fillRect(0, 0, W, H);
+    featherEdges(layer.ctx, W, H, FEATHER);
+    return layer.canvas;
+  }
+
+  /** Fade in as a loop starts and out as it ends */
+  const loopAlpha = (clock, loop, inMs = 400, outMs = 600) => Math.min(span(clock, 0, inMs), 1 - span(clock, loop - outMs, loop));
+
+  function looping(LOOP, draw, extra = {}) {
+    let clock = 0;
+    return {
+      loopMs: LOOP,
+      prewarm: 0,
+      ...extra,
+      step(dt) {
+        clock = (clock + dt) % LOOP;
+      },
+      draw(ctx) {
+        draw(ctx, clock);
+      }
+    };
+  }
+
+  function text(ctx, str, x, y, { font = `400 11px ${SANS}`, color = ink(0.5), align = 'left' } = {}) {
+    ctx.font = font;
+    ctx.textAlign = align;
+    ctx.fillStyle = color;
+    ctx.fillText(str, x, y);
+    ctx.textAlign = 'left';
+  }
+
+  /**
+   * The sum of radii, to seven places, with every digit in a cell of the same width so the
+   * number doesn't shimmy as it counts.
+   */
+  function counter(ctx, value, x, y, { size = 12, color = ink(0.6), align = 'left', weight = 500 } = {}) {
+    const str = value.toFixed(7);
+    ctx.font = `${weight} ${size}px ${SANS}`;
+    let cell = 0;
+    for (const d of '0123456789') cell = Math.max(cell, ctx.measureText(d).width);
+    const dot = ctx.measureText('.').width;
+    const width = cell * (str.length - 1) + dot;
+    let cx = align === 'right' ? x - width : align === 'center' ? x - width / 2 : x;
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    for (const ch of str) {
+      const w = ch === '.' ? dot : cell;
+      ctx.fillText(ch, cx + w / 2, y);
+      cx += w;
+    }
+    ctx.textAlign = 'left';
+    return width;
+  }
+
+  /* ───────────── The three methods, as players ───────────── */
+
+  // Built once, on first use, and shared by every canvas
+  let DATA = null;
+  function data() {
+    if (!DATA) {
+      DATA = {
+        jam: buildJam({ seed: 35 }),
+        dc: buildDCIterates(2),
+        ah: buildAH({ seed: 3 })
+      };
+    }
+    return DATA;
+  }
+
+  /** A frame between the sampled ones */
+  function sample(frames, ms) {
+    const u = clamp(ms / FRAME_MS, 0, frames.length - 1);
+    const i = Math.floor(u);
+    const k = u - i;
+    if (k === 0 || i >= frames.length - 1) return frames[Math.min(i, frames.length - 1)];
+    const a = frames[i];
+    const b = frames[i + 1];
+    const f = new Float64Array(a.length);
+    for (let q = 0; q < a.length; q++) f[q] = a[q] + (b[q] - a[q]) * k;
+    return f;
+  }
+
+  const lerpFrame = (a, b, k) => {
+    const f = new Float64Array(a.length);
+    for (let q = 0; q < a.length; q++) f[q] = a[q] + (b[q] - a[q]) * k;
+    return f;
+  };
+
+  /** Where circle i of frame f lands in the square R = { x, y, s } (y up, as in the unit square) */
+  const cx = (f, i, R) => R.x + f[3 * i] * R.s;
+  const cy = (f, i, R) => R.y + (1 - f[3 * i + 1]) * R.s;
+
+  function jamming() {
+    const { jam } = data();
+    return {
+      name: 'Lubachevsky–Stillinger',
+      runMs: (jam.frames.length - 1) * FRAME_MS,
+      at: (t) => ({ f: sample(jam.frames, t) }),
+      value: (t, s) => sumOf(s.f)
+    };
+  }
+
+  // DC: a jump every EVERY ms, each taking JUMP ms, then a hold at the new iterate
+  function dcProgramming() {
+    const its = data().dc;
+    const START = 300;
+    const EVERY = 430;
+    const JUMP = 150;
+    // The contact whose linearization is drawn: the big middle circle and the one below it
+    const A = 10;
+    const B = 16;
+    return {
+      name: 'DC programming',
+      runMs: START + (its.length - 2) * EVERY + JUMP,
+      value: (t, s) => sumOf(s.f),
+      at(t) {
+        if (t < START) return { f: its[0], line: its[0], lineK: span(t, 0, START), from: null };
+        const j = Math.min(its.length - 2, Math.floor((t - START) / EVERY));
+        const local = t - START - j * EVERY;
+        const p = ease(clamp(local / JUMP, 0, 1));
+        const f = p >= 1 ? its[j + 1] : lerpFrame(its[j], its[j + 1], p);
+        const landed = local >= JUMP;
+        return {
+          f,
+          // the previous iterate, fading after the landing
+          from: its[j],
+          fromK: landed ? 1 - span(local, JUMP, JUMP + 260) : 1,
+          // the linearization: at the old iterate during the jump, re-drawn at the new one after
+          line: landed ? its[j + 1] : its[j],
+          lineK: landed ? span(local, JUMP, JUMP + 110) : 1
+        };
+      },
+      extras(ctx, s, R, a, lw, fadeK = 1) {
+        if (fadeK <= 0) return;
+        if (s.from && s.fromK > 0) {
+          ctx.lineWidth = lw * 0.8;
+          ctx.strokeStyle = ink(0.24 * s.fromK * a);
+          for (let i = 0; i < N; i++) {
+            ctx.beginPath();
+            ctx.arc(cx(s.from, i, R), cy(s.from, i, R), Math.max(1, s.from[3 * i + 2] * R.s), 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+        if (s.line && s.lineK > 0) {
+          const f = s.line;
+          const ax = f[3 * A];
+          const ay = f[3 * A + 1];
+          const bx = f[3 * B];
+          const by = f[3 * B + 1];
+          const d = Math.hypot(bx - ax, by - ay) || 1;
+          const ux = (bx - ax) / d;
+          const uy = (by - ay) / d;
+          const gap = d - f[3 * A + 2] - f[3 * B + 2];
+          const m = f[3 * A + 2] + gap / 2;
+          const px = ax + ux * m;
+          const py = ay + uy * m;
+          const L = 0.2;
+          ctx.save();
+          ctx.setLineDash([4, 3]);
+          ctx.lineWidth = lw * 1.2;
+          ctx.strokeStyle = ink(0.78 * s.lineK * a * fadeK);
+          ctx.beginPath();
+          ctx.moveTo(R.x + (px - uy * L) * R.s, R.y + (1 - (py + ux * L)) * R.s);
+          ctx.lineTo(R.x + (px + uy * L) * R.s, R.y + (1 - (py - ux * L)) * R.s);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    };
+  }
+
+  function arrowHurwicz() {
+    const { ah } = data();
+    const W_REF = 0.9; // about the peak; a contact at rest carries a fifth of this
+    const valid = Array.from(ah.valid, (v) => Float64Array.of(v));
+    return {
+      name: 'Arrow–Hurwicz',
+      runMs: (ah.frames.length - 1) * FRAME_MS,
+      // Its circles overlap on the way, so it counts what a strict checker would accept
+      value: (t) => sample(valid, t)[0],
+      at(t) {
+        const u = clamp(t / FRAME_MS, 0, ah.frames.length - 1);
+        const i = Math.min(ah.frames.length - 2, Math.floor(u));
+        const k = u - i;
+        return { f: sample(ah.frames, t), mu: [ah.duals[i], ah.duals[i + 1], k], wall: [ah.walls[i], ah.walls[i + 1], k] };
+      },
+      // Contact pressure: a line between the centres (or to the wall), heavier as it rises
+      extras(ctx, s, R, a, lw, fadeK = 1) {
+        if (fadeK <= 0) return;
+        const f = s.f;
+        const [m0, m1, km] = s.mu;
+        const [w0, w1, kw] = s.wall;
+        ctx.lineCap = 'round';
+        const line = (x0, y0, x1, y1, w) => {
+          const k = Math.min(1, w / W_REF);
+          if (k < 0.05) return;
+          ctx.lineWidth = lw * (0.4 + 2 * k);
+          ctx.strokeStyle = ink((0.05 + 0.5 * k ** 1.2) * a * fadeK);
+          ctx.beginPath();
+          ctx.moveTo(x0, y0);
+          ctx.lineTo(x1, y1);
+          ctx.stroke();
+        };
+        for (let p = 0; p < PAIRS.length; p++) {
+          const [i, j] = PAIRS[p];
+          const d = Math.hypot(f[3 * j] - f[3 * i], f[3 * j + 1] - f[3 * i + 1]);
+          const g = f[3 * i + 2] + f[3 * j + 2] - d;
+          const w = lerp(m0[p], m1[p], km) + AH_RHO * Math.max(0, g);
+          line(cx(f, i, R), cy(f, i, R), cx(f, j, R), cy(f, j, R), w);
+        }
+        for (let i = 0; i < N; i++) {
+          const x = f[3 * i];
+          const y = f[3 * i + 1];
+          const r = f[3 * i + 2];
+          const gs = [r - x, r + x - 1, r - y, r + y - 1];
+          const ends = [[0, y], [1, y], [x, 0], [x, 1]];
+          for (let q = 0; q < 4; q++) {
+            const w = lerp(w0[4 * i + q], w1[4 * i + q], kw) + AH_RHO * Math.max(0, gs[q]);
+            line(cx(f, i, R), cy(f, i, R), R.x + ends[q][0] * R.s, R.y + (1 - ends[q][1]) * R.s, w);
+          }
+        }
+        ctx.lineCap = 'butt';
+      }
+    };
+  }
+
+  /**
+   * One method's square at time t (ms since it started; negative is before it starts).
+   * goldK turns it gold as it settles; `alpha` is the whole panel's opacity and `copies` how
+   * many identical panels will be stacked on this one (so a stack reads as a single one).
+   */
+  function drawSquare(ctx, R, m, t, { alpha = 1, lw = 1, copies = 1, extrasK = 1 } = {}) {
+    const s = m.at(Math.max(0, t));
+    const f = s.f;
+    const goldK = span(t, m.runMs - 60, m.runMs + 340);
+    const value = t >= m.runMs ? PACKING_SUM : m.value(Math.max(0, t), s);
+    if (alpha <= 0) return { value, goldK };
+    ctx.strokeStyle = ink(share(0.4, copies) * alpha);
+    ctx.lineWidth = lw * 1.15;
+    ctx.strokeRect(R.x + 0.5, R.y + 0.5, R.s - 1, R.s - 1);
+    // Arrow–Hurwicz's circles push past the walls on the way; the square holds them
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(R.x - lw, R.y - lw, R.s + 2 * lw, R.s + 2 * lw);
+    ctx.clip();
+    ctx.fillStyle = ink(share(0.06 + 0.03 * goldK, copies) * alpha);
+    for (let i = 0; i < N; i++) {
+      ctx.beginPath();
+      ctx.arc(cx(f, i, R), cy(f, i, R), Math.max(1.1 * lw, f[3 * i + 2] * R.s), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (m.extras && extrasK > 0) m.extras(ctx, s, R, alpha * extrasK, lw, 1 - goldK);
+    ctx.lineWidth = lw;
+    ctx.strokeStyle = inkToGold(goldK, share(lerp(0.62, 0.9, goldK), copies) * alpha);
+    for (let i = 0; i < N; i++) {
+      ctx.beginPath();
+      ctx.arc(cx(f, i, R), cy(f, i, R), Math.max(1.1 * lw, f[3 * i + 2] * R.s), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+    return { value, goldK };
+  }
+
+  const lerpRect = (a, b, k) => ({ x: lerp(a.x, b.x, k), y: lerp(a.y, b.y, k), s: lerp(a.s, b.s, k) });
+
+  /* ───────────── A · Side by side ───────────── */
+
+  // The three methods at once, each in its own square under its name, with its sum of radii
+  // counting underneath. Each turns gold as it lands; then the three squares slide together
+  // and coincide, outline for outline.
+  function createSideBySide(W, H, dpr) {
+    const narrow = W < 520;
+    const methods = [jamming(), dcProgramming(), arrowHurwicz()];
+    const T0 = 450;
+    const done = T0 + Math.max(...methods.map((m) => m.runMs)) + 400;
+    const MERGE = done + 1500;
+    const MERGE_MS = 1400;
+    const LOOP = MERGE + MERGE_MS + 2600;
+    let L;
+    if (!narrow) {
+      const s = 188;
+      const gap = (W - 2 * 34 - 3 * s) / 2;
+      const top = Math.round((H - (s + 62)) / 2) + 44;
+      const S = 268;
+      L = {
+        panels: [0, 1, 2].map((k) => ({ x: 34 + k * (s + gap), y: top, s })),
+        name: (R) => [R.x, R.y - 12, 'left'],
+        count: (R) => [R.x, R.y + R.s + 22, 'left'],
+        merged: { x: (W - S) / 2, y: (H - S) / 2 - 12, s: S },
+        nameFont: `500 15px ${SERIF}`,
+        countSize: 12
+      };
+      L.mergedCount = [L.merged.x, L.merged.y + S + 24, 'left'];
+    } else {
+      const s = 124;
+      const rowH = 146;
+      const top = Math.round((H - 3 * rowH) / 2) + 11;
+      const S = 250;
+      L = {
+        panels: [0, 1, 2].map((k) => ({ x: 26, y: top + k * rowH, s })),
+        name: (R) => [R.x + R.s + 18, R.y + R.s / 2 - 4, 'left'],
+        count: (R) => [R.x + R.s + 18, R.y + R.s / 2 + 18, 'left'],
+        merged: { x: (W - S) / 2, y: (H - S) / 2 - 16, s: S },
+        nameFont: `500 15px ${SERIF}`,
+        countSize: 12
+      };
+      L.mergedCount = [L.merged.x, L.merged.y + S + 26, 'left'];
+    }
+    const backdrop = makeBackdrop(W, H, dpr);
+    return looping(LOOP, (ctx, t) => {
+      ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(backdrop, 0, 0, W, H);
+      const a = loopAlpha(t, LOOP, 400, 700);
+      const mk = ease(span(t, MERGE, MERGE + MERGE_MS));
+      const labels = 1 - span(t, MERGE, MERGE + 450);
+      methods.forEach((m, k) => {
+        const R = lerpRect(L.panels[k], L.merged, mk);
+        const lw = R.s / L.panels[k].s > 1.6 ? 1.15 : 1;
+        const out = drawSquare(ctx, R, m, t - T0, { alpha: a, copies: lerp(1, 3, mk), lw });
+        if (labels > 0) {
+          const [nx, ny, na] = L.name(L.panels[k]);
+          text(ctx, m.name, nx, ny, { font: L.nameFont, color: ink(0.82 * a * labels), align: na });
+        }
+        // Each counter fades as the squares start to move; one comes back under the merged square
+        const [px, py, pa] = L.count(L.panels[k]);
+        const ca = labels;
+        if (ca > 0) {
+          const color = out.goldK > 0 ? inkToGold(out.goldK, lerp(0.55, 1, out.goldK) * a * ca) : ink(0.55 * a * ca);
+          counter(ctx, out.value, px, py, { size: L.countSize, color, align: pa });
+        }
+      });
+      const one = span(t, MERGE + MERGE_MS * 0.7, MERGE + MERGE_MS + 200);
+      if (one > 0) counter(ctx, PACKING_SUM, L.mergedCount[0], L.mergedCount[1], { size: L.countSize, color: gold(a * one), align: L.mergedCount[2] });
+    }, { still: done + 600 });
+  }
+
+  /* ───────────── Sizing ───────────── */
+
+  /**
+   * Each sketch has two layouts, drawn at a design width: 680 px across for wide frames, 360
+   * for phones and other tall frames. This scales whichever one applies to the real frame,
+   * so a 600 px or a 414 px figure gets the same composition as the one checked here.
+   */
+  function fitted(create) {
+    return (W, H, dpr) => {
+      const tall = W < 520 || H > W * 0.9;
+      const vw = tall ? 360 : 680;
+      const s = W / vw;
+      const inner = create(vw, H / s, dpr * s);
+      return {
+        ...inner,
+        draw(ctx) {
+          ctx.save();
+          ctx.scale(s, s);
+          inner.draw(ctx);
+          ctx.restore();
+        }
+      };
+    };
+  }
+
+  return fitted(createSideBySide);
+})();
+
 /* ───────────── Islands ───────────── */
 
 function createIslands(W, H, dpr) {
@@ -3822,189 +4695,6 @@ function createReading(W, H, dpr) {
     item((x, y) => { ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fillStyle = `rgba(${INK}, 0.85)`; ctx.fill(); }, 'well-supported');
     item((x, y) => { ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.strokeStyle = `rgba(${INK}, 0.7)`; ctx.lineWidth = 1.1; ctx.stroke(); }, 'contested');
     item((x, y) => { ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.strokeStyle = `rgb(${GOLD})`; ctx.lineWidth = 1.4; ctx.stroke(); }, 'open gap');
-  }
-
-  return { step, draw };
-}
-
-/* ───────────── Circle packing ───────────── */
-
-// The best-known packing of 26 circles in the unit square, as [x, y, r] (DeepMind's later
-// strict construction, Georgiev et al. 2025, arXiv 2511.02864; our engine's best was this same packing).
-const PACKING_26 = [[0.70261, 0.381666, 0.115149], [0.313116, 0.907608, 0.092392], [0.726906, 0.596043, 0.1006], [0.894817, 0.273953, 0.105183], [0.903849, 0.68208, 0.096151], [0.103061, 0.484601, 0.103061], [0.27163, 0.597635, 0.099898], [0.239711, 0.763674, 0.069181], [0.759352, 0.762959, 0.06944], [0.915074, 0.084926, 0.084926], [0.495532, 0.275343, 0.11763], [0.896533, 0.482596, 0.103467], [0.497284, 0.07886, 0.07886], [0.110779, 0.889221, 0.110779], [0.888844, 0.888844, 0.111156], [0.499428, 0.906073, 0.093927], [0.498668, 0.529963, 0.13701], [0.08464, 0.08464, 0.08464], [0.294609, 0.130221, 0.130221], [0.403359, 0.742417, 0.095842], [0.685943, 0.907408, 0.092592], [0.70231, 0.133259, 0.133259], [0.59522, 0.742049, 0.096019], [0.095732, 0.683259, 0.095732], [0.294746, 0.386924, 0.112077], [0.10679, 0.274783, 0.10679]];
-const PACKING_SUM = 2.6359830849;
-const FAKE_SUM = 2.6359987209; // the top "record" a check with 1e-6 of slack accepted
-const ROSE = '180, 87, 74';
-
-function createCirclePacking(W, H, dpr) {
-  const portrait = H > W * 0.9;
-  const S = portrait ? Math.min(W * 0.8, H * 0.55) : Math.min(H * 0.82, W * 0.5);
-  const SX = portrait ? (W - S) / 2 : W * 0.05;
-  const SY = portrait ? H * 0.05 : (H - S) / 2;
-  const P = portrait
-    ? { x: SX, y: SY + S + 34, w: S * 0.46, insetX: SX + S * 0.52, insetY: SY + S + 18, insetW: S * 0.48 }
-    : { x: SX + S + W * 0.06, y: SY + 24, w: W * 0.36, insetX: SX + S + W * 0.06, insetY: SY + S * 0.46, insetW: Math.min(W * 0.34, S * 0.8) };
-  const insetH = portrait ? Math.max(70, H - P.insetY - 14) : S * 0.5;
-  const LOOP = 15000;
-  const T = { settle: 400, hold: 6200, zoom: 8200, cheat: 9300, strict: 11800, fade: 13900 };
-  const rand = (i, k) => {
-    const v = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
-    return v - Math.floor(v);
-  };
-  const circles = PACKING_26.map(([x, y, r], i) => ({
-    x, y, r,
-    dx: (rand(i, 1) - 0.5) * 0.16,
-    dy: (rand(i, 2) - 0.5) * 0.16,
-    delay: rand(i, 3) * 1700
-  }));
-  const SETTLE = 4000;
-  // The magnified contact: circles 10 and 16 touch near the middle of the square
-  const A = PACKING_26[10];
-  const B = PACKING_26[16];
-  const nd = Math.hypot(B[0] - A[0], B[1] - A[1]);
-  const contact = [A[0] + (A[2] * (B[0] - A[0])) / nd, A[1] + (A[2] * (B[1] - A[1])) / nd];
-  const ZOOM = insetH * 0.22 / 1e-6; // px per unit inside the inset: 1e-6 of overlap spans ~22% of it
-  const magnification = Math.round(ZOOM / S / 1000) * 1000;
-  const ease = (k) => 1 - (1 - k) ** 3;
-  const px = (x) => SX + x * S;
-  const py = (y) => SY + (1 - y) * S;
-  let clock = 0;
-  const backdrop = makeBackdrop(W, H, dpr);
-  const bg = pageColor();
-
-  function step(dt) {
-    clock = (clock + dt) % LOOP;
-  }
-
-  function settled(c) {
-    return ease(clamp((clock - T.settle - c.delay) / SETTLE, 0, 1));
-  }
-
-  function draw(ctx) {
-    ctx.clearRect(0, 0, W, H);
-    ctx.drawImage(backdrop, 0, 0, W, H);
-    const fadeOut = clamp((clock - T.fade) / 900, 0, 1);
-    const fadeIn = clamp(clock / 400, 0, 1);
-    ctx.save();
-    ctx.globalAlpha = fadeIn * (1 - fadeOut);
-
-    // The unit square and the circles settling into the packing
-    ctx.strokeStyle = `rgba(${INK}, 0.4)`;
-    ctx.lineWidth = 1.2;
-    ctx.strokeRect(SX + 0.5, SY + 0.5, S - 1, S - 1);
-    let total = 0;
-    let done = 0;
-    for (const c of circles) {
-      const e = settled(c);
-      if (e >= 1) done++;
-      const r = c.r * (0.1 + 0.9 * e);
-      total += r;
-      const x = c.x + c.dx * (1 - e);
-      const y = c.y + c.dy * (1 - e);
-      ctx.beginPath();
-      ctx.arc(px(x), py(y), Math.max(1, r * S), 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${INK}, ${0.05 + 0.04 * e})`;
-      ctx.fill();
-      ctx.strokeStyle = e >= 1 && clock < T.hold + 500 ? `rgba(${GOLD}, 0.9)` : `rgba(${INK}, ${0.35 + 0.3 * e})`;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
-    const allIn = done === circles.length;
-    const sumNow = allIn ? PACKING_SUM : (total / circles.reduce((a, c) => a + c.r, 0)) * PACKING_SUM;
-
-    // Readout: the sum climbs to the record, then (the cheat) past it, then fails the strict check
-    const cheatK = clamp((clock - T.cheat) / 1800, 0, 1);
-    const cheating = clock >= T.cheat;
-    const strict = clock >= T.strict;
-    const shown = cheating ? PACKING_SUM + (FAKE_SUM - PACKING_SUM) * ease(cheatK) : sumNow;
-    ctx.textAlign = 'left';
-    ctx.fillStyle = `rgba(${INK}, 0.5)`;
-    ctx.font = '400 11.5px Inter, sans-serif';
-    ctx.fillText('sum of radii', P.x, P.y);
-    ctx.font = `500 ${portrait ? 22 : 28}px Satoshi, Inter, sans-serif`;
-    ctx.fillStyle = cheating ? `rgb(${ROSE})` : allIn ? `rgb(${GOLD})` : `rgb(${INK})`;
-    const numText = shown.toFixed(7);
-    ctx.fillText(numText, P.x, P.y + (portrait ? 26 : 32));
-    if (strict) {
-      const w = ctx.measureText(numText).width;
-      const sk = clamp((clock - T.strict) / 300, 0, 1);
-      ctx.strokeStyle = `rgb(${ROSE})`;
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.moveTo(P.x, P.y + (portrait ? 18 : 22));
-      ctx.lineTo(P.x + w * sk, P.y + (portrait ? 18 : 22));
-      ctx.stroke();
-    }
-    ctx.font = '400 12px Inter, sans-serif';
-    const sub = strict ? ['strict check: 0, invalid', `rgb(${ROSE})`]
-      : cheating ? ['accepted by a check with 10⁻⁶ of slack', `rgb(${ROSE})`]
-        : allIn ? ['the best known packing', `rgb(${GOLD})`]
-          : ['circles settling into place', `rgba(${INK}, 0.5)`];
-    ctx.fillStyle = sub[1];
-    ctx.fillText(sub[0], P.x, P.y + (portrait ? 46 : 56));
-
-    // The cheat, magnified: a contact where two circles push 1e-6 into each other
-    const zk = clamp((clock - T.zoom) / 700, 0, 1);
-    if (zk > 0) {
-      const mx = px(contact[0]);
-      const my = py(contact[1]);
-      ctx.globalAlpha = fadeIn * (1 - fadeOut) * zk;
-      ctx.strokeStyle = `rgba(${GOLD}, 0.9)`;
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.arc(mx, my, 9, 0, Math.PI * 2);
-      ctx.stroke();
-      const ix = P.insetX;
-      const iy = P.insetY;
-      const iw = P.insetW;
-      ctx.strokeStyle = `rgba(${GOLD}, 0.35)`;
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 4]);
-      ctx.beginPath();
-      ctx.moveTo(mx + 9, my);
-      ctx.lineTo(ix, iy + insetH / 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(ix, iy, iw, insetH);
-      ctx.clip();
-      ctx.fillStyle = bg;
-      ctx.fillRect(ix, iy, iw, insetH);
-      // At this zoom both boundaries are straight: circle 16 above, circle 10 below
-      const grow = cheating ? 1e-6 * ease(cheatK) : 0;
-      const mid = iy + insetH / 2;
-      const top = mid + (grow / 2) * ZOOM;
-      const bottom = mid - (grow / 2) * ZOOM;
-      ctx.fillStyle = `rgba(${INK}, 0.09)`;
-      ctx.fillRect(ix, iy, iw, top - iy);
-      ctx.fillRect(ix, bottom, iw, iy + insetH - bottom);
-      if (grow > 0) {
-        ctx.fillStyle = `rgba(${ROSE}, 0.45)`;
-        ctx.fillRect(ix, bottom, iw, top - bottom);
-      }
-      ctx.strokeStyle = `rgba(${INK}, 0.65)`;
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(ix, top);
-      ctx.lineTo(ix + iw, top);
-      ctx.moveTo(ix, bottom);
-      ctx.lineTo(ix + iw, bottom);
-      ctx.stroke();
-      ctx.restore();
-      ctx.strokeStyle = `rgba(${INK}, 0.3)`;
-      ctx.strokeRect(ix + 0.5, iy + 0.5, iw - 1, insetH - 1);
-      ctx.fillStyle = `rgba(${INK}, 0.5)`;
-      ctx.font = '400 11px Inter, sans-serif';
-      ctx.fillText(`one contact, magnified ×${magnification.toLocaleString('en-US')}`, ix, iy - 7);
-      if (grow > 0) {
-        ctx.fillStyle = `rgb(${ROSE})`;
-        ctx.textAlign = 'right';
-        ctx.fillText(`overlap ${(grow * 1e6).toFixed(1)}×10⁻⁶`, ix + iw - 8, mid - (grow / 2) * ZOOM - 6);
-        ctx.textAlign = 'left';
-      }
-    }
-    ctx.restore();
   }
 
   return { step, draw };
@@ -4747,9 +5437,9 @@ const FIGURES = {
   spawn: EXPLORE.spawn,
   novelty: EXPLORE.novelty,
   ioai: createIOAIRace,
+  methods: createPackingMethods,
   islands: createIslands,
   reading: createReading,
-  'circle-packing': createCirclePacking,
   'research-map': createResearchMap
 };
 

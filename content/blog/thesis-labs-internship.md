@@ -53,13 +53,13 @@ Darwin's autoresearcher roughly follows the same outline. It starts off with a p
 
 Sounds simple, but each step comes with its own problems. A complex evolving search like this can fail in different ways. It has no idea what has already been tried. It gets stuck and plateaus. It rediscovers and reimplements the same idea over and over. It learns to game the score and does some reward-hacking instead of solving the problem at hand.
 
-My summer was a mix of building pieces of the autoresearcher, fixing different ways it broke, and then running it on a real competition.
+My summer was a mix of building pieces of the autoresearcher, fixing different ways it broke, and then running it in a competition.
 
 ### Research Engine
 
 The largest project I worked on was giving Darwin's autoresearcher access to research papers. Most AI models answer from what they absorbed during training, and that knowledge stops at a cutoff and blurs the details. A model remembers that a method exists, not what its ablations showed. An automated researcher that has never read a paper is going to reinvent a lot of wheels, and here every reinvented wheel costs a training run.
 
-ASI-Evolve has a small version of this result. With a handful of hand-written priors, including what earlier systems had done, the full system climbed to about the circle-packing record. Without the priors it climbed more slowly and was still short of it after 400 steps ([Xu et al. 2026](https://arxiv.org/abs/2603.29640), Fig. 5).
+ASI-Evolve has a small version of this result. With a handful of hand-written priors, including what earlier systems had done, the full system climbed to about the [circle-packing](https://en.wikipedia.org/wiki/Circle_packing_in_a_square) record. Without the priors it climbed more slowly and was still short of it after 400 steps ([Xu et al. 2026](https://arxiv.org/abs/2603.29640), Fig. 5). We took on circle packing ourselves too, and how that went is [further down](#matching-sota-on-circle-packing).
 
 So I built a research engine that lets the search read actual papers and cite them while it works. It has three parts, a literature database, retrieval tools, and deep-research agents that review the literature before a run starts.
 
@@ -78,7 +78,7 @@ Papers arrive in two passes. The first is metadata. A scheduled scraper walks ar
 
 The second pass is full text. It runs as a backfill, and it was still working through the corpus when the summer ended. Parsing tries the cleanest source first. For arXiv that is the HTML arXiv generates from the LaTeX source, which keeps equations as TeX. Otherwise the PDF goes through Docling, a layout-aware parser, with MarkItDown as a fallback. bioRxiv and journal papers come as JATS, the XML format publishers use.
 
-I chose Docling after a bakeoff on real arXiv PDFs. MarkItDown was far faster but returned flat text with no headings, and headings are what let a search go straight to a paper's methods or ablations.
+I chose Docling after a bakeoff on a sample of arXiv PDFs. MarkItDown was far faster but returned flat text with no headings, and headings are what let a search go straight to a paper's methods or ablations.
 
 Text is split at headings, then at paragraph breaks into chunks of a few hundred words, with tables kept whole. Each vector records the model that produced it, so a re-embed can run beside the old one.
 
@@ -88,15 +88,15 @@ Two decisions came from measuring first. I checked a sample of bioRxiv papers fo
 
 Then coverage. Seeding a domain corpus from arXiv search gave me recent papers that cite the classics, but not the classics themselves. Even a query naming a method could miss the paper that introduced it. So each domain corpus now starts from a hand-checked spine of foundational papers, added by ID and grown through the citation graph. Journal-only landmarks like AlphaFold 2 and 3 have no preprint, so they came in through PubMed Central.
 
-The long tail took real time. Docling crashed on some images, a batch of 29 papers hit edge cases, and one came out as two chunks because arXiv's own HTML for it was broken.
+The long tail took a while. Docling crashed on some images, a batch of 29 papers hit edge cases, and one came out as two chunks because arXiv's own HTML for it was broken.
 
 #### Retrieval Tools
 
-On top of the database sit five tools the agents can call. They cover paper search, chunk search, full-paper reads, literature Q&A, and fetching a paper's code. Paper search runs two retrievers over titles and abstracts. Dense vector search matches meaning, and Postgres full-text search matches exact words.
+On top of the database are five tools the agents can call. They cover paper search, chunk search, full-paper reads, literature Q&A, and fetching a paper's code. Paper search runs two retrievers over titles and abstracts. Dense vector search matches meaning, and Postgres full-text search matches exact words.
 
 Reciprocal rank fusion (RRF) merges the two lists by scoring each paper 1/(k + rank) in each list, so anything near the top of either survives. A cross-encoder then reorders the pool. It reads the query and each candidate together and scores the pair, which is slower than comparing vectors but much more accurate. Chunk search is dense search over body text, scoped to one paper or section on request, and also reranked.
 
-I measured it on [LitSearch](https://arxiv.org/abs/2407.18940), a public benchmark of about 600 literature-search questions with known answer papers. Its papers sit in the same database behind a filter the agents never see, so the eval runs through production code. Hit@10 is how often a correct paper lands in the top ten. nDCG@10 also rewards ranking it higher.
+I measured it on [LitSearch](https://arxiv.org/abs/2407.18940), a public benchmark of about 600 literature-search questions with known answer papers. Its papers are stored in the same database behind a filter the agents never see, so the eval runs through production code. Hit@10 is how often a correct paper lands in the top ten. nDCG@10 also rewards ranking it higher.
 
 | Configuration (LitSearch) | Hit@10 | nDCG@10 |
 | --- | ---: | ---: |
@@ -120,7 +120,7 @@ The coding agent uses these tools while it writes candidates, and cites a paper 
 
 Before the engine starts on a problem, it can run a deep-research pass over that corpus. It is modeled on [Anthropic's multi-agent research approach](https://www.anthropic.com/engineering/multi-agent-research-system). My first version was a single pass, with two fixed queries, one retrieval and one synthesis call. Its briefs read well but leaned on the model's memory and on abstracts. The rebuild splits the work into roles that check each other.
 
-A **planner** turns the task into facets. Most come from a fixed checklist every review covers, from how the problem is framed to known failure modes, and a few are specific to the task. Its queries name problems, not methods, so the corpus has to supply the methods instead of the model's memory.
+A **planner** turns the task into facets. Most come from a fixed checklist every review covers, from how the problem is framed to known failure modes, and a few are specific to the task. Its queries describe problems without naming methods, so the methods have to come from the corpus.
 
 Each facet gets an **explorer** and a **verifier**, and all facets run in parallel. The explorer sweeps the corpus, runs one search ranked by citations per year to surface the canonical paper that relevance tends to bury, and one for recent work. Then it reads the methods, appendix and ablation sections of the best few papers and extracts each reusable idea with a verbatim quote.
 
@@ -139,11 +139,11 @@ The critic's finds used to skip verification and come out labeled as gaps in the
 
 The review also takes minutes, so it runs alongside data preparation instead of in front of it, under a time budget that can cut exploration short but never the synthesis.
 
-To evaluate it, every paper ID a role retrieves is captured at the tool boundary. Each run then reports two numbers. One is the share of citations pointing at papers actually retrieved that run, not recalled from memory. The other is the share backed by a full-text passage rather than an abstract.
+To evaluate it, every paper ID a role retrieves is captured at the tool boundary. Each run then reports two numbers. One is the share of citations pointing at papers retrieved during that run, not recalled from memory. The other is the share backed by a full-text passage rather than an abstract.
 
-I also used a **canary**. Self-distillation matters for RNA folding and no prompt mentions it, so I checked whether the review found it on its own, and how many papers it found behind it. On a larger corpus, the same task came back with the same number of ideas but far more distinct papers behind them.
+I also used a **canary**. Self-distillation helps on RNA folding and no prompt mentions it, so I checked whether the review found it on its own, and how many papers it found behind it. On a larger corpus, the same task came back with the same number of ideas but far more distinct papers behind them.
 
-In one run it produced 92 distinct ideas across 9 facets in about 15 minutes, every one cited to a real paper (100% cited, 96% to full text). The output separates what is well-supported from what is contested or still an open gap, so the search knows where the real frontier is.
+In one run it produced 92 distinct ideas across 9 facets in about 15 minutes, every one cited to a paper in the corpus (100% cited, 96% to full text). The output separates what is well-supported from what is contested or still an open gap, so the search knows where the frontier is.
 
 <figure class="blog-figure" data-figure="reading">
 <div class="live-figure"><canvas aria-label="Papers scrolling past while highlighted passages are pulled into a landscape of ideas across nine facets"></canvas></div>
@@ -152,7 +152,7 @@ In one run it produced 92 distinct ideas across 9 facets in about 15 minutes, ev
 
 ### Exploration vs. Exploitation
 
-Exploration versus exploitation is one of the oldest trade-offs in search. **Exploitation** means refining what already works, taking the best candidate so far and making it a little better. **Exploration** means trying something genuinely different, which might score worse now but could lead somewhere better. Lean too hard on exploitation and the search climbs the nearest hill and gets stuck on top of it. Lean too hard on exploration and it never improves anything long enough to win.
+Exploration versus exploitation is one of the oldest trade-offs in search. **Exploitation** means refining what already works, taking the best candidate so far and making it a little better. **Exploration** means trying something different, which might score worse now but could lead somewhere better. Lean too hard on exploitation and the search climbs the nearest hill and gets stuck on top of it. Lean too hard on exploration and it never improves anything long enough to win.
 
 Most search methods turn this into a dial. A common way to pick parents is to sample them by fitness, softened by a temperature $\tau$,
 
@@ -162,7 +162,7 @@ A low $\tau$ almost always picks the best candidate, which is pure exploitation,
 
 An autoresearcher feels this trade-off sharply. Every candidate costs a full training run, so wasted exploration is expensive. LLM agents also have a strong pull toward the same familiar ideas, so left alone the search exploits by default. A lot of my work on the search side was about keeping that balance.
 
-#### Starting Apart
+#### Island Diversity
 
 The main tool for keeping that balance is **islands**. Instead of one population, the search runs several separate populations of candidates that each evolve on their own and only now and then trade their best candidates, which is called **migration**.
 
@@ -175,33 +175,33 @@ Islands are meant to keep the search diverse, but they don't guarantee it. An is
 
 Diversity has to start at the beginning. Start every island from the same seed program, hand each one the same research grounding, and more often than not the agents converge on the same ideas anyway. That's the whole reason exploration has to start at the island level.
 
-When I got there, every **founding seed** was copied onto every island, so the islands began as clones. I changed it so each island gets its own seed, and a critic checks that each new island's seed is actually different from the ones before it.
+When I got there, every **founding seed** was copied onto every island, so the islands began as clones. I changed it so each island gets its own seed, and a critic checks that each new island's seed is different enough from the ones before it.
 
-The FM Agent makes the case for starting this way, splitting a diverse pool of first solutions across its islands so each explores its own path ([Li et al. 2025](https://arxiv.org/abs/2510.26144)). FM Agent stops at splitting the pool. The critic is my addition, so a seed that's too close to one already placed gets redrawn instead of quietly starting a clone.
+The FM Agent makes the case for starting this way, splitting a diverse pool of first solutions across its islands so each explores its own path ([Li et al. 2025](https://arxiv.org/abs/2510.26144)). FM Agent stops at splitting the pool. The critic is my addition, so a seed that's too close to one already placed gets redrawn instead of starting a clone.
 
-I also found that migration wasn't doing anything. Migrants were logged as arriving, but every step that picks parents only looked at an island's own members, so a migrant was never bred. After the fix, migrants actually got used in their new island. Different seeds didn't guarantee better results, though. On one IOAI task, the islands founded on unusual ideas simply lost to the obvious one.
+I also found that migration wasn't doing anything. Migrants were logged as arriving, but every step that picks parents only looked at an island's own members, so a migrant was never bred. After the fix, migrants got bred in their new island. Different seeds didn't guarantee better results, though. Sometimes the islands founded on unusual ideas lost to the obvious one.
 
 <figure class="blog-figure" data-figure="seeds">
 <div class="live-figure"><canvas aria-label="Before, one seed card is copied onto every island. Then each island is dealt its own seed from a pool of different ideas, a seed too close to one already dealt is sent back, and migrants start being bred in their new island"></canvas></div>
 <figcaption>Before, one seed was copied onto every island. Now each island is dealt its own from a pool of different ideas, and a seed too close to one already dealt gets sent back. Migrants also used to be logged and never bred.</figcaption>
 </figure>
 
-#### A Map of What's Been Tried
+#### A Map of Ideas
 
-The map lists the techniques that could apply to a problem, grouped into families, and fills in as candidates actually build them. It separates a technique that was only suggested from one that was tried, and one a candidate built itself from one it inherited from a parent. The next section leans on it heavily.
+The map lists the techniques that could apply to a problem, grouped into families, and fills in as candidates build them. It separates a technique that was only suggested from one that was tried, and one a candidate built itself from one it inherited from a parent. The next section leans on it heavily.
 
 One bug taught me to check the map against the code. For a while it embedded each candidate's parent instead of the candidate, which made the population look like a monoculture when it wasn't.
 
 <figure class="blog-figure" data-figure="research-map">
 <div class="live-figure"><canvas aria-label="An invented research map for RNA folding. Techniques in four families, sized as approaches, ingredients and tweaks, fill in as a run of candidates builds them, and most of the builds land on one approach"></canvas></div>
-<figcaption>A made-up RNA folding run, mapped. Each family's techniques sit by size, with approaches on top, ingredients under them and tweaks at the bottom, and they fill in as candidates build them. Gold was built, a dot was inherited from a parent, and a dashed outline was tried but never ran. Hover or tap a mark to see what it is.</figcaption>
+<figcaption>A made-up RNA folding run, mapped. Each family's techniques are arranged by size, with approaches on top, ingredients under them and tweaks at the bottom, and they fill in as candidates build them. Gold was built, a dot was inherited from a parent, and a dashed outline was tried but never ran. Hover or tap a mark to see what it is.</figcaption>
 </figure>
 
-#### When Islands Stall or Converge
+#### Dealing With Stagnation
 
 Islands fail in two ways. They **converge**, when two islands that started apart end up building the same thing, and they **stall**, when every island stops improving at once.
 
-Convergence is the subtler one, and I built the check for it. An **LLM-as-a-judge** reads a brief of what each island has tried, compiled from the research map, and decides whether they've piled onto the same idea and used it up, not just adopted it. Because the map sorts techniques into approaches, ingredients and tweaks, the judge can see two islands sharing one approach even when all their tweaks differ, which a plain overlap count misses.
+Convergence is the subtler one, and I built the check for it. An **LLM-as-a-judge** reads a brief of what each island has tried, compiled from the research map, and decides whether they've piled onto the same idea and used it up. Because the map sorts techniques into approaches, ingredients and tweaks, the judge can see two islands sharing one approach even when all their tweaks differ, which a plain overlap count misses.
 
 When it fires, one island is reseeded in a direction the map shows nobody has tried. Early reseeds kept drifting back to the old idea by borrowing from the rest of the population, so a reseeded island now breeds only from its own lineage until it has warmed up, the same way NEAT gives a new innovation its own niche to mature in before it has to compete ([Stanley and Miikkulainen 2002](https://doi.org/10.1162/106365602320169811)).
 
@@ -209,7 +209,7 @@ When every island stalls at once, redirecting one isn't enough, so the system fo
 
 Synthesis spawn starts from MLEvolve's multi-branch aggregation ([Du et al. 2026](https://arxiv.org/abs/2606.06473)), but their version is simple. When the global best stops improving, MLEvolve pools the best ideas from each branch into a new one.
 
-Mine leans on the research map. For the top candidates on each island, it walks their lineages step by step and uses the map to see what each step actually built, whether an approach, an ingredient or a tweak, and in which family, and which of those changes moved the score.
+Mine leans on the research map. For the top candidates on each island, it walks their lineages step by step and uses the map to see what each step built, whether an approach, an ingredient or a tweak, and in which family, and which of those changes moved the score.
 
 Then it picks a set of ideas that cover different families, rather than just the top scores, and fuses them into one new seed. A critic approves the seed only if that combination never appeared together in an earlier lineage.
 
@@ -220,32 +220,32 @@ If synthesis can't find a new combination, the system falls back to **orthogonal
 <figcaption>When every island stalls, synthesis is tried first. It fuses the best ideas from each island's lineages into one new seed, if that combination is new. When it isn't, orthogonal spawn founds an island in a part of the map nobody has tried and fences it off while it warms up.</figcaption>
 </figure>
 
-The best finding came from testing them. New islands drifted. Their descendants quietly dropped the founding idea and went back to known methods. In one forced test, none of a new island's descendants still contained the idea it was founded on. So before every training run, a check now confirms the founding idea is still in the code, and after that the idea held. I never got a clean comparison of the two modes, so I can't tell you which one works better.
+The best finding came from testing them. New islands drifted. Their descendants dropped the founding idea and went back to known methods. In one forced test, none of a new island's descendants still contained the idea it was founded on. So before every training run, a check now confirms the founding idea is still in the code, and after that the idea held. I never got a clean comparison of the two modes, so I can't tell you which one works better.
 
 #### Code Novelty
 
-The system loves to re-propose ideas it has already tried. ShinkaEvolve handles this with **novelty rejection sampling** ([Lange et al. 2025](https://arxiv.org/abs/2509.19349)). It embeds each new program, compares it with the programs on its island, and when the closest match is too similar, asks an LLM-as-a-judge whether it's really new. Rejected programs get resampled.
+Candidates repeat each other a lot, and often at the level of the code itself. One renames a few variables, another reorders a loop, and the program that comes out trains the same model as one already on the island, at the cost of a full training run. ShinkaEvolve handles this with **novelty rejection sampling** ([Lange et al. 2025](https://arxiv.org/abs/2509.19349)). It embeds each new program, compares it with the programs on its island, and when the closest match is too similar, asks an LLM-as-a-judge whether it's new. Rejected programs get resampled.
 
-We started from that, and my part was making it work inside an agent that writes and trains its own code. The gate sits right before training, inside the coding agent's loop. It embeds the whole training script with Voyage's code embeddings, and a close match only calls the judge in. Written out, with $e(\cdot)$ as the code embedding and $x_j$ as the other candidates on the same island, the judge is called in only when
+We started from that, and my part was making it work inside an agent that writes and trains its own code. The gate runs right before training, inside the coding agent's loop. It embeds the whole training script with Voyage's code embeddings, and a close match only calls the judge in. Written out, with $e(\cdot)$ as the code embedding and $x_j$ as the other candidates on the same island, the judge is called in only when
 
 $$\max_j \, \cos\big(e(x),\, e(x_j)\big) > \theta.$$
 
 Below $\theta$, the candidate trains without a second look. If the judge blocks it, the agent gets the judge's reasons and revises, and after a few blocks it trains anyway, so no work is thrown away.
 
-Running it live showed the embeddings can only shortlist. A cosmetic edit and a real change can score almost the same, and two different ideas can look identical when they share a code scaffold, so the judge makes every real call.
+Running it live showed the embeddings can only shortlist. A cosmetic edit and a change in method can score almost the same, and two different ideas can look identical when they share a code scaffold, so the judge makes the call.
 
 <figure class="blog-figure" data-figure="novelty">
-<div class="live-figure"><canvas aria-label="A candidate that only renames variables scores as similar as one that adds a real change. The judge calls the first a cosmetic copy and sends it back with reasons, the agent revises it, and it trains. The second is ruled a new idea and trains"></canvas></div>
-<figcaption>A renamed copy can score as similar as a real change, so similarity alone can't tell them apart. The judge calls the first a cosmetic copy and sends it back with reasons, and passes the second as a new idea.</figcaption>
+<div class="live-figure"><canvas aria-label="A candidate that only renames variables scores as similar as one that changes the method. The judge calls the first a cosmetic copy and sends it back with reasons, the agent revises it, and it trains. The second is ruled a new idea and trains"></canvas></div>
+<figcaption>A renamed copy can score as similar as a change in method, so similarity alone can't tell them apart. The judge calls the first a cosmetic copy and sends it back with reasons, and passes the second as a new idea.</figcaption>
 </figure>
 
-### Running It for Real
+### Results
 
 With the pieces in place, we pointed the system at problems with a clear right answer, first a classic geometry benchmark and then an international AI olympiad.
 
-#### Circle Packing
+#### Matching SOTA on Circle Packing
 
-Circle packing asks how to fit 26 circles in a unit square so their radii add up to as much as possible. AlphaEvolve raised the best known answer in 2025, later systems nudged it a little higher, and it has become the standard first benchmark for systems like ours. Our engine matched the record with its second program, before any evolution had happened. That says more about what the model already knew than about the search, and the chart below is careful about it.
+Circle packing asks how to fit 26 circles in a unit square so their radii add up to as much as possible. AlphaEvolve raised the best known answer in 2025, later systems nudged it a little higher, and it has become the standard first benchmark for systems like ours. Our engine matched the record with its second program, before any evolution had happened. That program used the same recipe AlphaEvolve and the others evolved, seeding circles on a grid and polishing them with [SLSQP](https://en.wikipedia.org/wiki/Sequential_quadratic_programming). That says more about what the model already knew than about the search, and the chart below is careful about it.
 
 <figure class="blog-figure" data-grow style="color: var(--color-text)">
 <svg viewBox="0 0 720 318" role="img" aria-label="Candidate programs evaluated before first reaching the n=26 circle-packing record level, log scale: Darwin 2, 7 and 11 across three runs; ASI-Evolve 17; GEPA at most 150; ShinkaEvolve under 150; OpenEvolve 206; AlphaEvolve's own best, 2.63586, is below this level." style="width:100%;height:auto;font-family:var(--font-family-sans)">
@@ -291,11 +291,11 @@ Circle packing asks how to fit 26 circles in a unit square so their radii add up
 <figcaption>Programs each system evaluated before first reaching the 26-circle record, as its own paper or README reports it. Darwin's three dots are our three runs. It isn't a controlled race, since models, budgets and tolerances all differ.</figcaption>
 </figure>
 
-Then the search cheated. A few candidates reported scores above the record by pushing circles a millionth of a unit into each other, inside the checker's tolerance. A strict checker caught it and scored them zero, and the re-runs used a strict scorer in the loop.
+The re-runs are more interesting. In two of them, the engine reached the record with methods that look very different from that recipe. One candidate ran the [Lubachevsky–Stillinger algorithm](https://en.wikipedia.org/wiki/Lubachevsky%E2%80%93Stillinger_algorithm), a physics simulation where disks fly around, collide and slowly grow until they jam, then polished the result. Another treated the problem as [difference-of-convex (DC) programming](https://doi.org/10.1007/s10107-018-1235-y), linearizing the hard part and solving a sequence of linear programs. A third used a damped Arrow–Hurwicz iteration, a primal-dual method from numerical PDEs and a close cousin of [Uzawa's method](https://en.wikipedia.org/wiki/Uzawa_iteration), and landed on the best known packing exactly. As far as we can tell, that's the first time an Arrow–Hurwicz iteration has been used on this problem, while the other two methods have a long history in packing. Each run still ended with a standard local polish, so I can't say how much of the last step the new method did on its own.
 
-<figure class="blog-figure" data-figure="circle-packing">
-<div class="live-figure"><canvas aria-label="Twenty-six circles settle into the best known packing of a unit square, then a magnified contact shows two circles overlapping by a millionth of a unit, the tolerance cheat that a strict check rejects"></canvas></div>
-<figcaption>The best known packing settling into place, then the cheat. Two circles overlap by a millionth of a unit, enough to pass a loose check and fail a strict one. Coordinates from DeepMind's later construction ([Georgiev et al. 2025](https://arxiv.org/abs/2511.02864)).</figcaption>
+<figure class="blog-figure" data-figure="methods">
+<div class="live-figure"><canvas aria-label="Three panels reach the same 26-circle packing. In one, disks fly, collide and grow until they jam. In another, circles jump step by step toward the record. In the third, circles swell and are pushed apart by contact pressure until they settle. The three squares then slide together and match outline for outline"></canvas></div>
+<figcaption>Three ways to the same record packing. The jamming panel is a real simulation of disks colliding and growing, eased into place at the end. The Arrow–Hurwicz panel runs real primal-dual steps, started near the record. The DC panel is illustrative. Coordinates from DeepMind's later construction ([Georgiev et al. 2025](https://arxiv.org/abs/2511.02864)).</figcaption>
 </figure>
 
 #### A Master Trophy at IOAI
@@ -321,14 +321,15 @@ The field was strong. On all six tasks, the top score used for normalization was
 
 > IOAI 2026 launched the inaugural IOAI²: AI Models Track, a first-of-its-kind competition where fully autonomous AI systems competed on the same six demanding AI modeling tasks as the best AI students from 108 countries and territories. The track explored what advanced agentic systems could achieve independently using their own tools, substantial computing resources, internet access, and precurated knowledge bases. The competition was overseen by the IOAI International Scientific Committee, and operated under different conditions from the student contest, conferring its own rankings and awards. Under those conditions, every AI system reached a score that would have placed at or above the Individual Contest's gold-medal threshold, and thirteen of the fifteen exceeded the highest human total. No AI system saturated performance on any of the six IOAI tasks.
 
-
 We listed a single H100 for local work, while Sakana, one place behind us, listed eight H200s. IOAI wrote up the track in [What happens when autonomous AI takes on the same tasks as the world's top young AI talents?](https://ioai-official.org/what-happens-when-autonomous-ai-takes-on-the-same-tasks-as-the-worlds-top-young-ai-talents/)
 
 Some context on the result. Darwin's autoresearcher was built for long-horizon research, problems like RNA folding where the search has time to climb, and the whole team agreed that's where it was strongest. IOAI asks for the opposite. Each task gives a system two hours, and in two hours our engine barely had room to hillclimb. Provisioning machines, setting up each task, and running a full agent session and training run for every candidate all ate into the window.
 
-For IOAI, I ran our campaign end to end. I prepared the research corpus for each task's domain, pointed the engine at the tasks, and built the pipeline that packaged its solutions and submitted them through the competition's Kaggle flow. A lot of that work was optimization, just to get enough submissions in before each window closed.
+For IOAI, I helped run our campaign. I worked on setting it up, starting with the research corpus. Rather than one per task, I went through IOAI's past machine-learning tasks to see what kinds of problems they ask, and built a general ML corpus around those topics.
 
-I enforced the contest rules on every run, like the limits on external data and pretrained weights, and audited the results to separate real progress from infrastructure failures so we could fix what was actually breaking. The track requires that all training code be written and submitted by the AI agents autonomously, with no human in the loop. You can read the rules on the [official IOAI AI Models Track page](https://ioai-official.org/ai-models-track/rules-format/).
+I also built parts of the pipeline that packaged the engine's solutions and submitted them through the competition's Kaggle flow. A lot of my part was optimization, just to get enough submissions in before each window closed. Since this was our first competition, most of the rest was finding where the autoresearcher broke under contest conditions and fixing it.
+
+Along the way I checked runs against the contest rules, like the limits on external data and pretrained weights, and audited results to tell progress apart from infrastructure failures. The track requires that all training code be written and submitted by the AI agents autonomously, with no human in the loop. You can read the rules on the [official IOAI AI Models Track page](https://ioai-official.org/ai-models-track/rules-format/).
 
 ### What I Read
 
@@ -374,37 +375,51 @@ These are the papers I kept coming back to. I didn't read most of them cover to 
 
 ### Going Full-Time
 
-The pace changed a lot when I moved to San Francisco and switched to full-time. Working on-site with a small team, in the same room as the people building the rest of the system, is a different speed than checking in part-time. Over the internship, it added up to the numbers below.
+<figure class="blog-figure">
+<img src="/assets/blog/thesis-labs-internship/sf-office.jpg" alt="William at his desk in Darwin's San Francisco office, turned toward the camera, with three screens behind him" loading="lazy" decoding="async" />
+<figcaption>At my desk in the San Francisco office.</figcaption>
+</figure>
 
-<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:1.75em 0 0.75em">
+The pace changed a lot when I moved to San Francisco and switched to full-time. Working on-site with a small team, in the same room as the people building the rest of the system, is a different speed than checking in part-time.
+
+My hours were basically 996, nine to nine, six days a week. Most days were twelve hours, and some were more. It was intense, but it never felt like work. The work was fulfilling, I was learning something every day, and it felt like a passion project that everyone on the team wanted to be working on.
+
+A small team made a lot of that possible. Talking to someone meant turning my chair around, and I had full ownership over the pieces I worked on. I moved between research and engineering all the time, so some days I pushed a lot of commits and some days I pushed none while I read and ran experiments. Working across that many parts of the system taught me more than any one of them would have.
+
+Outside work, I loved living in San Francisco. The views never got old, and I met a lot of people I wouldn't have met anywhere else.
+
+Over the internship, it added up to the numbers below.
+
+<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:1.75em 0 0">
 <div style="border:1px solid var(--color-border);border-radius:10px;padding:16px 18px"><div style="font-family:var(--font-family-serif);font-size:2rem;font-weight:600;color:var(--color-text);line-height:1">148</div><div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;margin-top:6px">Pull requests merged</div></div>
 <div style="border:1px solid var(--color-border);border-radius:10px;padding:16px 18px"><div style="font-family:var(--font-family-serif);font-size:2rem;font-weight:600;color:var(--color-text);line-height:1">125.8K<span style="color:#b8860b">+</span></div><div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;margin-top:6px">Lines added</div></div>
 <div style="border:1px solid var(--color-border);border-radius:10px;padding:16px 18px"><div style="font-family:var(--font-family-serif);font-size:2rem;font-weight:600;color:var(--color-text);line-height:1">22.9K<span style="color:#b8860b">−</span></div><div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;margin-top:6px">Lines removed</div></div>
 <div style="border:1px solid var(--color-border);border-radius:10px;padding:16px 18px"><div style="font-family:var(--font-family-serif);font-size:2rem;font-weight:600;color:var(--color-text);line-height:1">437</div><div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;margin-top:6px">Authored commits</div></div>
 </div>
 
-### The Stack I Worked Across
-
-<div style="display:grid;gap:14px;margin:1.75em 0">
-<div style="display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:start"><div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;padding-top:5px">Languages</div><div style="display:flex;flex-wrap:wrap;gap:7px"><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">Rust</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">TypeScript</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">Python</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">SQL</span></div></div>
-<div style="display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:start"><div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;padding-top:5px">Backend</div><div style="display:flex;flex-wrap:wrap;gap:7px"><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">axum</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">sqlx</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">NestJS</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">Drizzle</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">PostgreSQL</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">pgvector</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">RabbitMQ</span></div></div>
-<div style="display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:start"><div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;padding-top:5px">Frontend</div><div style="display:flex;flex-wrap:wrap;gap:7px"><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">Next.js</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">React</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">Recharts</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">React Three Fiber</span></div></div>
-<div style="display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:start"><div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;padding-top:5px">Research &amp; retrieval</div><div style="display:flex;flex-wrap:wrap;gap:7px"><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">Voyage embeddings</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">Docling</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">Semantic Scholar</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">OpenAlex</span></div></div>
-<div style="display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:start"><div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;padding-top:5px">ML &amp; robotics</div><div style="display:flex;flex-wrap:wrap;gap:7px"><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">PyTorch</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">LeRobot</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">SmolVLA</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">π0.5 (openpi)</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">Isaac Sim</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">Hugging Face</span></div></div>
-<div style="display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:start"><div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;padding-top:5px">Infra</div><div style="display:flex;flex-wrap:wrap;gap:7px"><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">GCP</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">Cloud Run</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">Cloud SQL</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">Cloud Storage</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">Terraform</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">SkyPilot</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:3px 10px;font-size:var(--font-size-small)">Docker</span></div></div>
+<div style="border:1px solid var(--color-border);border-radius:10px;padding:16px 18px;margin:12px 0 1.75em">
+<div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:12px">The stack I worked across</div>
+<div style="display:grid;grid-template-columns:88px 1fr;gap:10px 12px;align-items:baseline">
+<div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;font-size:12px">Languages</div><div style="display:flex;flex-wrap:wrap;gap:6px"><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">Rust</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">TypeScript</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">Python</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">SQL</span></div>
+<div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;font-size:12px">Backend</div><div style="display:flex;flex-wrap:wrap;gap:6px"><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">axum</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">sqlx</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">NestJS</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">Drizzle</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">PostgreSQL</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">pgvector</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">RabbitMQ</span></div>
+<div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;font-size:12px">Frontend</div><div style="display:flex;flex-wrap:wrap;gap:6px"><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">Next.js</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">React</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">Recharts</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">React Three Fiber</span></div>
+<div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;font-size:12px">Retrieval</div><div style="display:flex;flex-wrap:wrap;gap:6px"><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">Voyage embeddings</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">Docling</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">Semantic Scholar</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">OpenAlex</span></div>
+<div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;font-size:12px">ML</div><div style="display:flex;flex-wrap:wrap;gap:6px"><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">PyTorch</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">Hugging Face</span></div>
+<div style="font-size:var(--font-size-small);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.04em;font-size:12px">Infra</div><div style="display:flex;flex-wrap:wrap;gap:6px"><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">GCP</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">Cloud Run</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">Cloud SQL</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">Cloud Storage</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">Terraform</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">SkyPilot</span><span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:6px;padding:2px 8px;font-size:13px;line-height:1.5">Docker</span></div>
+</div>
 </div>
 
 ### What I Took Away
 
 A few things stuck with me.
 
-Evaluation is the whole game. The search optimizes exactly what you measure, loopholes included, as circle packing showed. Once you accept that, you start treating the measurement itself as the thing to protect.
+Evaluation is the whole game. The search optimizes exactly what you measure, loopholes included. Once you accept that, you start treating the measurement itself as the thing to protect.
 
-The hard part of an automated researcher is not generating ideas. Getting an agent to propose something is easy. Getting it to not repeat itself, to know what has already been tried, and to tell a real improvement from a lucky score is where the actual work is.
+Generating ideas is the easy part of an automated researcher. Getting an agent to propose something takes almost nothing. Getting it to stop repeating itself, to know what has already been tried, and to tell an improvement from a lucky score is where most of the work goes.
 
-It's also worth being honest about where this goes. Point the same loop at the training algorithms, architectures, and AI agents that build these systems, and you get AI improving AI itself, which is called **recursive self-improvement (RSI)**. That is the most exciting direction this work can take and probably the most dangerous, and it's why I think getting the measurement right matters so much.
+There's another side to this. Point the same loop at the training algorithms, architectures, and AI agents that build these systems, and you get AI improving AI itself, which is called **recursive self-improvement (RSI)**. That is the most exciting direction this work can take and probably the most dangerous, which is a big part of why I care about getting the measurement right.
 
-I got to work on a genuinely ambitious version of automating research, and I came away more convinced that this line of work is going somewhere. Thank you to the team for the trust and the ownership. I'm excited to see what they build next in robotics.
+I got to work on an ambitious version of automating research, and I came away more convinced that this line of work is going somewhere. Thank you to the team for the trust and the ownership. I'm excited to see what they build next in robotics.
 
 ### References
 
