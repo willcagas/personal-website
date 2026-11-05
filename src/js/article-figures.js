@@ -13,6 +13,7 @@
  * corpus — one paper through parse, chunk and embed, then the whole 337K-paper corpus by field
  * seeds, spawn, novelty — islands dealt different seeds, the two ways to found a new
  *           island, and the code-novelty gate with its LLM judge
+ * ioai — the IOAI² results as a race, task by task, ending on the trophy tiers
  * agents — the deep-research pass: planner, parallel explorers, verifiers, critic,
  *           synthesizer, ending in a brief of what is known, contested and open
  * islands — four island populations evolving in parallel; the best migrate
@@ -2982,6 +2983,456 @@ const EXPLORE = (() => {
   return { seeds: fitted(createPool), spawn: fitted(createStalled), novelty: fitted(createGate) };
 })();
 
+/* ───────────── IOAI photo finish ───────────── */
+
+// The IOAI² AI Models Track as a race: each of the six tasks adds its normalized score to every
+// named system's bar, then the finish zooms in on the trophy tiers and the 1.47-point gap.
+// Every number is from IOAI's public review. Drawn at 680 px (360 on phones), then scaled.
+const createIOAIRace = (() => {
+  const INK = '28, 25, 23';
+  const GOLD = '184, 134, 11';
+  const SERIF = 'Newsreader, Georgia, serif';
+  const SANS = 'Inter, sans-serif';
+  const FEATHER = 28;
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
+  const easeOut = (k) => 1 - (1 - k) ** 3;
+  /** How far t is through [a, b], from 0 to 1 */
+  const span = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+  const ink = (a) => `rgba(${INK}, ${a})`;
+  const gold = (a = 1) => `rgba(${GOLD}, ${a})`;
+
+  function pageColor() {
+    return getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() || '#fdfaf6';
+  }
+
+  function makeLayer(W, H, dpr) {
+    const c = document.createElement('canvas');
+    c.width = Math.round(W * dpr);
+    c.height = Math.round(H * dpr);
+    const g = c.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { canvas: c, ctx: g };
+  }
+
+  /** Erase toward each edge of a layer, so whatever it holds fades out there. */
+  function featherEdges(g, W, H, size, sides = 'tblr') {
+    g.save();
+    g.globalCompositeOperation = 'destination-out';
+    const edges = {
+      t: [0, 0, 0, size, 0, 0, W, size],
+      b: [0, H, 0, H - size, 0, H - size, W, size],
+      l: [0, 0, size, 0, 0, 0, size, H],
+      r: [W, 0, W - size, 0, W - size, 0, size, H]
+    };
+    for (const side of sides) {
+      const [x0, y0, x1, y1, rx, ry, rw, rh] = edges[side];
+      const grad = g.createLinearGradient(x0, y0, x1, y1);
+      grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+      grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.35)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      g.fillStyle = grad;
+      g.fillRect(rx, ry, rw, rh);
+    }
+    g.restore();
+  }
+
+  /** The page colour, opaque in the middle and dissolving at the edges. */
+  function makeBackdrop(W, H, dpr) {
+    const layer = makeLayer(W, H, dpr);
+    layer.ctx.fillStyle = pageColor();
+    layer.ctx.fillRect(0, 0, W, H);
+    featherEdges(layer.ctx, W, H, FEATHER);
+    return layer.canvas;
+  }
+
+  /** Fade in as a loop starts and out as it ends */
+  const loopAlpha = (clock, loop, inMs = 400, outMs = 500) => Math.min(span(clock, 0, inMs), 1 - span(clock, loop - outMs, loop));
+
+  function text(ctx, str, x, y, { font = `400 11px ${SANS}`, color = ink(0.5), align = 'left', halo = 0 } = {}) {
+    ctx.font = font;
+    ctx.textAlign = align;
+    if (halo) {
+      ctx.save();
+      ctx.globalAlpha *= halo;
+      ctx.strokeStyle = pageColor();
+      ctx.lineWidth = 5;
+      ctx.lineJoin = 'round';
+      ctx.strokeText(str, x, y);
+      ctx.restore();
+    }
+    ctx.fillStyle = color;
+    ctx.fillText(str, x, y);
+    ctx.textAlign = 'left';
+  }
+
+  function textWidth(ctx, str, font) {
+    ctx.font = font;
+    return ctx.measureText(str).width;
+  }
+
+  /** Largest size from `base` down to `min` at which `str` fits in maxW */
+  function fitFont(ctx, str, maxW, base, min, make) {
+    let size = base;
+    while (size > min && textWidth(ctx, str, make(size)) > maxW) size -= 0.25;
+    return make(size);
+  }
+
+  /** Greedy word wrap */
+  function wrapLines(ctx, str, maxW, font) {
+    ctx.font = font;
+    const lines = [];
+    let line = '';
+    for (const word of str.split(' ')) {
+      const next = line ? `${line} ${word}` : word;
+      if (line && ctx.measureText(next).width > maxW) {
+        lines.push(line);
+        line = word;
+      } else line = next;
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  function rrect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+    else ctx.rect(x, y, w, h);
+  }
+
+  function looping(LOOP, draw, extra = {}) {
+    let clock = 0;
+    return {
+      loopMs: LOOP,
+      prewarm: 0,
+      ...extra,
+      step(dt) {
+        clock = (clock + dt) % LOOP;
+      },
+      draw(ctx) {
+        draw(ctx, clock);
+      }
+    };
+  }
+
+  /** The current stage's name, crossfading as the stages change; a gold rule under it */
+  function stageName(ctx, t, x, y, schedule, { size = 15, align = 'left' } = {}) {
+    schedule.forEach(([t0, t1, name]) => {
+      const a = Math.min(span(t, t0, t0 + 300), 1 - span(t, t1 - 250, t1));
+      if (a <= 0) return;
+      const font = `500 ${size}px ${SERIF}`;
+      text(ctx, name, x, y, { font, color: ink(0.88 * a), align });
+      const w = textWidth(ctx, name, font);
+      ctx.fillStyle = gold(0.9 * a);
+      ctx.fillRect(align === 'center' ? x - w / 2 : x, y + 6, w * easeOut(span(t, t0, t0 + 450)), 1.6);
+    });
+  }
+
+  /* Data: IOAI's per-task tables and trophy table (IOAI² Inaugural Edition Review, 2026) */
+
+  const DATA = {"tasks":[{"name":"Find the Order","rows":[{"system":"Synthetic Sciences","score":100.0,"rank":1},{"system":"InfiAgents","score":78.2,"rank":2},{"system":"WestlakeNLP","score":77.7,"rank":3},{"system":"Leeroo","score":76.0,"rank":4},{"system":"Sakana AI","score":71.0,"rank":5},{"system":"anonymous","score":70.1,"rank":6},{"system":"Darwin Robotics","score":68.5,"rank":7},{"system":"TripleTree","score":66.7,"rank":8},{"system":"anonymous","score":64.3,"rank":9},{"system":"anonymous","score":64.2,"rank":10},{"system":"anonymous","score":57.2,"rank":11},{"system":"PKU-DCAI","score":51.1,"rank":12},{"system":"anonymous","score":49.7,"rank":13},{"system":"Cyrion Labs","score":0.0,"rank":14},{"system":"anonymous","score":0.0,"rank":15}]},{"name":"Chasing the Robot","rows":[{"system":"InfiAgents","score":100.0,"rank":1},{"system":"Leeroo","score":98.8,"rank":2},{"system":"anonymous","score":98.5,"rank":3},{"system":"anonymous","score":97.6,"rank":4},{"system":"Synthetic Sciences","score":96.1,"rank":5},{"system":"PKU-DCAI","score":95.6,"rank":6},{"system":"TripleTree","score":94.3,"rank":7},{"system":"anonymous","score":92.2,"rank":8},{"system":"WestlakeNLP","score":90.0,"rank":9},{"system":"anonymous","score":85.2,"rank":10},{"system":"Darwin Robotics","score":84.8,"rank":11},{"system":"Sakana AI","score":78.9,"rank":12},{"system":"Cyrion Labs","score":77.4,"rank":13},{"system":"anonymous","score":73.5,"rank":14},{"system":"anonymous","score":73.5,"rank":15}]},{"name":"Potato Contact","rows":[{"system":"PKU-DCAI","score":100.0,"rank":1},{"system":"anonymous","score":96.5,"rank":2},{"system":"Leeroo","score":92.0,"rank":3},{"system":"Sakana AI","score":90.6,"rank":4},{"system":"anonymous","score":90.2,"rank":5},{"system":"anonymous","score":87.9,"rank":6},{"system":"InfiAgents","score":87.5,"rank":7},{"system":"Darwin Robotics","score":83.1,"rank":8},{"system":"TripleTree","score":82.7,"rank":9},{"system":"Synthetic Sciences","score":78.7,"rank":10},{"system":"WestlakeNLP","score":77.6,"rank":11},{"system":"anonymous","score":73.8,"rank":12},{"system":"anonymous","score":53.2,"rank":13},{"system":"Cyrion Labs","score":43.3,"rank":14},{"system":"anonymous","score":42.8,"rank":15}]},{"name":"Double Agent Dilemma","rows":[{"system":"Synthetic Sciences","score":100.0,"rank":1},{"system":"WestlakeNLP","score":99.7,"rank":2},{"system":"anonymous","score":99.5,"rank":3},{"system":"Darwin Robotics","score":99.2,"rank":4},{"system":"Leeroo","score":98.8,"rank":5},{"system":"InfiAgents","score":98.8,"rank":6},{"system":"TripleTree","score":98.2,"rank":7},{"system":"anonymous","score":98.0,"rank":8},{"system":"anonymous","score":97.7,"rank":9},{"system":"Cyrion Labs","score":97.3,"rank":10},{"system":"anonymous","score":96.6,"rank":11},{"system":"Sakana AI","score":96.3,"rank":12},{"system":"anonymous","score":69.6,"rank":13},{"system":"anonymous","score":0.0,"rank":14},{"system":"PKU-DCAI","score":0.0,"rank":15}]},{"name":"Ghost of the Machine","rows":[{"system":"anonymous","score":100.0,"rank":1},{"system":"Synthetic Sciences","score":98.8,"rank":2},{"system":"anonymous","score":98.6,"rank":3},{"system":"anonymous","score":97.6,"rank":4},{"system":"WestlakeNLP","score":97.4,"rank":5},{"system":"InfiAgents","score":97.2,"rank":6},{"system":"Leeroo","score":97.2,"rank":7},{"system":"anonymous","score":97.1,"rank":8},{"system":"PKU-DCAI","score":96.6,"rank":9},{"system":"Sakana AI","score":96.5,"rank":10},{"system":"anonymous","score":96.2,"rank":11},{"system":"TripleTree","score":95.6,"rank":12},{"system":"anonymous","score":93.7,"rank":13},{"system":"Cyrion Labs","score":93.5,"rank":14},{"system":"Darwin Robotics","score":91.4,"rank":15}]},{"name":"IOAI Field","rows":[{"system":"InfiAgents","score":100.0,"rank":1},{"system":"Synthetic Sciences","score":95.5,"rank":2},{"system":"WestlakeNLP","score":89.0,"rank":3},{"system":"Darwin Robotics","score":78.8,"rank":4},{"system":"anonymous","score":77.1,"rank":5},{"system":"anonymous","score":73.8,"rank":6},{"system":"Leeroo","score":73.2,"rank":7},{"system":"anonymous","score":73.0,"rank":8},{"system":"PKU-DCAI","score":72.7,"rank":9},{"system":"anonymous","score":71.6,"rank":10},{"system":"anonymous","score":71.4,"rank":11},{"system":"Sakana AI","score":71.0,"rank":12},{"system":"TripleTree","score":70.4,"rank":13},{"system":"Cyrion Labs","score":65.6,"rank":14},{"system":"anonymous","score":0.0,"rank":15}]}],"trophy_table":{"rows":[{"rank":1,"system":"Synthetic Sciences","total":569.14},{"rank":2,"system":"InfiAgents (MBZUAI IFM)","total":561.74},{"rank":3,"system":"Leeroo","total":536.06},{"rank":4,"system":"WestlakeNLP","total":531.37},{"rank":5,"system":"(anonymous)*","total":527.39},{"rank":6,"system":"TripleTree (UCLA)","total":507.96},{"rank":7,"system":"Darwin Robotics","total":505.72},{"rank":8,"system":"Sakana AI","total":504.25},{"rank":11,"system":"(anonymous)*","total":464.97},{"rank":12,"system":"PKU-DCAI","total":415.97}]},"award_boundaries":{"implied_by_trophy_table":{"Champion":561.74,"Grand Master":531.37,"Master":504.25}}};
+
+  const TASKS = DATA.tasks;
+  const DARWIN = 'Darwin Robotics';
+  const SAKANA = 'Sakana AI';
+  /** The nine systems named on every task, in trophy-table order (Cyrion Labs has no published rank) */
+  const NAMED = ['Synthetic Sciences', 'InfiAgents', 'Leeroo', 'WestlakeNLP', 'TripleTree', DARWIN, SAKANA, 'PKU-DCAI', 'Cyrion Labs'];
+  const SHORT = {
+    'Synthetic Sciences': 'Synthetic Sci.',
+    InfiAgents: 'InfiAgents',
+    Leeroo: 'Leeroo',
+    WestlakeNLP: 'WestlakeNLP',
+    TripleTree: 'TripleTree',
+    [DARWIN]: 'Darwin',
+    [SAKANA]: 'Sakana',
+    'PKU-DCAI': 'PKU-DCAI',
+    'Cyrion Labs': 'Cyrion'
+  };
+  const rowOf = (k, name) => TASKS[k].rows.find((r) => r.system === name);
+  const OFFICIAL = {};
+  const RANK = {};
+  const ANON_TOTALS = [];
+  DATA.trophy_table.rows.forEach((r) => {
+    if (r.system.startsWith('(anonymous)')) ANON_TOTALS.push(r);
+    else {
+      const n = r.system.replace(/ \(.*\)$/, '');
+      OFFICIAL[n] = r.total;
+      RANK[n] = r.rank;
+    }
+  });
+  /** Sum of a system's six printed scores, to one decimal (they're printed to one decimal) */
+  const taskSum = (n) => Math.round(TASKS.reduce((s, t) => s + t.rows.find((r) => r.system === n).score, 0) * 10) / 10;
+  /** Official total where there is one; Cyrion Labs, which has none, gets its task-score sum */
+  const totalOf = (n) => OFFICIAL[n] ?? taskSum(n);
+  const TIER = DATA.award_boundaries.implied_by_trophy_table;
+  const ordinal = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th'}`;
+
+  /* Photo finish */
+
+  /**
+   * A bar-chart race over the nine named systems: each task adds its normalized score to every
+   * bar and the rows re-sort. Darwin and Sakana trade places three times. After Task 6 the axis
+   * zooms to the finish, the two anonymous trophy winners take their places, the trophy tiers
+   * shade in (each tier starts at its lowest holder's total) and the 1.47 gap is marked.
+   */
+  function createRace(W, H, dpr) {
+    const narrow = W < 520;
+    const LOOP = 18000;
+    const T0 = 700;
+    const D = 1650;
+    const G = 760;
+    const R = 560;
+    const F0 = T0 + 6 * D;
+    const ZOOM = [F0 + 150, F0 + 1450];
+    const ANON = [F0 + 600, F0 + 1450];
+    const BANDS = [F0 + 1100, F0 + 1900];
+    const GAP = [F0 + 2050, F0 + 2550];
+    const backdrop = makeBackdrop(W, H, dpr);
+    const M = narrow ? 16 : 32;
+    const rankW = narrow ? 17 : 22;
+    const nameW = narrow ? 80 : 124;
+    const xL = M + rankW + nameW + (narrow ? 4 : 10);
+    const xR = W - M - (narrow ? 48 : 86);
+    const top = narrow ? 82 : 66;
+    const bottom = H - (narrow ? 42 : 34);
+    const RACE = [0, 600];
+    const FIN = [460, 600];
+
+    const cum = {};
+    NAMED.forEach((n) => {
+      let s = 0;
+      cum[n] = [0];
+      for (let k = 0; k < 6; k++) {
+        s += rowOf(k, n).score;
+        cum[n].push(Math.round(s * 10) / 10);
+      }
+    });
+    const orders = [NAMED.slice()];
+    for (let k = 1; k <= 6; k++) orders.push(NAMED.slice().sort((a, b) => cum[b][k] - cum[a][k] || NAMED.indexOf(a) - NAMED.indexOf(b)));
+    const ANONS = ANON_TOTALS.map((r) => ({ id: `anon${r.rank}`, total: r.total, rank: r.rank }));
+    const FINAL = [...NAMED.map((n) => ({ id: n, total: totalOf(n) })), ...ANONS.map((a) => ({ id: a.id, total: a.total }))]
+      .sort((a, b) => b.total - a.total)
+      .map((r) => r.id);
+
+    const nameFont = (ctx, n) => {
+      const label = narrow ? SHORT[n] : n;
+      const w = n === DARWIN ? 600 : 500;
+      return fitFont(ctx, label, nameW, narrow ? 13 : 13.5, 10.5, (s) => `${w} ${s}px ${SERIF}`);
+    };
+    const schedule = TASKS.map((tk, j) => [j === 0 ? 250 : T0 - 300 + j * D, T0 - 300 + (j + 1) * D, `Task ${j + 1} · ${tk.name}`]);
+    schedule.push([F0 - 300, LOOP + 1000, 'Total of 600']);
+
+    return looping(LOOP, (ctx, t) => {
+      ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(backdrop, 0, 0, W, H);
+      ctx.save();
+      ctx.globalAlpha = loopAlpha(t, LOOP, 400, 600);
+
+      const kZ = ease(span(t, ...ZOOM));
+      const kA = ease(span(t, ...ANON));
+      const kB = span(t, ...BANDS);
+      const kG = span(t, ...GAP);
+      const lo = lerp(RACE[0], FIN[0], kZ);
+      const hi = lerp(RACE[1], FIN[1], kZ);
+      const X = (v) => xL + ((v - lo) / (hi - lo)) * (xR - xL);
+      const avail = bottom - top;
+      const pitch = lerp(avail / 9, avail / 11, kA);
+      const rowY = (slot) => top + (slot + 0.5) * pitch;
+      const barH = Math.min(narrow ? 15 : 14, pitch * 0.5);
+      const j = clamp(Math.floor((t - T0) / D), -1, 6);
+
+      // Header: the task being added, and six marks for progress
+      stageName(ctx, t, M, 30, schedule, { size: narrow ? 14.5 : 15.5 });
+      for (let k = 0; k < 6; k++) {
+        const w = narrow ? 11 : 14;
+        const x = W - M - (6 - k) * (w + 4) + 4;
+        const done = span(t, T0 + k * D, T0 + k * D + G);
+        ctx.fillStyle = ink(0.12);
+        ctx.fillRect(x, 24, w, 3);
+        ctx.fillStyle = gold(0.85);
+        ctx.fillRect(x, 24, w * done, 3);
+      }
+
+      // Trophy tiers, shaded in at the finish
+      if (kB > 0) {
+        const tiers = [
+          ['Master', TIER.Master, TIER['Grand Master'], 0.02],
+          ['Grand Master', TIER['Grand Master'], TIER.Champion, 0.033],
+          ['Champion', TIER.Champion, 600, 0.046]
+        ];
+        tiers.forEach(([name, a, b, fill], ti) => {
+          const x0 = X(a);
+          const x1 = X(b);
+          ctx.fillStyle = ink(fill * kB);
+          ctx.fillRect(x0, top - 6, x1 - x0, bottom - top + 6);
+          ctx.fillStyle = ink(0.14 * kB);
+          ctx.fillRect(x0, top - 6, 1, bottom - top + 6);
+          const font = `500 ${narrow ? 10.5 : 11}px ${SANS}`;
+          const ly = narrow && ti === 1 ? top - 24 : top - 12;
+          text(ctx, name, (x0 + x1) / 2, ly, { font, color: ink(0.55 * kB), align: 'center' });
+        });
+      }
+
+      // Grid: hundreds during the race, fifties once zoomed
+      // Fifties fade in once there's room for their numbers
+      const room = (50 * (xR - xL)) / (hi - lo);
+      const fifty = span(room, narrow ? 26 : 44, narrow ? 34 : 58);
+      for (let v = 0; v <= 600; v += 50) {
+        if (v < lo - 0.01 || v > hi + 0.01) continue;
+        const a = v % 100 === 0 ? 1 : fifty;
+        if (a <= 0.01) continue;
+        const x = X(v);
+        ctx.fillStyle = ink(0.06 * a);
+        ctx.fillRect(x, top - 4, 1, bottom - top + 6);
+        text(ctx, String(v), x, bottom + 16, { font: `400 ${narrow ? 10 : 10.5}px ${SANS}`, color: ink(0.38 * a), align: 'center' });
+      }
+      if (kZ > 0) {
+        // A break in the axis once it no longer starts at zero
+        ctx.strokeStyle = ink(0.35 * kZ);
+        ctx.lineWidth = 1;
+        for (const dx of [-2, 2]) {
+          ctx.beginPath();
+          ctx.moveTo(xL + dx - 2, bottom + 6);
+          ctx.lineTo(xL + dx + 2, bottom - 2);
+          ctx.stroke();
+        }
+      }
+
+      // Rows
+      const labelEnds = {};
+      const drawRow = ({ id, label, italic, slot, v, freshFrom, freshA, valueStr, valueStr2, k2, rank, rankA, alpha, anon }) => {
+        const y = rowY(slot);
+        const darwin = id === DARWIN;
+        const sakana = id === SAKANA;
+        ctx.save();
+        ctx.globalAlpha *= alpha;
+        if (rank && rankA > 0) {
+          text(ctx, String(rank), M + rankW - 6, y + 4, { font: `400 ${narrow ? 10.5 : 11}px ${SANS}`, color: darwin ? gold(rankA) : ink(0.42 * rankA), align: 'right' });
+        }
+        const nf = anon ? `italic 400 ${narrow ? 12.5 : 13}px ${SERIF}` : nameFont(ctx, id);
+        text(ctx, label, M + rankW, y + 4.5, { font: nf, color: darwin ? gold(1) : anon ? ink(0.5) : sakana ? ink(0.9) : ink(0.68) });
+        const xe = Math.max(xL, X(v));
+        if (xe > xL + 0.5) {
+          rrect(ctx, xL, y - barH / 2, xe - xL, barH, Math.min(2, barH / 2));
+          if (anon) {
+            ctx.fillStyle = ink(0.06);
+            ctx.fill();
+            ctx.setLineDash([3, 2]);
+            ctx.strokeStyle = ink(0.32);
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.setLineDash([]);
+          } else {
+            ctx.fillStyle = darwin ? gold(0.8) : sakana ? ink(0.34) : ink(0.17);
+            ctx.fill();
+          }
+          if (freshA > 0 && freshFrom < v) {
+            const xs = Math.max(xL, X(freshFrom));
+            if (xe - xs > 0.5) {
+              ctx.fillStyle = darwin ? gold(0.95 * freshA) : ink(0.3 * freshA);
+              ctx.fillRect(xs, y - barH / 2, xe - xs, barH);
+            }
+          }
+        }
+        const vf = `${darwin ? 600 : 500} ${narrow ? 10.5 : 11}px ${SANS}`;
+        const vc = darwin ? gold(1) : sakana ? ink(0.72) : ink(0.5);
+        const vx = xe + 6;
+        if (valueStr2 && k2 > 0) {
+          if (k2 < 1) text(ctx, valueStr, vx, y + 4, { font: vf, color: darwin ? gold(1 - k2) : sakana ? ink(0.72 * (1 - k2)) : ink(0.5 * (1 - k2)) });
+          text(ctx, valueStr2, vx, y + 4, { font: vf, color: darwin ? gold(k2) : sakana ? ink(0.72 * k2) : ink(0.5 * k2) });
+          labelEnds[id] = vx + textWidth(ctx, valueStr2, vf);
+        } else {
+          text(ctx, valueStr, vx, y + 4, { font: vf, color: vc });
+          labelEnds[id] = vx + textWidth(ctx, valueStr, vf);
+        }
+        ctx.restore();
+        return y;
+      };
+
+      const ys = {};
+      const kOff = span(t, F0 + 250, F0 + 700);
+      NAMED.forEach((n) => {
+        let v;
+        let slot;
+        let freshFrom = 0;
+        let freshA = 0;
+        if (j < 0) {
+          v = 0;
+          slot = orders[0].indexOf(n);
+        } else if (j < 6) {
+          const g0 = T0 + j * D;
+          const s = rowOf(j, n).score;
+          v = cum[n][j] + s * ease(span(t, g0, g0 + G));
+          slot = lerp(orders[j].indexOf(n), orders[j + 1].indexOf(n), ease(span(t, g0 + G, g0 + G + R)));
+          freshFrom = cum[n][j];
+          freshA = 1 - span(t, g0 + G + R * 0.4, g0 + G + R + 350);
+        } else {
+          v = cum[n][6];
+          slot = lerp(orders[6].indexOf(n), FINAL.indexOf(n), kA);
+        }
+        const official = OFFICIAL[n];
+        ys[n] = drawRow({
+          id: n,
+          label: narrow ? SHORT[n] : n,
+          slot,
+          v: j >= 6 && official ? lerp(v, official, kOff) : v,
+          freshFrom,
+          freshA,
+          valueStr: v.toFixed(1),
+          valueStr2: j >= 6 && official ? official.toFixed(2) : null,
+          k2: kOff,
+          rank: RANK[n],
+          rankA: kA,
+          alpha: 1
+        });
+      });
+      if (kA > 0) {
+        ANONS.forEach((a) => {
+          drawRow({ id: a.id, label: 'anonymous', anon: true, slot: FINAL.indexOf(a.id), v: a.total, freshA: 0, valueStr: a.total.toFixed(2), rank: a.rank, rankA: kA, alpha: kA });
+        });
+      }
+
+      // The photo finish: Darwin's 1.47 over Sakana
+      if (kG > 0) {
+        const y0 = ys[DARWIN];
+        const y1 = ys[SAKANA];
+        const bx = Math.max(labelEnds[DARWIN], labelEnds[SAKANA]) + 8;
+        const k = easeOut(kG);
+        ctx.strokeStyle = gold(0.9 * kG);
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(bx - 3, y0);
+        ctx.lineTo(bx, y0);
+        ctx.lineTo(bx, lerp(y0, y1, k));
+        if (k > 0.98) ctx.lineTo(bx - 3, y1);
+        ctx.stroke();
+        const gap = (OFFICIAL[DARWIN] - OFFICIAL[SAKANA]).toFixed(2);
+        text(ctx, gap, bx + 6, (y0 + y1) / 2 + 4, { font: `600 ${narrow ? 11 : 11.5}px ${SANS}`, color: gold(kG) });
+      }
+
+      ctx.restore();
+    }, { still: F0 + 4000 });
+  }
+
+  return (W, H, dpr) => {
+    const tall = W < 520 || H > W * 0.9;
+    const vw = tall ? 360 : 680;
+    const s = W / vw;
+    const inner = createRace(vw, H / s, dpr * s);
+    return {
+      ...inner,
+      draw(ctx) {
+        ctx.save();
+        ctx.scale(s, s);
+        inner.draw(ctx);
+        ctx.restore();
+      }
+    };
+  };
+})();
+
 /* ───────────── Islands ───────────── */
 
 function createIslands(W, H, dpr) {
@@ -4295,6 +4746,7 @@ const FIGURES = {
   seeds: EXPLORE.seeds,
   spawn: EXPLORE.spawn,
   novelty: EXPLORE.novelty,
+  ioai: createIOAIRace,
   islands: createIslands,
   reading: createReading,
   'circle-packing': createCirclePacking,

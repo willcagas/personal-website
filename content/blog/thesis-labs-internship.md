@@ -247,8 +247,6 @@ With the pieces in place, we pointed the system at problems with a clear right a
 
 Circle packing asks how to fit 26 circles in a unit square so their radii add up to as much as possible. AlphaEvolve raised the best known answer in 2025, later systems nudged it a little higher, and it has become the standard first benchmark for systems like ours. Our engine matched the record with its second program, before any evolution had happened. That says more about what the model already knew than about the search, and the chart below is careful about it.
 
-Then the search cheated. A few candidates reported scores above the record by pushing circles a millionth of a unit into each other, inside the checker's tolerance. A strict checker caught it and scored them zero, and the re-runs used a strict scorer in the loop.
-
 <figure class="blog-figure" data-grow style="color: var(--color-text)">
 <svg viewBox="0 0 720 318" role="img" aria-label="Candidate programs evaluated before first reaching the n=26 circle-packing record level, log scale: Darwin 2, 7 and 11 across three runs; ASI-Evolve 17; GEPA at most 150; ShinkaEvolve under 150; OpenEvolve 206; AlphaEvolve's own best, 2.63586, is below this level." style="width:100%;height:auto;font-family:var(--font-family-sans)">
 <text x="0" y="16" fill="currentColor" fill-opacity="0.55" font-size="12">programs evaluated before first reaching the record level (sum of radii ≥ 2.6359) · log scale</text>
@@ -290,19 +288,23 @@ Then the search cheated. A few candidates reported scores above the record by pu
 <text data-reveal style="transition-delay:1350ms" x="234" y="257.0" fill="currentColor" fill-opacity="0.5" font-size="11.5" font-style="italic">its best, 2.63586, is below this level</text>
 <text x="700" y="310" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="11.5">candidate programs evaluated</text>
 </svg>
-<figcaption>Candidate programs each system evaluated before first reaching the record for 26 circles, as each source reports it. Darwin's dots are our three runs. It isn't a controlled race, since the models, budgets and tolerances differ and each of our programs came out of a full agent session. Sources are AlphaEvolve App. B.12, the OpenEvolve circle-packing README, ShinkaEvolve Fig. 5, the GEPA <i>optimize_anything</i> blog and ASI-Evolve §5.1.</figcaption>
+<figcaption>Programs each system evaluated before first reaching the 26-circle record, as its own paper or README reports it. Darwin's three dots are our three runs. It isn't a controlled race, since models, budgets and tolerances all differ.</figcaption>
 </figure>
+
+Then the search cheated. A few candidates reported scores above the record by pushing circles a millionth of a unit into each other, inside the checker's tolerance. A strict checker caught it and scored them zero, and the re-runs used a strict scorer in the loop.
 
 <figure class="blog-figure" data-figure="circle-packing">
 <div class="live-figure"><canvas aria-label="Twenty-six circles settle into the best known packing of a unit square, then a magnified contact shows two circles overlapping by a millionth of a unit, the tolerance cheat that a strict check rejects"></canvas></div>
-<figcaption>The best known packing of 26 circles settling into place, then the cheat. At one contact two circles overlap by a millionth of a unit, which a loose check accepted as a new record and a strict check scores zero. Coordinates from DeepMind's later construction ([Georgiev et al. 2025](https://arxiv.org/abs/2511.02864)).</figcaption>
+<figcaption>The best known packing settling into place, then the cheat. Two circles overlap by a millionth of a unit, enough to pass a loose check and fail a strict one. Coordinates from DeepMind's later construction ([Georgiev et al. 2025](https://arxiv.org/abs/2511.02864)).</figcaption>
 </figure>
 
 #### A Master Trophy at IOAI
 
-We entered our engine in the International Olympiad in Artificial Intelligence (IOAI), in its track for AI labs. Each of the six tasks was a self-contained machine-learning problem in a different domain, and for each one the engine wrote and trained its own candidate models, then submitted them to a hidden leaderboard.
+We entered our engine in the International Olympiad in Artificial Intelligence (IOAI), in its track for AI labs. Each of the six tasks was a self-contained machine-learning problem, run as a private two-hour Kaggle competition. For each one, the engine developed and trained its own models on our hardware, then submitted a training script that Kaggle re-trained and scored with IOAI's grader.
 
-We placed 7th of 15 AI systems from 14 labs and took a **Master Trophy**, the AI track's equivalent of a bronze medal, finishing just ahead of Sakana AI (505.72 to 504.25 out of 600). We were also named an IOAI² Founding AI Participant and invited to give an oral talk on our system at the IOAI Symposium.
+We placed 7th of 15 AI systems from 14 labs and took a **Master Trophy**, the AI track's equivalent of a bronze medal, finishing just ahead of Sakana AI (505.72 to 504.25 out of 600).
+
+Sakana is also the lab behind ShinkaEvolve, which we borrowed from for the novelty gate, so finishing a spot ahead of them felt good. MLEvolve's team from Shanghai AI Lab, whose branch aggregation our synthesis spawn builds on, competed too. As a trophy winner, we were also invited to present our system at the IOAI 2026 Symposium, and we were named an IOAI² Founding AI Participant.
 
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin:1.5em 0">
 <span style="border:1px solid #b8860b;color:#b8860b;border-radius:999px;padding:4px 13px;font-size:var(--font-size-small)">🥉 Master Trophy · 7th of 15</span>
@@ -310,163 +312,21 @@ We placed 7th of 15 AI systems from 14 labs and took a **Master Trophy**, the AI
 <span style="border:1px solid var(--color-border);color:var(--color-text-secondary);border-radius:999px;padding:4px 13px;font-size:var(--font-size-small)">6 tasks</span>
 </div>
 
-<figure class="blog-figure" data-grow>
-<svg class="chart-wide" viewBox="0 0 720 476" role="img" aria-label="IOAI² 2026 AI Models Track, the ten trophy winners among fifteen AI systems, total score out of 600: 1 Synthetic Sciences 569.14; 2 InfiAgents (MBZUAI IFM) 561.74; 3 Leeroo 536.06; 4 WestlakeNLP 531.37; 5 anonymous 527.39; 6 TripleTree (UCLA) 507.96; 7 Darwin Robotics (us) 505.72; 8 Sakana AI 504.25; 11 anonymous 464.97; 12 PKU-DCAI 415.97. Ranks 9, 10, 13, 14 and 15 received no trophy." style="width:100%;height:auto;font-family:var(--font-family-sans)">
-<text x="0" y="16" fill="currentColor" fill-opacity="0.55" font-size="12">IOAI² 2026, AI Models Track · total score out of 600 · the 10 trophy winners among 15 AI systems</text>
-<line x1="262.0" y1="40" x2="262.0" y2="410" stroke="currentColor" stroke-opacity="0.08"/>
-<text x="262.0" y="426" text-anchor="middle" fill="currentColor" fill-opacity="0.5" font-size="11.5">400</text>
-<line x1="343.5" y1="40" x2="343.5" y2="410" stroke="currentColor" stroke-opacity="0.08"/>
-<text x="343.5" y="426" text-anchor="middle" fill="currentColor" fill-opacity="0.5" font-size="11.5">450</text>
-<line x1="425.0" y1="40" x2="425.0" y2="410" stroke="currentColor" stroke-opacity="0.08"/>
-<text x="425.0" y="426" text-anchor="middle" fill="currentColor" fill-opacity="0.5" font-size="11.5">500</text>
-<line x1="506.5" y1="40" x2="506.5" y2="410" stroke="currentColor" stroke-opacity="0.08"/>
-<text x="506.5" y="426" text-anchor="middle" fill="currentColor" fill-opacity="0.5" font-size="11.5">550</text>
-<line x1="588.0" y1="40" x2="588.0" y2="410" stroke="currentColor" stroke-opacity="0.08"/>
-<text x="588.0" y="426" text-anchor="middle" fill="currentColor" fill-opacity="0.5" font-size="11.5">600</text>
-<line x1="262" y1="410" x2="588" y2="410" stroke="currentColor" stroke-opacity="0.25"/>
-<text x="606" y="80.0" fill="currentColor" fill-opacity="0.75" font-size="12" font-weight="500">Champion</text>
-<text x="606" y="94.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">≈ gold</text>
-<line x1="0" y1="118.0" x2="720" y2="118.0" stroke="currentColor" stroke-opacity="0.12"/>
-<text x="606" y="152.0" fill="currentColor" fill-opacity="0.75" font-size="12" font-weight="500">Grand Master</text>
-<text x="606" y="166.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">≈ silver</text>
-<line x1="0" y1="190.0" x2="720" y2="190.0" stroke="currentColor" stroke-opacity="0.12"/>
-<text x="606" y="260.0" fill="currentColor" fill-opacity="0.75" font-size="12" font-weight="500">Master</text>
-<text x="606" y="274.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">≈ bronze</text>
-<line x1="0" y1="334.0" x2="720" y2="334.0" stroke="currentColor" stroke-opacity="0.12"/>
-<text x="606" y="368.0" fill="currentColor" fill-opacity="0.75" font-size="12" font-weight="500">High Distinction</text>
-<text x="606" y="382.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">≈ honorable mention</text>
-<text x="18" y="68.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">1</text>
-<text x="28" y="62.0" fill="currentColor" fill-opacity="0.9" font-size="13" font-weight="500">Synthetic Sciences</text>
-<text x="28" y="76.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">8× H100 · $3,476</text>
-<circle data-reveal style="transition-delay:150ms" cx="537.7" cy="64.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:450ms" x="547.7" y="68.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">569.14</text>
-<text x="18" y="104.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">2</text>
-<text x="28" y="98.0" fill="currentColor" fill-opacity="0.9" font-size="13" font-weight="500">InfiAgents (MBZUAI IFM)</text>
-<text x="28" y="112.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">8× H200 · $874</text>
-<circle data-reveal style="transition-delay:240ms" cx="525.6" cy="100.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:540ms" x="535.6" y="104.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">561.74</text>
-<text x="18" y="140.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">3</text>
-<text x="28" y="134.0" fill="currentColor" fill-opacity="0.9" font-size="13" font-weight="500">Leeroo</text>
-<text x="28" y="148.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">8× L4 · $627</text>
-<circle data-reveal style="transition-delay:330ms" cx="483.8" cy="136.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:630ms" x="493.8" y="140.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">536.06</text>
-<text x="18" y="176.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">4</text>
-<text x="28" y="170.0" fill="currentColor" fill-opacity="0.9" font-size="13" font-weight="500">WestlakeNLP</text>
-<text x="28" y="184.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">2× H100 · $533</text>
-<circle data-reveal style="transition-delay:420ms" cx="476.1" cy="172.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:720ms" x="486.1" y="176.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">531.37</text>
-<text x="18" y="212.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">5</text>
-<text x="28" y="206.0" fill="currentColor" fill-opacity="0.55" font-size="13" font-weight="500" font-style="italic">anonymous</text>
-<text x="28" y="220.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">requested to stay in stealth</text>
-<circle data-reveal style="transition-delay:510ms" cx="469.6" cy="208.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:810ms" x="479.6" y="212.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">527.39</text>
-<text x="18" y="248.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">6</text>
-<text x="28" y="242.0" fill="currentColor" fill-opacity="0.9" font-size="13" font-weight="500">TripleTree (UCLA)</text>
-<text x="28" y="256.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">2× A100 + 2× A6000 · $1,533</text>
-<circle data-reveal style="transition-delay:600ms" cx="438.0" cy="244.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:900ms" x="448.0" y="248.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">507.96</text>
-<text x="18" y="284.0" text-anchor="end" fill="#b8860b" fill-opacity="1" font-size="12">7</text>
-<text x="28" y="278.0" fill="#b8860b" fill-opacity="1" font-size="13" font-weight="600">Darwin Robotics (us)</text>
-<text x="28" y="292.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">1× H100 · $761</text>
-<circle data-reveal style="transition-delay:690ms" cx="434.3" cy="280.0" r="5.5" fill="#b8860b"/>
-<text data-reveal style="transition-delay:990ms" x="444.3" y="284.0" fill="#b8860b" fill-opacity="1" font-size="11.5">505.72</text>
-<text x="18" y="320.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">8</text>
-<text x="28" y="314.0" fill="currentColor" fill-opacity="0.9" font-size="13" font-weight="500">Sakana AI</text>
-<text x="28" y="328.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">8× H200 · $1,241</text>
-<circle data-reveal style="transition-delay:780ms" cx="431.9" cy="316.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:1080ms" x="441.9" y="320.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">504.25</text>
-<text x="18" y="356.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">11</text>
-<text x="28" y="350.0" fill="currentColor" fill-opacity="0.55" font-size="13" font-weight="500" font-style="italic">anonymous</text>
-<text x="28" y="364.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">requested to stay in stealth</text>
-<circle data-reveal style="transition-delay:870ms" cx="367.9" cy="352.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:1170ms" x="377.9" y="356.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">464.97</text>
-<text x="18" y="392.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">12</text>
-<text x="28" y="386.0" fill="currentColor" fill-opacity="0.9" font-size="13" font-weight="500">PKU-DCAI</text>
-<text x="28" y="400.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">1× H20 · $565</text>
-<circle data-reveal style="transition-delay:960ms" cx="288.0" cy="388.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:1260ms" x="298.0" y="392.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">415.97</text>
-<text x="588" y="444" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="11.5">total score (of 600)</text>
-<text x="0" y="466" fill="currentColor" fill-opacity="0.5" font-size="11">Under each name, local GPUs · total reported cost for all six tasks. Ranks 9, 10 and 13–15 received no trophy.</text>
-</svg>
-<svg class="chart-narrow" viewBox="0 0 400 594" role="img" aria-label="IOAI² 2026 AI Models Track, the ten trophy winners among fifteen AI systems, total score out of 600: 1 Synthetic Sciences 569.14; 2 InfiAgents (MBZUAI IFM) 561.74; 3 Leeroo 536.06; 4 WestlakeNLP 531.37; 5 anonymous 527.39; 6 TripleTree (UCLA) 507.96; 7 Darwin Robotics (us) 505.72; 8 Sakana AI 504.25; 11 anonymous 464.97; 12 PKU-DCAI 415.97. Ranks 9, 10, 13, 14 and 15 received no trophy." style="width:100%;height:auto;font-family:var(--font-family-sans)">
-<text x="0" y="16" fill="currentColor" fill-opacity="0.55" font-size="12">IOAI² 2026, AI Models Track · total score of 600</text>
-<text x="0" y="33" fill="currentColor" fill-opacity="0.55" font-size="12">the 10 trophy winners among 15 AI systems</text>
-<line x1="196.0" y1="56" x2="196.0" y2="514" stroke="currentColor" stroke-opacity="0.08"/>
-<text x="196.0" y="530" text-anchor="middle" fill="currentColor" fill-opacity="0.5" font-size="11.5">400</text>
-<line x1="290.0" y1="56" x2="290.0" y2="514" stroke="currentColor" stroke-opacity="0.08"/>
-<text x="290.0" y="530" text-anchor="middle" fill="currentColor" fill-opacity="0.5" font-size="11.5">500</text>
-<line x1="384.0" y1="56" x2="384.0" y2="514" stroke="currentColor" stroke-opacity="0.08"/>
-<text x="384.0" y="530" text-anchor="middle" fill="currentColor" fill-opacity="0.5" font-size="11.5">600</text>
-<line x1="196" y1="514" x2="384" y2="514" stroke="currentColor" stroke-opacity="0.25"/>
-<text x="0" y="77.0" fill="currentColor" font-size="11"><tspan fill-opacity="0.75" font-weight="600">Champion</tspan><tspan fill-opacity="0.5"> · ≈ gold</tspan></text>
-<line x1="0" y1="156.0" x2="400" y2="156.0" stroke="currentColor" stroke-opacity="0.12"/>
-<text x="0" y="171.0" fill="currentColor" font-size="11"><tspan fill-opacity="0.75" font-weight="600">Grand Master</tspan><tspan fill-opacity="0.5"> · ≈ silver</tspan></text>
-<line x1="0" y1="250.0" x2="400" y2="250.0" stroke="currentColor" stroke-opacity="0.12"/>
-<text x="0" y="265.0" fill="currentColor" font-size="11"><tspan fill-opacity="0.75" font-weight="600">Master</tspan><tspan fill-opacity="0.5"> · ≈ bronze</tspan></text>
-<line x1="0" y1="416.0" x2="400" y2="416.0" stroke="currentColor" stroke-opacity="0.12"/>
-<text x="0" y="431.0" fill="currentColor" font-size="11"><tspan fill-opacity="0.75" font-weight="600">High Distinction</tspan><tspan fill-opacity="0.5"> · ≈ honorable mention</tspan></text>
-<text x="18" y="106.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">1</text>
-<text x="28" y="100.0" fill="currentColor" fill-opacity="0.9" font-size="13" font-weight="500">Synthetic Sciences</text>
-<text x="28" y="114.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">8× H100 · $3,476</text>
-<circle data-reveal style="transition-delay:150ms" cx="355.0" cy="102.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:450ms" x="345.0" y="106.0" text-anchor="end" fill="currentColor" fill-opacity="0.75" font-size="11.5">569.14</text>
-<text x="18" y="142.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">2</text>
-<text x="28" y="136.0" fill="currentColor" fill-opacity="0.9" font-size="13" font-weight="500">InfiAgents (MBZUAI IFM)</text>
-<text x="28" y="150.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">8× H200 · $874</text>
-<circle data-reveal style="transition-delay:240ms" cx="348.0" cy="138.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:540ms" x="338.0" y="142.0" text-anchor="end" fill="currentColor" fill-opacity="0.75" font-size="11.5">561.74</text>
-<text x="18" y="200.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">3</text>
-<text x="28" y="194.0" fill="currentColor" fill-opacity="0.9" font-size="13" font-weight="500">Leeroo</text>
-<text x="28" y="208.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">8× L4 · $627</text>
-<circle data-reveal style="transition-delay:330ms" cx="323.9" cy="196.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:630ms" x="333.9" y="200.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">536.06</text>
-<text x="18" y="236.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">4</text>
-<text x="28" y="230.0" fill="currentColor" fill-opacity="0.9" font-size="13" font-weight="500">WestlakeNLP</text>
-<text x="28" y="244.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">2× H100 · $533</text>
-<circle data-reveal style="transition-delay:420ms" cx="319.5" cy="232.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:720ms" x="329.5" y="236.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">531.37</text>
-<text x="18" y="294.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">5</text>
-<text x="28" y="288.0" fill="currentColor" fill-opacity="0.55" font-size="13" font-weight="500" font-style="italic">anonymous</text>
-<text x="28" y="302.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">in stealth</text>
-<circle data-reveal style="transition-delay:510ms" cx="315.7" cy="290.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:810ms" x="325.7" y="294.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">527.39</text>
-<text x="18" y="330.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">6</text>
-<text x="28" y="324.0" fill="currentColor" fill-opacity="0.9" font-size="13" font-weight="500">TripleTree (UCLA)</text>
-<text x="28" y="338.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">2× A100 + 2× A6000 · $1,533</text>
-<circle data-reveal style="transition-delay:600ms" cx="297.5" cy="326.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:900ms" x="307.5" y="330.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">507.96</text>
-<text x="18" y="366.0" text-anchor="end" fill="#b8860b" fill-opacity="1" font-size="12">7</text>
-<text x="28" y="360.0" fill="#b8860b" fill-opacity="1" font-size="13" font-weight="600">Darwin Robotics (us)</text>
-<text x="28" y="374.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">1× H100 · $761</text>
-<circle data-reveal style="transition-delay:690ms" cx="295.4" cy="362.0" r="5.5" fill="#b8860b"/>
-<text data-reveal style="transition-delay:990ms" x="305.4" y="366.0" fill="#b8860b" fill-opacity="1" font-size="11.5">505.72</text>
-<text x="18" y="402.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">8</text>
-<text x="28" y="396.0" fill="currentColor" fill-opacity="0.9" font-size="13" font-weight="500">Sakana AI</text>
-<text x="28" y="410.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">8× H200 · $1,241</text>
-<circle data-reveal style="transition-delay:780ms" cx="294.0" cy="398.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:1080ms" x="304.0" y="402.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">504.25</text>
-<text x="18" y="460.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">11</text>
-<text x="28" y="454.0" fill="currentColor" fill-opacity="0.55" font-size="13" font-weight="500" font-style="italic">anonymous</text>
-<text x="28" y="468.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">in stealth</text>
-<circle data-reveal style="transition-delay:870ms" cx="257.1" cy="456.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:1170ms" x="267.1" y="460.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">464.97</text>
-<text x="18" y="496.0" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="12">12</text>
-<text x="28" y="490.0" fill="currentColor" fill-opacity="0.9" font-size="13" font-weight="500">PKU-DCAI</text>
-<text x="28" y="504.0" fill="currentColor" fill-opacity="0.5" font-size="10.5">1× H20 · $565</text>
-<circle data-reveal style="transition-delay:960ms" cx="211.0" cy="492.0" r="4.5" fill="currentColor" fill-opacity="0.7"/>
-<text data-reveal style="transition-delay:1260ms" x="221.0" y="496.0" fill="currentColor" fill-opacity="0.75" font-size="11.5">415.97</text>
-<text x="384" y="548" text-anchor="end" fill="currentColor" fill-opacity="0.5" font-size="11.5">total score (of 600)</text>
-<text x="0" y="570" fill="currentColor" fill-opacity="0.5" font-size="11">Under each name, local GPUs · total reported cost.</text>
-<text x="0" y="586" fill="currentColor" fill-opacity="0.5" font-size="11">Ranks 9, 10 and 13–15 received no trophy.</text>
-</svg>
-<figcaption>From IOAI's [inaugural edition review of the AI Models Track](https://ioai-official.org/wp-content/uploads/2026/09/IOAI%C2%B2-AI-Models-Track_updated.pdf), its trophy table and cost table.</figcaption>
+<figure class="blog-figure" data-figure="ioai">
+<div class="live-figure"><canvas aria-label="The IOAI² AI Models Track as a race. Each of the six tasks adds its normalized score to every named system. Darwin and Sakana trade places three times before the last task settles it, 505.72 to 504.25 out of 600, inside the Master Trophy tier"></canvas></div>
+<figcaption>The six tasks added up one at a time. Darwin and Sakana trade places three times before the last task settles it, 505.72 to 504.25. The shaded bands are the trophy tiers. From IOAI's [inaugural edition review](https://ioai-official.org/wp-content/uploads/2026/09/IOAI%C2%B2-AI-Models-Track_updated.pdf).</figcaption>
 </figure>
 
-The field was strong. On all six tasks, the top score used for normalization was set by an AI lab, not the organizers' own reference solution. All 15 systems scored at or above the student gold-medal threshold, and 13 beat the best student total, though IOAI is careful to note that the AI systems ran under different conditions, with more compute and internet access.
+The field was strong. On all six tasks, the top score used for normalization was set by an AI lab, not the organizers' own reference solution. IOAI asks anyone citing the comparison with students to quote its official statement, so here it is in full.
 
-We ran on a single H100, while Sakana, one place behind us, used eight H200s. IOAI wrote up the track in [What happens when autonomous AI takes on the same tasks as the world's top young AI talents?](https://ioai-official.org/what-happens-when-autonomous-ai-takes-on-the-same-tasks-as-the-worlds-top-young-ai-talents/)
+> IOAI 2026 launched the inaugural IOAI²: AI Models Track, a first-of-its-kind competition where fully autonomous AI systems competed on the same six demanding AI modeling tasks as the best AI students from 108 countries and territories. The track explored what advanced agentic systems could achieve independently using their own tools, substantial computing resources, internet access, and precurated knowledge bases. The competition was overseen by the IOAI International Scientific Committee, and operated under different conditions from the student contest, conferring its own rankings and awards. Under those conditions, every AI system reached a score that would have placed at or above the Individual Contest's gold-medal threshold, and thirteen of the fifteen exceeded the highest human total. No AI system saturated performance on any of the six IOAI tasks.
 
-For IOAI, I ran our campaign end to end. I prepared the research corpus for each task's domain, pointed the engine at the tasks, and built the pipeline that packaged its solutions and submitted them through the competition's Kaggle flow.
+
+We listed a single H100 for local work, while Sakana, one place behind us, listed eight H200s. IOAI wrote up the track in [What happens when autonomous AI takes on the same tasks as the world's top young AI talents?](https://ioai-official.org/what-happens-when-autonomous-ai-takes-on-the-same-tasks-as-the-worlds-top-young-ai-talents/)
+
+Some context on the result. Darwin's autoresearcher was built for long-horizon research, problems like RNA folding where the search has time to climb, and the whole team agreed that's where it was strongest. IOAI asks for the opposite. Each task gives a system two hours, and in two hours our engine barely had room to hillclimb. Provisioning machines, setting up each task, and running a full agent session and training run for every candidate all ate into the window.
+
+For IOAI, I ran our campaign end to end. I prepared the research corpus for each task's domain, pointed the engine at the tasks, and built the pipeline that packaged its solutions and submitted them through the competition's Kaggle flow. A lot of that work was optimization, just to get enough submissions in before each window closed.
 
 I enforced the contest rules on every run, like the limits on external data and pretrained weights, and audited the results to separate real progress from infrastructure failures so we could fix what was actually breaking. The track requires that all training code be written and submitted by the AI agents autonomously, with no human in the loop. You can read the rules on the [official IOAI AI Models Track page](https://ioai-official.org/ai-models-track/rules-format/).
 
