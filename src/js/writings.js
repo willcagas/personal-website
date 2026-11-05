@@ -45,12 +45,12 @@ const BLOG_POSTS = [
   },
   {
     section: "blog",
-    slug: "thesis-labs-internship",
+    slug: "summer-of-hillclimbing",
     title: "A Summer of Hillclimbing",
     date: "2026-10",
     summary:
       "My work, thoughts, and learnings during my internship at Darwin (YC F25).",
-    file: "/content/blog/thesis-labs-internship.md",
+    file: "/content/blog/summer-of-hillclimbing.md",
     hero: { kind: "title-card", title: "Darwin", background: "frontier" },
     overview: {
       details: [

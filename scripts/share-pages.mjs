@@ -214,16 +214,17 @@ if (existsSync(ogDir)) {
 }
 
 rmSync(join(ROOT, 'share'), { recursive: true, force: true });
-const rewrites = posts.map((post) => {
+const rewrites = posts.flatMap((post) => {
   const page = `/share${postPath(post)}.html`;
   mkdirSync(dirname(join(ROOT, page)), { recursive: true });
   writeFileSync(join(ROOT, page), head + previewTags(post, cardFor(post)) + tail);
   console.log(`wrote ${page.slice(1)}`);
-  return { source: postPath(post), destination: page };
+  // The router also takes a post's address with a trailing slash
+  return [postPath(post), `${postPath(post)}/`].map((source) => ({ source, destination: page }));
 });
 
 // The posts' rewrites go ahead of the catch-all that serves the app everywhere else
 const config = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8'));
 config.rewrites = [...rewrites, ...config.rewrites.filter((r) => !r.destination.startsWith('/share/'))];
 writeFileSync(join(ROOT, 'vercel.json'), `${JSON.stringify(config, null, 2)}\n`);
-console.log(`routed ${rewrites.length} posts in vercel.json`);
+console.log(`routed ${posts.length} posts in vercel.json`);

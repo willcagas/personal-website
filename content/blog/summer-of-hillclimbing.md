@@ -1,7 +1,7 @@
 ---
 title: "A Summer of Hillclimbing"
 date: "2026-10"
-slug: "thesis-labs-internship"
+slug: "summer-of-hillclimbing"
 summary: "My work, thoughts, and learnings during my internship at Darwin (YC F25)."
 ---
 

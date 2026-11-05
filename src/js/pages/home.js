@@ -2,7 +2,7 @@ import { SITE } from '../site-data.js';
 import { getBlogPosts, getWriting } from '../writings.js';
 import { escapeHtml, keepParensTogether, renderTitleCard } from './shared.js';
 
-const DARWIN_POST = 'thesis-labs-internship';
+const DARWIN_POST = 'summer-of-hillclimbing';
 
 /** "Darwin" opens the internship post (with a hover preview of its title card), or the company site without it. */
 function darwinLink() {

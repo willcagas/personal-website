@@ -19,17 +19,41 @@
       ]
     }
   ],
+  "redirects": [
+    {
+      "source": "/writings/thesis-labs-internship",
+      "destination": "/writings/summer-of-hillclimbing",
+      "permanent": true
+    },
+    {
+      "source": "/writings/thesis-labs-internship/",
+      "destination": "/writings/summer-of-hillclimbing",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/writings/deepseek-v3-from-scratch",
       "destination": "/share/writings/deepseek-v3-from-scratch.html"
     },
     {
-      "source": "/writings/thesis-labs-internship",
-      "destination": "/share/writings/thesis-labs-internship.html"
+      "source": "/writings/deepseek-v3-from-scratch/",
+      "destination": "/share/writings/deepseek-v3-from-scratch.html"
+    },
+    {
+      "source": "/writings/summer-of-hillclimbing",
+      "destination": "/share/writings/summer-of-hillclimbing.html"
+    },
+    {
+      "source": "/writings/summer-of-hillclimbing/",
+      "destination": "/share/writings/summer-of-hillclimbing.html"
     },
     {
       "source": "/projects/medical-imaging-complexity",
+      "destination": "/share/projects/medical-imaging-complexity.html"
+    },
+    {
+      "source": "/projects/medical-imaging-complexity/",
       "destination": "/share/projects/medical-imaging-complexity.html"
     },
     {
