@@ -17,6 +17,9 @@
  *
  * Research posts are papers' project pages; they're listed under Builds and
  * live at /projects/<slug>.
+ *
+ * After adding a post or changing one's title, summary or hero, run
+ * `node scripts/share-pages.mjs` so its link previews with its own title card.
  */
 
 const BLOG_POSTS = [

@@ -2,14 +2,36 @@
   "headers": [
     {
       "source": "/src/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
     },
     {
       "source": "/content/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
     }
   ],
   "rewrites": [
+    {
+      "source": "/writings/deepseek-v3-from-scratch",
+      "destination": "/share/writings/deepseek-v3-from-scratch.html"
+    },
+    {
+      "source": "/writings/thesis-labs-internship",
+      "destination": "/share/writings/thesis-labs-internship.html"
+    },
+    {
+      "source": "/projects/medical-imaging-complexity",
+      "destination": "/share/projects/medical-imaging-complexity.html"
+    },
     {
       "source": "/(.*)",
       "destination": "/"
