@@ -15,13 +15,15 @@ Each experiment builds on the best one so far, eventually **“hillclimbing”**
 <div class="live-figure"><canvas aria-label="Experiments land one at a time and most score below the best so far. A gold line steps up each time one beats it, until it crosses the frontier"></canvas></div>
 </figure>
 
-This can have numerous implications such as accelerated drug discovery or solving hard computational biology problems like [RNA folding](https://www.sciencedirect.com/topics/neuroscience/rna-folding) or the [virtual cell](https://virtualcellchallenge.org/), potentially resulting in the next AlphaFold. In theory, with an autonomous AI R&D system, you could be automating parts of scientific discovery itself.
+This can have numerous implications such as accelerated drug discovery or solving hard computational biology problems like [RNA folding](https://www.sciencedirect.com/topics/immunology-and-microbiology/rna-folding) or the [virtual cell](https://virtualcellchallenge.org/), potentially resulting in the next AlphaFold. In theory, with an autonomous AI R&D system, you could be automating parts of scientific discovery itself.
 
 Keep in mind, before this internship, I had no experience with autonomous AI research or gradient-free optimization using LLMs!
 
 ### Background
 
-Autoresearch is a field that grows faster every day, so here is some quick background knowledge to understand part of what I was building. A lot of autoresearch is based on something called **evolutionary computation (EC)**.
+Autoresearch is a field that grows faster every day, so here is some quick background knowledge to understand part of what I was building.
+
+One way to classify autoresearchers is by their architecture and their primary search method. The architecture is how the system is put together, from a single agent working in a loop to a team of specialized agents led by a planner ([Zhou et al. 2025](https://arxiv.org/abs/2510.09901)). The search method is how it explores possible solutions. Some refine a single solution step by step, some grow a tree of candidates and search it with methods like **Monte Carlo tree search (MCTS)**, and some evolve a whole population, among other approaches ([Toledo et al. 2025](https://arxiv.org/abs/2507.02554)). Darwin's autoresearcher searches by evolution, so here I'll narrow down to **evolutionary computation (EC)**.
 
 Inspired by biology, it uses **evolutionary algorithms (EAs)**, which treat candidate solutions as organisms that compete to survive and reproduce, and in doing so can traverse combinatorial search spaces and progressively "hillclimb" toward the optimal solution. Turing ideated evolutionary search as a path toward machine intelligence in 1950, and by the '60s and '70s it had become a working method ([Turing 1950](https://doi.org/10.1093/mind/LIX.236.433), [Bäck et al. 1997](https://doi.org/10.1109/4235.585888)).
 
@@ -423,34 +425,38 @@ I got to work on an ambitious version of automating research, and I came away mo
 
 ### References
 
-[1] Turing. "Computing Machinery and Intelligence." Mind 59(236), 1950. [doi:10.1093/mind/LIX.236.433](https://doi.org/10.1093/mind/LIX.236.433)
+[1] Zhou, Ling, Fu, et al. "Autonomous Agents for Scientific Discovery: Orchestrating Scientists, Language, Code, and Physics." 2025. [arXiv:2510.09901](https://arxiv.org/abs/2510.09901)
 
-[2] Bäck, Hammel, Schwefel. "Evolutionary Computation: Comments on the History and Current State." IEEE Transactions on Evolutionary Computation 1(1), 1997. [doi:10.1109/4235.585888](https://doi.org/10.1109/4235.585888)
+[2] Toledo, Hambardzumyan, Josifoski, et al. "AI Research Agents for Machine Learning: Search, Exploration, and Generalization in MLE-bench." 2025. [arXiv:2507.02554](https://arxiv.org/abs/2507.02554)
 
-[3] Novikov et al. "AlphaEvolve: A coding agent for scientific and algorithmic discovery." 2025. [arXiv:2506.13131](https://arxiv.org/abs/2506.13131)
+[3] Turing. "Computing Machinery and Intelligence." Mind 59(236), 1950. [doi:10.1093/mind/LIX.236.433](https://doi.org/10.1093/mind/LIX.236.433)
 
-[4] Georgiev, Gómez-Serrano, Tao, Wagner. "Mathematical exploration and discovery at scale." 2025. [arXiv:2511.02864](https://arxiv.org/abs/2511.02864)
+[4] Bäck, Hammel, Schwefel. "Evolutionary Computation: Comments on the History and Current State." IEEE Transactions on Evolutionary Computation 1(1), 1997. [doi:10.1109/4235.585888](https://doi.org/10.1109/4235.585888)
 
-[5] Lange, Imajuku, Cetin. "ShinkaEvolve: Towards Open-Ended and Sample-Efficient Program Evolution." 2025. [arXiv:2509.19349](https://arxiv.org/abs/2509.19349)
+[5] Novikov et al. "AlphaEvolve: A coding agent for scientific and algorithmic discovery." 2025. [arXiv:2506.13131](https://arxiv.org/abs/2506.13131)
 
-[6] Sharma. "OpenEvolve: an open-source implementation of AlphaEvolve." 2025. [GitHub](https://github.com/algorithmicsuperintelligence/openevolve)
+[6] Georgiev, Gómez-Serrano, Tao, Wagner. "Mathematical exploration and discovery at scale." 2025. [arXiv:2511.02864](https://arxiv.org/abs/2511.02864)
 
-[7] Agrawal, Tan, Soylu, et al. "GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning." 2025. [arXiv:2507.19457](https://arxiv.org/abs/2507.19457)
+[7] Lange, Imajuku, Cetin. "ShinkaEvolve: Towards Open-Ended and Sample-Efficient Program Evolution." 2025. [arXiv:2509.19349](https://arxiv.org/abs/2509.19349)
 
-[8] Cemri et al. "AdaEvolve: Adaptive LLM Driven Zeroth-Order Optimization." 2026. [arXiv:2602.20133](https://arxiv.org/abs/2602.20133)
+[8] Sharma. "OpenEvolve: an open-source implementation of AlphaEvolve." 2025. [GitHub](https://github.com/algorithmicsuperintelligence/openevolve)
 
-[9] Du, Yan, Shi, et al. "MLEvolve: A Self-Evolving Framework for Automated Machine Learning Algorithm Discovery." 2026. [arXiv:2606.06473](https://arxiv.org/abs/2606.06473)
+[9] Agrawal, Tan, Soylu, et al. "GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning." 2025. [arXiv:2507.19457](https://arxiv.org/abs/2507.19457)
 
-[10] Xu, Mi, Liu, et al. "ASI-Evolve: AI Accelerates AI." 2026. [arXiv:2603.29640](https://arxiv.org/abs/2603.29640)
+[10] Cemri et al. "AdaEvolve: Adaptive LLM Driven Zeroth-Order Optimization." 2026. [arXiv:2602.20133](https://arxiv.org/abs/2602.20133)
 
-[11] Li et al. "The FM Agent." 2025. [arXiv:2510.26144](https://arxiv.org/abs/2510.26144)
+[11] Du, Yan, Shi, et al. "MLEvolve: A Self-Evolving Framework for Automated Machine Learning Algorithm Discovery." 2026. [arXiv:2606.06473](https://arxiv.org/abs/2606.06473)
 
-[12] Stanley, Miikkulainen. "Evolving Neural Networks through Augmenting Topologies." Evolutionary Computation 10(2), 2002. [doi:10.1162/106365602320169811](https://doi.org/10.1162/106365602320169811)
+[12] Xu, Mi, Liu, et al. "ASI-Evolve: AI Accelerates AI." 2026. [arXiv:2603.29640](https://arxiv.org/abs/2603.29640)
 
-[13] Anthropic. "How we built our multi-agent research system." 2025. [anthropic.com](https://www.anthropic.com/engineering/multi-agent-research-system)
+[13] Li et al. "The FM Agent." 2025. [arXiv:2510.26144](https://arxiv.org/abs/2510.26144)
 
-[14] Ajith et al. "LitSearch: A Retrieval Benchmark for Scientific Literature Search." 2024. [arXiv:2407.18940](https://arxiv.org/abs/2407.18940)
+[14] Stanley, Miikkulainen. "Evolving Neural Networks through Augmenting Topologies." Evolutionary Computation 10(2), 2002. [doi:10.1162/106365602320169811](https://doi.org/10.1162/106365602320169811)
 
-[15] IOAI. "What happens when autonomous AI takes on the same tasks as the world's top young AI talents?" [ioai-official.org](https://ioai-official.org/what-happens-when-autonomous-ai-takes-on-the-same-tasks-as-the-worlds-top-young-ai-talents/)
+[15] Anthropic. "How we built our multi-agent research system." 2025. [anthropic.com](https://www.anthropic.com/engineering/multi-agent-research-system)
 
-[16] IOAI. "IOAI² Inaugural Edition Review: Autonomous AI Meets the International Olympiad in AI Challenge." 2026. [ioai-official.org](https://ioai-official.org/wp-content/uploads/2026/09/IOAI%C2%B2-AI-Models-Track_updated.pdf)
+[16] Ajith et al. "LitSearch: A Retrieval Benchmark for Scientific Literature Search." 2024. [arXiv:2407.18940](https://arxiv.org/abs/2407.18940)
+
+[17] IOAI. "What happens when autonomous AI takes on the same tasks as the world's top young AI talents?" [ioai-official.org](https://ioai-official.org/what-happens-when-autonomous-ai-takes-on-the-same-tasks-as-the-worlds-top-young-ai-talents/)
+
+[18] IOAI. "IOAI² Inaugural Edition Review: Autonomous AI Meets the International Olympiad in AI Challenge." 2026. [ioai-official.org](https://ioai-official.org/wp-content/uploads/2026/09/IOAI%C2%B2-AI-Models-Track_updated.pdf)
