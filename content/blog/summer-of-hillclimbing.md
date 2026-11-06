@@ -15,7 +15,7 @@ Each experiment builds on the best one so far, eventually **“hillclimbing”**
 <div class="live-figure"><canvas aria-label="Experiments land one at a time and most score below the best so far. A gold line steps up each time one beats it, until it crosses the frontier"></canvas></div>
 </figure>
 
-This can have numerous implications such as accelerated drug discovery or solving hard computational biology problems like [RNA folding](https://www.sciencedirect.com/topics/immunology-and-microbiology/rna-folding) or the [virtual cell](https://virtualcellchallenge.org/), potentially resulting in the next AlphaFold. In theory, with an autonomous AI R&D system, you could be automating parts of scientific discovery itself.
+This can have numerous implications such as accelerated drug discovery or solving hard computational biology problems like [RNA folding](https://www.sciencedirect.com/topics/neuroscience/rna-folding) or the [virtual cell](https://virtualcellchallenge.org/), potentially resulting in the next AlphaFold. In theory, with an autonomous AI R&D system, you could be automating parts of scientific discovery itself.
 
 Keep in mind, before this internship, I had no experience with autonomous AI research or gradient-free optimization using LLMs!
 
