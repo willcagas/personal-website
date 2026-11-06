@@ -59,7 +59,7 @@ const BLOG_POSTS = [
         { label: "Dates", value: "March – August 2026" }
       ],
       text:
-        "I spent six months at <a href=\"https://darwinrobotics.ai/\" target=\"_blank\" rel=\"noopener noreferrer\">Darwin</a>, formerly Thesis (YC F25), working on autonomous AI R&D systems. I started in March and then moved to SF in June to go full-time and on-site through August. Darwin has since moved into robotics and is backed by the cofounders of OpenAI, xAI, and YC. Here, I talk about some of the projects I worked on, thoughts and experiences during the internship, and learnings throughout."
+        "I spent six months at <a href=\"https://darwinrobotics.ai/\" target=\"_blank\" rel=\"noopener noreferrer\">Darwin</a>, formerly Thesis (YC F25), working on autonomous AI R&D systems. I started in March and then moved to SF in June to go full-time and on-site through August. Darwin has since pivoted to robotics, raising $3.6M to build general-purpose robot technicians, and is backed by the cofounders of OpenAI, xAI, and YC. Here, I talk about some of the projects I worked on, thoughts and experiences during the internship, and learnings throughout."
     }
   },
   {
