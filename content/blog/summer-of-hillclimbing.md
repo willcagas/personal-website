@@ -293,7 +293,7 @@ Circle packing asks how to fit 26 circles in a unit square so their radii add up
 <figcaption>Programs each system evaluated before first reaching the 26-circle record, as its own paper or README reports it. Darwin's three dots are our three runs. It isn't a controlled race, since models, budgets and tolerances all differ.</figcaption>
 </figure>
 
-The re-runs are more interesting. In two of them, the engine reached the record with methods that look very different from that recipe. One candidate ran the [Lubachevsky–Stillinger algorithm](https://en.wikipedia.org/wiki/Lubachevsky%E2%80%93Stillinger_algorithm), a physics simulation where disks fly around, collide and slowly grow until they jam, then polished the result. Another treated the problem as [difference-of-convex (DC) programming](https://doi.org/10.1007/s10107-018-1235-y), linearizing the hard part and solving a sequence of linear programs. A third used a damped Arrow–Hurwicz iteration, a primal-dual method from numerical PDEs and a close cousin of [Uzawa's method](https://en.wikipedia.org/wiki/Uzawa_iteration), and landed on the best known packing exactly. As far as we can tell, that's the first time an Arrow–Hurwicz iteration has been used on this problem, while the other two methods have a long history in packing. Each run still ended with a standard local polish, so I can't say how much of the last step the new method did on its own.
+The re-runs are more interesting. In two of them, the engine reached the record with methods that look very different from that recipe. One candidate ran the [Lubachevsky–Stillinger algorithm](https://en.wikipedia.org/wiki/Lubachevsky%E2%80%93Stillinger_algorithm), a physics simulation where disks fly around, collide and slowly grow until they jam, then polished the result. Another treated the problem as [difference-of-convex (DC) programming](https://doi.org/10.1007/s10107-018-1235-y), linearizing the hard part and solving a sequence of linear programs. A third used a damped Arrow–Hurwicz iteration, a primal-dual method and a close cousin of [Uzawa's method](https://en.wikipedia.org/wiki/Uzawa_iteration), and landed on the best known packing exactly. Lubachevsky–Stillinger was designed for packing, and a damped Arrow–Hurwicz scheme was proposed for sphere packing in 2017 ([Degond et al. 2017](https://doi.org/10.1016/j.jcp.2016.11.047)), so the engine was reaching for known tools. Each run still ended with a standard local polish, so I can't say how much of the last step each method did on its own.
 
 <figure class="blog-figure" data-figure="methods">
 <div class="live-figure"><canvas aria-label="Three panels reach the same 26-circle packing. In one, disks fly, collide and grow until they jam. In another, circles jump step by step toward the record. In the third, circles swell and are pushed apart by contact pressure until they settle. The three squares then slide together and match outline for outline"></canvas></div>
@@ -437,26 +437,28 @@ I got to work on an ambitious version of automating research, and I came away mo
 
 [6] Georgiev, Gómez-Serrano, Tao, Wagner. "Mathematical exploration and discovery at scale." 2025. [arXiv:2511.02864](https://arxiv.org/abs/2511.02864)
 
-[7] Lange, Imajuku, Cetin. "ShinkaEvolve: Towards Open-Ended and Sample-Efficient Program Evolution." 2025. [arXiv:2509.19349](https://arxiv.org/abs/2509.19349)
+[7] Degond, Ferreira, Motsch. "Damped Arrow–Hurwicz algorithm for sphere packing." Journal of Computational Physics 332, 2017. [doi:10.1016/j.jcp.2016.11.047](https://doi.org/10.1016/j.jcp.2016.11.047)
 
-[8] Sharma. "OpenEvolve: an open-source implementation of AlphaEvolve." 2025. [GitHub](https://github.com/algorithmicsuperintelligence/openevolve)
+[8] Lange, Imajuku, Cetin. "ShinkaEvolve: Towards Open-Ended and Sample-Efficient Program Evolution." 2025. [arXiv:2509.19349](https://arxiv.org/abs/2509.19349)
 
-[9] Agrawal, Tan, Soylu, et al. "GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning." 2025. [arXiv:2507.19457](https://arxiv.org/abs/2507.19457)
+[9] Sharma. "OpenEvolve: an open-source implementation of AlphaEvolve." 2025. [GitHub](https://github.com/algorithmicsuperintelligence/openevolve)
 
-[10] Cemri et al. "AdaEvolve: Adaptive LLM Driven Zeroth-Order Optimization." 2026. [arXiv:2602.20133](https://arxiv.org/abs/2602.20133)
+[10] Agrawal, Tan, Soylu, et al. "GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning." 2025. [arXiv:2507.19457](https://arxiv.org/abs/2507.19457)
 
-[11] Du, Yan, Shi, et al. "MLEvolve: A Self-Evolving Framework for Automated Machine Learning Algorithm Discovery." 2026. [arXiv:2606.06473](https://arxiv.org/abs/2606.06473)
+[11] Cemri et al. "AdaEvolve: Adaptive LLM Driven Zeroth-Order Optimization." 2026. [arXiv:2602.20133](https://arxiv.org/abs/2602.20133)
 
-[12] Xu, Mi, Liu, et al. "ASI-Evolve: AI Accelerates AI." 2026. [arXiv:2603.29640](https://arxiv.org/abs/2603.29640)
+[12] Du, Yan, Shi, et al. "MLEvolve: A Self-Evolving Framework for Automated Machine Learning Algorithm Discovery." 2026. [arXiv:2606.06473](https://arxiv.org/abs/2606.06473)
 
-[13] Li et al. "The FM Agent." 2025. [arXiv:2510.26144](https://arxiv.org/abs/2510.26144)
+[13] Xu, Mi, Liu, et al. "ASI-Evolve: AI Accelerates AI." 2026. [arXiv:2603.29640](https://arxiv.org/abs/2603.29640)
 
-[14] Stanley, Miikkulainen. "Evolving Neural Networks through Augmenting Topologies." Evolutionary Computation 10(2), 2002. [doi:10.1162/106365602320169811](https://doi.org/10.1162/106365602320169811)
+[14] Li et al. "The FM Agent." 2025. [arXiv:2510.26144](https://arxiv.org/abs/2510.26144)
 
-[15] Anthropic. "How we built our multi-agent research system." 2025. [anthropic.com](https://www.anthropic.com/engineering/multi-agent-research-system)
+[15] Stanley, Miikkulainen. "Evolving Neural Networks through Augmenting Topologies." Evolutionary Computation 10(2), 2002. [doi:10.1162/106365602320169811](https://doi.org/10.1162/106365602320169811)
 
-[16] Ajith et al. "LitSearch: A Retrieval Benchmark for Scientific Literature Search." 2024. [arXiv:2407.18940](https://arxiv.org/abs/2407.18940)
+[16] Anthropic. "How we built our multi-agent research system." 2025. [anthropic.com](https://www.anthropic.com/engineering/multi-agent-research-system)
 
-[17] IOAI. "What happens when autonomous AI takes on the same tasks as the world's top young AI talents?" [ioai-official.org](https://ioai-official.org/what-happens-when-autonomous-ai-takes-on-the-same-tasks-as-the-worlds-top-young-ai-talents/)
+[17] Ajith et al. "LitSearch: A Retrieval Benchmark for Scientific Literature Search." 2024. [arXiv:2407.18940](https://arxiv.org/abs/2407.18940)
 
-[18] IOAI. "IOAI² Inaugural Edition Review: Autonomous AI Meets the International Olympiad in AI Challenge." 2026. [ioai-official.org](https://ioai-official.org/wp-content/uploads/2026/09/IOAI%C2%B2-AI-Models-Track_updated.pdf)
+[18] IOAI. "What happens when autonomous AI takes on the same tasks as the world's top young AI talents?" [ioai-official.org](https://ioai-official.org/what-happens-when-autonomous-ai-takes-on-the-same-tasks-as-the-worlds-top-young-ai-talents/)
+
+[19] IOAI. "IOAI² Inaugural Edition Review: Autonomous AI Meets the International Olympiad in AI Challenge." 2026. [ioai-official.org](https://ioai-official.org/wp-content/uploads/2026/09/IOAI%C2%B2-AI-Models-Track_updated.pdf)
