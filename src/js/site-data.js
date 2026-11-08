@@ -63,12 +63,56 @@ export const SITE = {
     }
   ],
 
+  // Builds, in display order. `media` is the card's picture: an image, a looping
+  // video (its poster shows until it plays), a logo on a background, or a chat
   projects: [
-    { title: 'Zentro', url: 'https://joinzentro.com', detail: '300K+ views on X/Twitter in 24h with inbound VC interest.' },
-    { title: 'Goose Trials', url: 'https://goosetrials.com', detail: '~1K unique players and 8K games played in 24h; featured on UW Imprint.' },
-    { title: 'AcneCura', url: 'https://acnecura.io', detail: '300K+ views; endorsed by Apple Canada and featured on Global News.' },
-    { title: 'WasteBuster', url: 'https://apps.apple.com/ca/app/wastebuster/id6450317120', detail: '500+ circular solutions tackling overconsumption.' },
-    { title: 'Sword Power Tycoon', url: 'https://www.roblox.com/games/6937615628/Sword-Power-Tycoon', detail: '19M+ plays and 36K+ favourites.' }
+    {
+      title: 'Zentro',
+      url: 'https://joinzentro.com',
+      year: '2026',
+      detail: 'An AI real estate agent that scans listings, ranks them and books tours for you.',
+      stat: '300K+ views in 24h, inbound VC interest',
+      media: { video: '/assets/projects/zentro.mp4', poster: '/assets/projects/zentro.jpg' }
+    },
+    {
+      title: 'Goose Trials',
+      url: 'https://goosetrials.com',
+      year: '2026',
+      detail: 'Quick cognitive games for university students, on one leaderboard.',
+      stat: '~1K players, 8K games in 24h',
+      media: { video: '/assets/projects/goosetrials.mp4', poster: '/assets/projects/goosetrials.jpg' }
+    },
+    {
+      title: 'spotify-mcp',
+      url: 'https://github.com/willcagas/spotify-mcp',
+      year: '2026',
+      detail: 'An MCP server that lets Claude or Codex control your Spotify in plain English.',
+      stat: '54 tools, TypeScript',
+      media: { chat: { ask: 'play something for a rainy drive', call: 'spotify_search → spotify_play', reply: '▶ Now playing' } }
+    },
+    {
+      title: 'AViD',
+      url: 'https://github.com/willcagas/avid',
+      year: '2026',
+      detail: 'Push-to-talk dictation for macOS. Whisper transcribes on-device and GPT-4o cleans it up.',
+      stat: 'whisper.cpp + GPT-4o, Python',
+      media: { logo: '/assets/projects/avid.png', background: 'linear-gradient(135deg, #1b1d2a, #2c2f45)' }
+    },
+    {
+      title: 'AcneCura',
+      url: 'https://acnecura.io',
+      year: '2025',
+      detail: 'An app that detects acne, grades severity and suggests treatment.',
+      stat: '300K+ views, Global News',
+      media: { image: '/assets/projects/acnecura.jpg' }
+    },
+    {
+      title: 'Sword Power Tycoon',
+      url: 'https://www.roblox.com/games/6937615628/Sword-Power-Tycoon',
+      detail: 'A Roblox tycoon game.',
+      stat: '19M+ plays, 36K+ favourites',
+      media: { image: '/assets/projects/sword-power-tycoon.jpg' }
+    }
   ],
 
   press: [

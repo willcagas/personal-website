@@ -1195,10 +1195,6 @@ a:hover {
 }
 
 /* Projects + facts */
-.projects-layout {
-  display: block;
-}
-
 .projects-list {
   display: grid;
   gap: 14px;
@@ -1223,6 +1219,133 @@ a:hover {
   font-size: var(--font-size-small);
   color: var(--color-text-secondary);
   line-height: var(--line-height);
+}
+
+/* Builds: a card per project with its picture (an image, a looping video, a logo or a chat) */
+.build-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px 22px;
+}
+
+.build-card {
+  display: block;
+  color: inherit;
+  border-bottom: none;
+}
+
+.build-card:hover {
+  opacity: 1;
+}
+
+.build-shot {
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #fff;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.build-card:hover .build-shot,
+.build-card:focus-visible .build-shot {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -18px rgba(28, 25, 23, 0.45);
+}
+
+.build-shot > img,
+.build-shot > video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+}
+
+.build-logo {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.build-logo img {
+  width: 34%;
+  max-width: 120px;
+  aspect-ratio: 1;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35));
+}
+
+/* A request and the tool calls that answer it, for a project with nothing to screenshot */
+.build-chat {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 0 9%;
+  background: #121212;
+  font: 500 12px/1.3 ui-monospace, Menlo, monospace;
+}
+
+.build-chat-ask {
+  padding: 5px 9px;
+  border-radius: 10px 10px 10px 2px;
+  background: #2a2a2a;
+  color: #f2f2f2;
+  font-family: var(--font-family-sans);
+}
+
+.build-chat-call {
+  color: #8a8a8a;
+}
+
+.build-chat-reply {
+  color: #1ed760;
+}
+
+.build-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.build-title {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.build-year {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+}
+
+.build-detail {
+  display: block;
+  margin: 3px 0 8px;
+  font-size: var(--font-size-small);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.build-stat {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(184, 134, 11, 0.1);
+  color: #7d5b07;
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .build-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Press: a row per story with its photo, the outlet and headline, then the date */
@@ -2087,10 +2210,6 @@ a:hover {
 
   .panel-media .video-thumbs {
     margin-top: 6px;
-  }
-
-  .projects-layout {
-    grid-template-columns: 1fr;
   }
 
   .meta-section {
