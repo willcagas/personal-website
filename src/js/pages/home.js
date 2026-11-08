@@ -4,12 +4,13 @@ import { escapeHtml, keepParensTogether, renderTitleCard } from './shared.js';
 
 const DARWIN_POST = 'summer-of-hillclimbing';
 
-/** "Darwin" opens the internship post (with a hover preview of its title card), or the company site without it. */
+/** "δ Darwin (YC F25)" opens the internship post (with a hover preview of its title card), or the company site without it. */
 function darwinLink() {
   const post = getWriting(DARWIN_POST);
+  const label = '<img class="company-mark" src="/assets/icons/darwin-delta.png" alt="" width="63" height="102"><span class="company-name">Darwin (YC F25)</span>';
   return post
-    ? `<a href="/writings/${post.slug}" data-route data-post-preview="${post.slug}">Darwin</a>`
-    : '<a href="https://darwinrobotics.ai/" target="_blank" rel="noopener noreferrer">Darwin</a>';
+    ? `<a class="company-link" href="/writings/${post.slug}" data-route data-post-preview="${post.slug}">${label}</a>`
+    : `<a class="company-link" href="https://darwinrobotics.ai/" target="_blank" rel="noopener noreferrer">${label}</a>`;
 }
 
 /** The newest published post with a title card, as a row that opens it (coming-soon posts wait until they're out). */
@@ -55,7 +56,7 @@ export function renderHome() {
       <p class="section-kicker">ABOUT</p>
       <div class="meta-section">
         <p class="about-bio">I'm a Software Engineering student at the <a href="${university.url}" target="_blank" rel="noopener noreferrer">${university.name}</a> interested in applied ML, healthtech, agentic AI, evolutionary search, and full-stack development.</p>
-        <p class="about-bio">Previously, I was a Member of Technical Staff (Intern) at ${darwinLink()} (formerly Thesis) in San Francisco, working on autonomous AI R&D systems for scientific discovery.</p>
+        <p class="about-bio">Previously, I worked on autonomous AI R&D for scientific discovery at ${darwinLink()} as a Member of Technical Staff in San Francisco.</p>
       </div>
     </section>
 

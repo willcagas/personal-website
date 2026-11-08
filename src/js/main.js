@@ -7,7 +7,6 @@
 import { Router } from './router.js';
 import { initGameOfLife } from './game-of-life.js';
 import { initRangeFooter } from './range-footer.js';
-import { initFlyingGeese } from './flying-geese.js';
 import { initTitleCards } from './title-card.js';
 import { mountArticleFigures } from './article-figures.js';
 import { initPostPage } from './post-page.js';
@@ -52,7 +51,6 @@ function init() {
 
   initGameOfLife();
   initRangeFooter();
-  initFlyingGeese();
 
   const header = document.createElement('div');
   header.id = 'site-header-wrapper';
