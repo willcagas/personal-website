@@ -112,6 +112,16 @@ The table corrects a story I used to tell. Most of the gain came from a better e
 
 The cross-encoder still sets the final order, so the keyword score only widens the pool. Having a model rewrite the query several ways scored slightly below the plain query. And at full scale, pgvector's approximate index started dropping true neighbours until I widened its search, which was worth about six points of Hit@10.
 
+Here is how recall changed with the search width at 281K papers. Recall is how many of the true top ten the index returns, compared with an exact search over every vector.
+
+| Search width (ef_search) | Recall@10 vs exact |
+| --- | ---: |
+| 40 (pgvector default) | 94.0% |
+| 100 | 96.0% |
+| 200 | 96.0% |
+
+Past 100, a wider search stopped helping.
+
 Full text needed its own test, and my first one was rigged by accident. Chunks searched a couple of hundred parsed papers while abstracts searched everything. So I fixed the haystack at 5,000 LitSearch papers and changed only the representation.
 
 Body chunks put a correct paper in the top ten 92.8% of the time, against 80.2% for abstracts, and found answers abstracts missed on 91 questions versus 16 the other way. In the live corpus that only pays off once most papers have full text. With sparse coverage, the few parsed papers crowded out better matches.
