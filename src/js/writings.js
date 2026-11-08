@@ -40,7 +40,7 @@ const BLOG_POSTS = [
         { label: "Demo", value: "Coming soon" }
       ],
       text:
-        "A technical deep dive where I implement a miniature <a href=\"https://arxiv.org/abs/2412.19437\" target=\"_blank\" rel=\"noopener noreferrer\">DeepSeek-V3</a> from scratch. It features multiple parts, including multi-head latent attention (MLA), compressed KV caching, DeepSeekMoE, multi-token prediction (MTP), RoPE, RMSNorm, and SwiGLU. With those in place, I pretrain it from scratch, fine-tune it to follow instructions, and build an interactive demo you can prompt."
+        "A technical deep dive where I implement a miniature <a href=\"https://arxiv.org/abs/2412.19437\" target=\"_blank\" rel=\"noopener noreferrer\">DeepSeek-V3</a> from scratch. It features multiple parts, including multi-head latent attention (MLA), compressed KV caching, DeepSeekMoE, multi-token prediction (MTP), decoupled RoPE, RMSNorm, and SwiGLU. With those in place, I pretrain it from scratch, fine-tune it to follow instructions, and build an interactive demo you can prompt."
     }
   },
   {
