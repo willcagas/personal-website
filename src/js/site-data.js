@@ -17,7 +17,8 @@ export const SITE = {
     { name: 'William Cagas', url: 'https://www.wcagas.com/', image: '/assets/buttons/button.gif' },
     { name: 'Ethan Tran', url: 'https://www.ethantran.ca', image: 'https://www.ethantran.ca/button.gif' },
     { name: 'Mikael Gomez', url: 'https://mikael.codes', image: 'https://www.mikael.codes/button.gif' },
-    { name: 'Oscar Zhao', url: 'https://www.oscarzhao.ca', image: 'https://www.oscarzhao.ca/button.gif' }
+    { name: 'Oscar Zhao', url: 'https://www.oscarzhao.ca', image: 'https://www.oscarzhao.ca/button.gif' },
+    { name: 'Chayanth', url: 'https://chayanth.me', image: 'https://chayanth.me/button.gif' }
   ],
 
   // `detail` may contain HTML
