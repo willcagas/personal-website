@@ -93,6 +93,11 @@ const ARCHIVE_DATA = {
           url: "https://letterboxd.com/film/interstellar/"
         },
         {
+          title: "Arrival",
+          poster: "/assets/movies/arrival.jpg",
+          url: "https://letterboxd.com/film/arrival-2016/"
+        },
+        {
           title: "Weathering with You",
           poster: "/assets/movies/weathering-with-you.jpg",
           url: "https://letterboxd.com/film/weathering-with-you/"
@@ -101,11 +106,6 @@ const ARCHIVE_DATA = {
           title: "The Mummy",
           poster: "/assets/movies/the-mummy.jpg",
           url: "https://letterboxd.com/film/the-mummy-1999/"
-        },
-        {
-          title: "Dune: Part Two",
-          poster: "/assets/movies/dune-part-two.jpg",
-          url: "https://letterboxd.com/film/dune-part-two/"
         }
       ]
     },
