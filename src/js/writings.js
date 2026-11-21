@@ -12,8 +12,9 @@
  *               soon" in place of the article; localhost shows the full text
  *   hero        { kind: "title-card", title, subtitle?, background?: "life" | "frontier" | "latent" }
  *               an animated title card above the article (src/js/title-card.js)
- *   overview    { details: [{ label, value, note? }], text }
- *               a Details / Overview block under the hero; `text` may contain HTML
+ *   overview    { details: [{ label, value, note?, url? }], text }
+ *               a Details / Overview block under the hero; a detail with a `url`
+ *               links its value, and `text` may contain HTML
  *
  * Research posts are papers' project pages; they're listed under Builds and
  * live at /projects/<slug>.
@@ -36,8 +37,8 @@ const BLOG_POSTS = [
     overview: {
       details: [
         { label: "Model", value: "DeepSeek-V3" },
-        { label: "Code", value: "GitHub (coming soon)" },
-        { label: "Demo", value: "Coming soon" }
+        { label: "Code", value: "GitHub", url: "https://github.com/willcagas/mini-deepseek" },
+        { label: "Weights", value: "Hugging Face", url: "https://huggingface.co/willcagas/mini-deepseek-v3" }
       ],
       text:
         "A technical deep dive where I implement a miniature <a href=\"https://arxiv.org/abs/2412.19437\" target=\"_blank\" rel=\"noopener noreferrer\">DeepSeek-V3</a> from scratch. It features multiple parts, including multi-head latent attention (MLA), compressed KV caching, DeepSeekMoE, multi-token prediction (MTP), decoupled RoPE, RMSNorm, and SwiGLU. With those in place, I pretrain it from scratch, fine-tune it to follow instructions, and build an interactive demo you can prompt."
@@ -59,7 +60,7 @@ const BLOG_POSTS = [
         { label: "Dates", value: "March – August 2026" }
       ],
       text:
-        "I spent six months at <a href=\"https://darwinrobotics.ai/\" target=\"_blank\" rel=\"noopener noreferrer\">Darwin</a>, formerly Thesis (YC F25), working on autonomous AI R&D systems. I started in March and then moved to SF in June to go full-time and on-site through August. Darwin has since pivoted to robotics, raising $3.6M to build general-purpose robot technicians, and is backed by the cofounders of OpenAI, xAI, and YC. Here, I talk about some of the projects I worked on, thoughts and experiences during the internship, and learnings throughout."
+        "I spent six months at <a href=\"https://darwinrobotics.ai/\" target=\"_blank\" rel=\"noopener noreferrer\">Darwin</a>, formerly Thesis (YC F25), working on autonomous AI R&D systems for science. I started in March and then moved to SF in June to go full-time and on-site through August. Darwin has since pivoted to robotics, raising $3.6M to build general-purpose robot technicians, and is backed by the cofounders of OpenAI, xAI, and YC. Here, I talk about some of the projects I worked on, thoughts and experiences during the internship, and learnings throughout."
     }
   },
   {

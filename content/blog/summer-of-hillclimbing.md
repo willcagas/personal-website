@@ -7,7 +7,7 @@ summary: "My work, thoughts, and learnings during my internship at Darwin (YC F2
 
 ### Introduction
 
-At Darwin, my main focus was building systems that could conduct AI research autonomously. The core idea is to take a research objective, say creating a model to predict how proteins fold, and instead of coming up with the architecture, tuning hyperparameters, running ablations, debugging training runs, and iterating on it by hand, you let AI agents propose ideas, write programs, run experiments, and read the results to try and solve it. 
+At Darwin, my main focus was building systems that could conduct AI research autonomously for scientific discovery. The core idea is to take a research objective, say creating a model to predict how proteins fold, and instead of coming up with the architecture, tuning hyperparameters, running ablations, debugging training runs, and iterating on it by hand, you let AI agents propose ideas, write programs, run experiments, and read the results to try and solve it. 
 
 Each experiment builds on the best one so far, eventually **“hillclimbing”** towards a model that reaches the frontier. Untraditionally, this is not gradient descent but [gradient-free optimization](https://en.wikipedia.org/wiki/Derivative-free_optimization), where no gradient can be calculated to point toward an optimum.
 
