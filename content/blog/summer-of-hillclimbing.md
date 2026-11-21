@@ -421,17 +421,19 @@ Over the internship, it added up to the numbers below.
 </div>
 </div>
 
-### What I Took Away
+### What I Learned
 
-A few things stuck with me.
+Here are some interesting lessons and thoughts I've learned throughout the internship.
 
-Evaluation is the whole game. The search optimizes exactly what you measure, loopholes included. Once you accept that, you start treating the measurement itself as the thing to protect.
+Generating ideas is the easy part of an automated researcher, but whether good or truly novel is a different story. Getting an agent to propose an idea takes nothing but getting it to stop repeating itself, to know what has already been tried, and to tell an improvement from serendipitous outcomes is what makes for an interesting problem.
 
-Generating ideas is the easy part of an automated researcher. Getting an agent to propose something takes almost nothing. Getting it to stop repeating itself, to know what has already been tried, and to tell an improvement from a lucky score is where most of the work goes.
+The team is more important than what is being built. Building and researching with the right team go a long way. Having those around you who are ambitious, laser-focused, and like-minded in contributing to the same cause is what makes 996 hours of work feel like a passion project.
 
-There's another side to this. Point the same loop at the training algorithms, architectures, and AI agents that build these systems, and you get AI improving AI itself, which is called **recursive self-improvement (RSI)**. That is the most exciting direction this work can take and probably the most dangerous, which is a big part of why I care about getting the measurement right.
+Brevity in direct communication with others is a sign of intelligence. No one likes paragraph slop or rambling thoughts in text, especially when everyone has other tasks on their plate. Be concise in what you want to explain and to the point. If you cannot condense without leaving important information, it's almost always better to show and explain what you mean.
 
-I got to work on an ambitious version of automating research, and I came away more convinced that this line of work is going somewhere. Thank you to the team for the trust and the ownership. I'm excited to see what they build next in robotics.
+If you point the same space at the training algorithms, architectures, and AI agents that build these systems, and you get AI improving AI itself, which is called **recursive self-improvement (RSI)**. This is an exciting yet very dangerous direction. The only positive upside seems to be accelerated scientific progress. However, the less the human oversight for building AI, the more it needs to be very carefully dealt with and the more that AI safety and alignment need to be prioritized. Fully autonomous, unrestricted RSI is frankly not a good thing. However, I am very convinced that it's possible for parts of this technology to be used for the good of humanity. 
+
+Thank you to the Darwin team for taking me in, trusting me, and letting me take ownership of what I was building. I'm excited to see what they build next in robotics. Go check them out!
 
 ### References
 
