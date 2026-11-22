@@ -10,6 +10,7 @@ import { initRangeFooter } from './range-footer.js';
 import { initTitleCards } from './title-card.js';
 import { mountArticleFigures } from './article-figures.js';
 import { initPostPage } from './post-page.js';
+import { initModelDemo } from './model-demo.js';
 import { initPhotoCarousel } from './photo-carousel.js';
 import { initPostPreviews } from './post-preview.js';
 import { initCoverFollow } from './cover-follow.js';
@@ -82,6 +83,7 @@ function init() {
     initVideoLightbox(root);
     initPlacesMap(root);
     mountArticleFigures(null);
+    initModelDemo(null);
     initPostPage(root);
   });
   router.resolve();

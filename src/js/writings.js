@@ -32,7 +32,6 @@ const BLOG_POSTS = [
     summary:
       "Building a miniature DeepSeek-V3, piece by piece.",
     file: "/content/blog/deepseek-v3-from-scratch.md",
-    comingSoon: true,
     hero: { kind: "title-card", title: "DeepSeek-V3", background: "latent" },
     overview: {
       details: [

@@ -821,6 +821,15 @@ a:hover {
   aspect-ratio: 2 / 1;
 }
 
+/* The DeepSeek-V3 architecture holds the whole model upright, so it needs more */
+.blog-post-body [data-figure="ds-architecture"] .live-figure {
+  aspect-ratio: 4 / 3;
+}
+
+.blog-post-body [data-figure="ds-mini-stack"] .live-figure {
+  aspect-ratio: 4 / 3;
+}
+
 /* An inline chart can ship a phone layout beside its wide one */
 .blog-post-body .chart-narrow {
   display: none;
@@ -851,7 +860,20 @@ a:hover {
   .blog-post-body [data-figure="spawn"] .live-figure,
   .blog-post-body [data-figure="novelty"] .live-figure,
   .blog-post-body [data-figure="ioai"] .live-figure,
-  .blog-post-body [data-figure="methods"] .live-figure {
+  .blog-post-body [data-figure="methods"] .live-figure,
+  .blog-post-body [data-figure="ds-architecture"] .live-figure,
+  .blog-post-body [data-figure="ds-moe-route"] .live-figure,
+  .blog-post-body [data-figure="ds-moe-balance"] .live-figure,
+  .blog-post-body [data-figure="ds-rmsnorm"] .live-figure,
+  .blog-post-body [data-figure="ds-swiglu"] .live-figure,
+  .blog-post-body [data-figure="ds-mla-squares"] .live-figure,
+  .blog-post-body [data-figure="ds-cache-memory"] .live-figure,
+  .blog-post-body [data-figure="ds-rope-dials"] .live-figure,
+  .blog-post-body [data-figure="ds-mtp-towers"] .live-figure,
+  .blog-post-body [data-figure="ds-train-loss"] .live-figure,
+  .blog-post-body [data-figure="ds-sft-loss"] .live-figure,
+  .blog-post-body [data-figure="ds-mini-stack"] .live-figure,
+  .blog-post-body [data-figure="ds-fact-dots"] .live-figure {
     aspect-ratio: 3 / 4;
   }
 
@@ -962,6 +984,84 @@ a:hover {
   }
 }
 
+/* Two checkpoints' outputs side by side: the prompt, then what each model wrote, in the demo's type and blue */
+.blog-post-body .compare-table {
+  table-layout: fixed;
+  margin: 0;
+}
+
+.blog-post-body .compare-table th:first-child {
+  width: 24%;
+}
+
+.blog-post-body .compare-table td:not(:first-child) {
+  font: 400 15px/1.45 "Newsreader", Georgia, serif;
+  color: #3d55dd;
+  overflow-wrap: anywhere;
+}
+
+/* Where the token limit cut a reply short */
+.blog-post-body .compare-table .cut {
+  color: var(--color-text-secondary);
+}
+
+.blog-post-body .compare-table .turn {
+  display: block;
+}
+
+.blog-post-body .compare-table .turn + .turn {
+  margin-top: 4px;
+}
+
+.blog-post-body .compare-table .who {
+  color: var(--color-text-secondary);
+}
+
+/* Phones: each prompt becomes a block with its two outputs stacked under it, each under its column's name */
+@media (max-width: 640px) {
+  .blog-post-body .compare-table thead {
+    display: none;
+  }
+
+  .blog-post-body .compare-table,
+  .blog-post-body .compare-table tbody,
+  .blog-post-body .compare-table tr,
+  .blog-post-body .compare-table td {
+    display: block;
+  }
+
+  .blog-post-body .compare-table tr {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .blog-post-body .compare-table tr:first-child {
+    border-top: 1px solid var(--color-text-secondary);
+  }
+
+  .blog-post-body .compare-table td {
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .blog-post-body .compare-table td:first-child {
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .blog-post-body .compare-table td[data-label] {
+    margin-top: 10px;
+  }
+
+  .blog-post-body .compare-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font: 600 11px/1.4 var(--font-family-sans);
+    color: var(--color-text-secondary);
+  }
+}
+
 .blog-post-body h2,
 .blog-post-body h3,
 .blog-post-body h4 {
@@ -1056,6 +1156,59 @@ a:hover {
   color: var(--color-text);
 }
 
+/* Code colours, for the tokens highlight.js marks and the names markdown.js adds to them (calls and
+   named arguments). Each colour is at least 4.5:1 against the block's background. */
+.blog-post-body pre {
+  --code-keyword: #8a3d94;  /* plum: def, return, for; and self */
+  --code-call: #3d55dd;     /* blue: functions, where they are defined and where they are called */
+  --code-argument: #7a5c00; /* amber: named arguments */
+  --code-string: #9a4d1c;   /* sienna */
+  --code-constant: #1d6f55; /* green: numbers, True, None */
+  --code-comment: #6f6a64;
+}
+
+.blog-post-body pre .hljs-keyword,
+.blog-post-body pre .hljs-meta,
+.blog-post-body pre .hljs-variable.language_ {
+  color: var(--code-keyword);
+}
+
+.blog-post-body pre .hljs-title,
+.blog-post-body pre .hljs-built_in,
+.blog-post-body pre .hljs-attr,
+.blog-post-body pre .code-call {
+  color: var(--code-call);
+}
+
+.blog-post-body pre .hljs-title {
+  font-weight: 600;
+}
+
+.blog-post-body pre .code-argument {
+  color: var(--code-argument);
+}
+
+.blog-post-body pre .hljs-string,
+.blog-post-body pre .hljs-regexp {
+  color: var(--code-string);
+}
+
+.blog-post-body pre .hljs-number,
+.blog-post-body pre .hljs-literal,
+.blog-post-body pre .hljs-variable:not(.language_) {
+  color: var(--code-constant);
+}
+
+.blog-post-body pre .hljs-comment {
+  color: var(--code-comment);
+  font-style: italic;
+}
+
+/* The expressions inside an f-string are code again */
+.blog-post-body pre .hljs-subst {
+  color: var(--color-text);
+}
+
 .blog-post-body :not(pre) > code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.9em;
@@ -1070,7 +1223,7 @@ a:hover {
 }
 
 /* Math inherits body grey otherwise — pin to near-black for contrast.
-   Size closer to Lilian Weng / KaTeX default (1.21em), with display a bit larger. */
+   Size is KaTeX's default (1.21em), the same for inline and display math. */
 .blog-post-body .katex,
 .blog-post-body .katex * {
   color: var(--color-text) !important;
@@ -1078,10 +1231,6 @@ a:hover {
 
 .blog-post-body .katex {
   font-size: 1.21em;
-}
-
-.blog-post-body .katex-display .katex {
-  font-size: 1.35em;
 }
 
 .blog-post-body .blog-figure {
@@ -1780,6 +1929,286 @@ a:hover {
     grid-template-columns: 64px minmax(0, 1fr);
     gap: 12px;
     padding: 12px;
+  }
+}
+
+/* A recorded model demo (src/js/model-demo.js): a chip per prompt, then what the model wrote for it, replayed token by token */
+.model-demo .fav-chip {
+  appearance: none;
+  margin: 0;
+  padding: 5px 10px;
+  background: none;
+  font: inherit;
+  font-size: var(--font-size-small);
+  line-height: 1.3;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.model-demo .fav-chip[aria-pressed="true"] {
+  color: var(--color-text);
+  border-color: var(--color-text);
+  background: #fff;
+}
+
+/* The stage borrows the title card's "latent" paper, and the model's words its blue */
+.model-demo-stage {
+  margin-top: 12px;
+  padding: 20px 22px 14px;
+  border-radius: 12px;
+  background: #f1ece2;
+}
+
+.blog-post-body .model-demo-text {
+  position: relative;
+  margin: 0;
+  font: 400 19px/1.5 "Newsreader", Georgia, serif;
+  letter-spacing: -0.005em;
+  color: #3d55dd;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.model-demo-prompt {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* A chat-tuned model answers a question: the question takes a line of its own and the reply sits under it */
+.model-demo--chat .model-demo-prompt {
+  display: block;
+  margin-bottom: 0.45em;
+}
+
+.model-demo-tail {
+  color: var(--color-text-secondary);
+  opacity: 0.75;
+}
+
+.model-demo-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.14em;
+  background: #5c78f8;
+  box-shadow: 0 0 10px 2px rgba(92, 120, 248, 0.5);
+  animation: model-demo-blink 1s steps(2, start) infinite;
+}
+
+.model-demo-caret[hidden] {
+  display: none;
+}
+
+@keyframes model-demo-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* The sampling controls. Every stop on them was recorded ahead of time, so they stay ink:
+   blue is kept for the model's words */
+.model-demo-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 32px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(28, 25, 23, 0.09);
+}
+
+.model-demo-control {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  font: 400 13px/1.3 var(--font-family-sans);
+  color: var(--color-text-secondary);
+}
+
+.model-demo-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.model-demo-label output {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.model-demo-control input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 18px; /* a taller target than the 2px track */
+  margin: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.model-demo-control input[type="range"]::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(28, 25, 23, 0.22);
+}
+
+.model-demo-control input[type="range"]::-moz-range-track {
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(28, 25, 23, 0.22);
+}
+
+.model-demo-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -6px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-text);
+}
+
+.model-demo-control input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-text);
+}
+
+.model-demo-control input[type="range"]:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.model-demo-control input[type="range"]:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.model-demo-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.model-demo-option {
+  appearance: none;
+  min-width: 40px;
+  margin: 0;
+  padding: 3px 8px;
+  border: 1px solid rgba(28, 25, 23, 0.16);
+  border-radius: 5px;
+  background: none;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.model-demo-option[aria-pressed="true"] {
+  color: var(--color-text);
+  border-color: var(--color-text);
+  background: #fff;
+}
+
+@media (hover: hover) {
+  .model-demo-option:not(:disabled):hover {
+    color: var(--color-text);
+    border-color: var(--color-text);
+  }
+}
+
+.model-demo-option:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.model-demo-option:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Fingers need more to aim at than a pointer does */
+@media (pointer: coarse) {
+  .model-demo-control input[type="range"] {
+    height: 28px;
+  }
+
+  .model-demo-option {
+    min-width: 46px;
+    padding: 7px 10px;
+  }
+}
+
+.model-demo-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(28, 25, 23, 0.09);
+}
+
+.model-demo-again {
+  appearance: none;
+  padding: 8px 14px;
+  border: 1px solid var(--color-text);
+  border-radius: 999px;
+  background: var(--color-text);
+  font: 500 13px/1 var(--font-family-sans);
+  color: var(--color-bg);
+  white-space: nowrap; /* the note beside it wraps, the button does not */
+  flex: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) {
+  .model-demo-again:hover {
+    opacity: 0.85;
+  }
+}
+
+.model-demo-again:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.model-demo-again:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.model-demo-note {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 640px) {
+  .model-demo-stage {
+    padding: 16px 16px 12px;
+  }
+
+  .blog-post-body .model-demo-text {
+    font-size: 17px;
+  }
+
+  .model-demo-controls {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .model-demo-caret {
+    animation: none;
   }
 }
 

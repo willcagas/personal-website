@@ -1,13 +1,14 @@
 /**
  * Fills in a post page after it renders: loads the markdown, shows the read
- * time, mounts live figures and reading lists, builds the contents sidebar and
- * typesets math.
+ * time, mounts live figures, reading lists and recorded model demos, builds the
+ * contents sidebar and typesets math.
  */
 
 import { getWriting, loadWritingBody } from './writings.js';
-import { renderMarkdown, typesetMath, addHeadingIds } from './markdown.js';
+import { renderMarkdown, typesetMath, highlightCode, addHeadingIds } from './markdown.js';
 import { mountArticleFigures } from './article-figures.js';
 import { initReadingChips } from './reading-chips.js';
+import { initModelDemo } from './model-demo.js';
 import { initCoverFollow } from './cover-follow.js';
 import { escapeHtml } from './pages/shared.js';
 
@@ -65,13 +66,15 @@ function buildToc(article, body) {
     return;
   }
 
-  // h2/h3 are entries; h4s nest under the entry before them
+  // The post's shallowest heading level makes the entries (## in one post, ### in another);
+  // anything deeper nests under the entry before it
+  const top = Math.min(...headings.filter((h) => h !== overview).map((h) => Number(h.tagName.slice(1))));
   const items = [];
   let group = null;
   for (const heading of headings) {
-    const level = heading === overview ? 3 : Number(heading.tagName.slice(1));
+    const level = heading === overview ? top : Number(heading.tagName.slice(1));
     const entry = { id: heading.id, text: heading.textContent.trim(), level, children: [] };
-    if (level <= 3) items.push((group = entry));
+    if (level <= top) items.push((group = entry));
     else if (group) group.children.push(entry);
     else items.push(entry);
   }
@@ -182,9 +185,11 @@ export async function initPostPage(root) {
     addHeadingIds(body);
     mountArticleFigures(body);
     initReadingChips(body);
+    initModelDemo(body);
     initCoverFollow(body);
     buildToc(article, body);
     smoothAnchors(body);
+    highlightCode(body); // not awaited: only the colours change, never the layout
 
     await typesetMath(body);
     if (location.hash) {

@@ -22,6 +22,22 @@
  * reading — papers feeding a cited landscape of ideas across nine facets
  * research-map — an invented map of techniques in four families, filling in as a
  *           made-up run of candidates builds them; hover or tap a mark for its name
+ * ds-architecture — DeepSeek-V3's whole model, zooming into MLA and DeepSeekMoE in turn
+ * ds-rmsnorm, ds-swiglu — RMSNorm and SwiGLU worked on one vector, inside a DeepSeek block
+ * ds-mla-squares, ds-cache-memory — MLA's compression counted to scale, and how many tokens
+ *           the same memory holds with every head's keys and values versus the latent
+ * ds-moe-route, ds-moe-balance — a DeepSeekMoE layer routing tokens to the shared expert and
+ *           its top 8 of 256, and load balancing by nudging each expert's bias
+ * ds-rope-dials — RoPE's rotating pairs as dials, with a position track and the score against
+ *           the offset: both tokens slide, every hand turns, and the score stays put
+ * ds-mtp-towers — DeepSeek-V3's MTP module beside the main model: the shared embedding and
+ *           output head, the combine step, its one block, and the module dropped at inference
+ * ds-train-loss — the mini model's measured loss over its 10 billion training tokens, with the
+ *           learning-rate schedule under it
+ * ds-sft-loss — its loss over fine-tuning, two passes over smol-smoltalk, drawn the same way
+ * ds-mini-stack — the mini model drawn to scale, one square per routed expert: it stacks up to
+ *           212.6M parameters, then a token goes up and lights the 108.2M it uses
+ * ds-fact-dots — twelve easy questions, twenty replies each, before and after fine-tuning
  *
  * A <figure data-grow> around an inline SVG chart draws its bars in on first view.
  *
@@ -5428,6 +5444,5403 @@ const createResearchMap = (() => {
   };
 })();
 
+/* ───────────── DeepSeek-V3's architecture, zooming into MLA and DeepSeekMoE ───────────── */
+
+// Figure 2 of the DeepSeek-V3 report in motion, extended to the whole model. A token goes up
+// through the embedding and the transformer block (drawn once, with ghosts for the other 60);
+// at Attention the camera dives in and the Multi-Head Latent Attention panel plays, then back
+// out and into the Feed-Forward box for DeepSeekMoE; back out again, and the token climbs to
+// the final RMSNorm, the output head and the next-token probabilities. Only c^KV and k^R are
+// marked as cached. Its own helpers and its own fitted(), which draws a 680-wide design or a
+// 360-wide one for phones, stay inside this scope.
+const createDeepSeekArchitecture = (() => {
+const INK = '28, 25, 23';
+const BLUE = '77, 107, 254';
+const SERIF = 'Newsreader, Georgia, serif';
+const SANS = 'Inter, sans-serif';
+const FEATHER = 28;
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
+const easeOut = (k) => 1 - (1 - k) ** 3;
+/** How far t is through [a, b], from 0 to 1 */
+const span = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+/** Rise over [a, a + inMs], hold, fall over [b - outMs, b] */
+const pulse = (t, a, b, inMs = 300, outMs = 300) => Math.min(span(t, a, a + inMs), 1 - span(t, b - outMs, b));
+const ink = (a) => `rgba(${INK}, ${a})`;
+const blue = (a = 1) => `rgba(${BLUE}, ${a})`;
+const INK_RGB = INK.split(',').map(Number);
+const BLUE_RGB = BLUE.split(',').map(Number);
+/** Ink turning blue as k goes 0 → 1 */
+const tint = (k, a) => `rgba(${INK_RGB.map((v, i) => Math.round(lerp(v, BLUE_RGB[i], clamp(k, 0, 1)))).join(', ')}, ${a})`;
+const serif = (size, italic = true, weight = 400) => `${italic ? 'italic ' : ''}${weight} ${size}px ${SERIF}`;
+const sans = (size, weight = 400) => `${weight} ${size}px ${SANS}`;
+
+function seeded(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const gauss = (r) => Math.sqrt(-2 * Math.log(1 - r())) * Math.cos(2 * Math.PI * r());
+
+/* Vectors */
+const rms = (v) => Math.sqrt(v.reduce((s, x) => s + x * x, 0) / v.length);
+const scaleV = (v, k) => v.map((x) => x * k);
+const addV = (a, b) => a.map((x, i) => x + b[i]);
+const lerpV = (a, b, k) => a.map((x, i) => lerp(x, b[i], k));
+const normV = (v) => scaleV(v, 1 / rms(v));
+const matVec = (M, v) => M.map((row) => row.reduce((s, w, j) => s + w * v[j], 0));
+const randVec = (r, n, sd = 1) => Array.from({ length: n }, () => gauss(r) * sd);
+const randMat = (r, rows, cols, sd) => Array.from({ length: rows }, () => randVec(r, cols, sd));
+const silu = (x) => x / (1 + Math.exp(-x));
+
+function pageColor() {
+  return getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() || '#fdfaf6';
+}
+
+function makeLayer(W, H, dpr) {
+  const c = document.createElement('canvas');
+  c.width = Math.round(W * dpr);
+  c.height = Math.round(H * dpr);
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { canvas: c, ctx: g };
+}
+
+/** Erase toward each edge of a layer, so whatever it holds fades out there. */
+function featherEdges(g, W, H, size, sides = 'tblr') {
+  g.save();
+  g.globalCompositeOperation = 'destination-out';
+  const edges = {
+    t: [0, 0, 0, size, 0, 0, W, size],
+    b: [0, H, 0, H - size, 0, H - size, W, size],
+    l: [0, 0, size, 0, 0, 0, size, H],
+    r: [W, 0, W - size, 0, W - size, 0, size, H]
+  };
+  for (const side of sides) {
+    const [x0, y0, x1, y1, rx, ry, rw, rh] = edges[side];
+    const grad = g.createLinearGradient(x0, y0, x1, y1);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.35)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = grad;
+    g.fillRect(rx, ry, rw, rh);
+  }
+  g.restore();
+}
+
+/** The page colour, opaque in the middle and dissolving at the edges. */
+function makeBackdrop(W, H, dpr) {
+  const layer = makeLayer(W, H, dpr);
+  layer.ctx.fillStyle = pageColor();
+  layer.ctx.fillRect(0, 0, W, H);
+  featherEdges(layer.ctx, W, H, FEATHER);
+  return layer.canvas;
+}
+
+/** Fade in as a loop starts and out as it ends */
+const loopAlpha = (clock, loop, inMs = 400, outMs = 600) => Math.min(span(clock, 0, inMs), 1 - span(clock, loop - outMs, loop));
+
+function looping(LOOP, draw, extra = {}) {
+  let clock = 0;
+  return {
+    loopMs: LOOP,
+    prewarm: 0,
+    ...extra,
+    step(dt) {
+      clock = (clock + dt) % LOOP;
+    },
+    draw(ctx) {
+      draw(ctx, clock);
+    }
+  };
+}
+
+function text(ctx, str, x, y, { font = sans(11), color = ink(0.5), align = 'left', baseline = 'alphabetic', halo = 0 } = {}) {
+  ctx.font = font;
+  ctx.textAlign = align;
+  ctx.textBaseline = baseline;
+  if (halo) {
+    ctx.save();
+    ctx.strokeStyle = pageColor();
+    ctx.lineWidth = halo;
+    ctx.lineJoin = 'round';
+    ctx.strokeText(str, x, y);
+    ctx.restore();
+  }
+  ctx.fillStyle = color;
+  ctx.fillText(str, x, y);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+/**
+ * A short run of maths in Newsreader: an array of pieces, each a string or { t, sub, roman, a }.
+ * A piece with sub is set smaller and lower; a sets that piece's own alpha (0–1, times color's).
+ */
+function rich(ctx, pieces, x, y, { size = 13, color = [INK, 0.7], align = 'left', italic = true } = {}) {
+  const parts = pieces.map((p) => (typeof p === 'string' ? { t: p } : p));
+  const fontOf = (p) => serif(p.sub ? size * 0.72 : size, italic && !p.roman);
+  let total = 0;
+  for (const p of parts) {
+    ctx.font = fontOf(p);
+    p.w = ctx.measureText(p.t).width + (p.sub ? 0.5 : 0);
+    total += p.w;
+  }
+  let cx = align === 'center' ? x - total / 2 : align === 'right' ? x - total : x;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  for (const p of parts) {
+    ctx.font = fontOf(p);
+    ctx.fillStyle = `rgba(${color[0]}, ${color[1] * (p.a ?? 1)})`;
+    ctx.fillText(p.t, cx, y + (p.sub ? size * 0.22 : 0));
+    cx += p.w;
+  }
+  return total;
+}
+
+function rrect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
+}
+
+/**
+ * A vector drawn as a small bar chart: one signed bar per entry, up for positive, down for
+ * negative, centred on (cx, cy). colorOf(i) can tint single bars.
+ */
+function glyph(ctx, vals, cx, cy, { pitch = 3, bw = 2, S = 6, clip = 16, color = blue(0.95), colorOf = null, alpha = 1, backing = 0, base = 0.25 } = {}) {
+  if (alpha <= 0) return;
+  const n = vals.length;
+  const w = (n - 1) * pitch;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  if (backing) {
+    ctx.save();
+    ctx.globalAlpha *= backing;
+    ctx.fillStyle = pageColor();
+    rrect(ctx, cx - w / 2 - bw - 2, cy - clip - 2, w + bw * 2 + 4, clip * 2 + 4, 3);
+    ctx.fill();
+    ctx.restore();
+  }
+  if (base) {
+    ctx.fillStyle = ink(base);
+    ctx.fillRect(cx - w / 2 - bw / 2 - 1, cy - 0.35, w + bw + 2, 0.7);
+  }
+  for (let i = 0; i < n; i++) {
+    const h = clamp(vals[i] * S, -clip, clip);
+    const x = cx - w / 2 + i * pitch - bw / 2;
+    ctx.fillStyle = colorOf ? colorOf(i) : color;
+    if (h >= 0) ctx.fillRect(x, cy - h, bw, Math.max(h, 0.6));
+    else ctx.fillRect(x, cy, bw, -h);
+  }
+  ctx.restore();
+}
+
+/** Piecewise-linear track through keyframes [t, value]; the first segment eases out */
+function track(keys, t) {
+  if (t <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++) {
+    if (t <= keys[i][0]) {
+      const [t0, a] = keys[i - 1];
+      const [t1, b] = keys[i];
+      const k = (t - t0) / (t1 - t0 || 1);
+      return lerp(a, b, i === 1 ? easeOut(k) : k);
+    }
+  }
+  return keys[keys.length - 1][1];
+}
+
+/* ═════════════ 1A · One token, 61 blocks ═════════════ */
+
+// The residual stream is one line. Each of the 61 blocks reads from it twice and writes back:
+// an arc above for attention (MLA), an arc below for the feed-forward (dense in the first three
+// blocks, DeepSeekMoE in the other 58). A token's vector rides the line and the arcs light as it
+// passes. After the last block, the final RMSNorm and the output head give the next token. Then
+// the MTP branch: the last hidden state drops to a second line, meets the embedding of the true
+// next token, passes one more block and the shared head, and predicts the token after that.
+// Desktop runs left to right; phones run bottom to top, with the MTP line on the right.
+let PAGE_CACHE = null;
+const page = () => PAGE_CACHE || (PAGE_CACHE = pageColor());
+const mixRGB = (a, b, k) => {
+  const A = a.split(',').map(Number);
+  const B = b.split(',').map(Number);
+  return A.map((v, i) => Math.round(lerp(v, B[i], clamp(k, 0, 1)))).join(', ');
+};
+const easeOutBack = (k) => 1 + 2.4 * (k - 1) ** 3 + 1.4 * (k - 1) ** 2;
+
+/** A small subset of TeX for labels: x^{KV}_{t} sets a superscript and a subscript after x */
+function texParse(str) {
+  const items = [];
+  let i = 0;
+  const group = () => {
+    if (str[i] === '{') {
+      const j = str.indexOf('}', i);
+      const s = str.slice(i + 1, j);
+      i = j + 1;
+      return s;
+    }
+    return str[i++];
+  };
+  while (i < str.length) {
+    const ch = str[i];
+    if (ch === '^' || ch === '_') {
+      i++;
+      const s = group();
+      const key = ch === '^' ? 'sup' : 'sub';
+      const last = items[items.length - 1];
+      if (last && last.script && !last[key]) last[key] = s;
+      else items.push({ script: true, sup: key === 'sup' ? s : '', sub: key === 'sub' ? s : '' });
+      continue;
+    }
+    let j = i;
+    while (j < str.length && str[j] !== '^' && str[j] !== '_') j++;
+    items.push({ t: str.slice(i, j) });
+    i = j;
+  }
+  return items;
+}
+
+/** Draws a label with super- and subscripts, vertically centred on y; returns its width */
+function tex(ctx, str, x, y, { size = 11, color = ink(0.7), align = 'left', weight = 400, measure = false } = {}) {
+  const items = texParse(str);
+  const fb = serif(size, true, weight);
+  const fs = serif(size * 0.68, false);
+  const fi = serif(size * 0.68, true);
+  let w = 0;
+  for (const it of items) {
+    if (it.script) {
+      ctx.font = fs;
+      const a = it.sup ? ctx.measureText(it.sup).width : 0;
+      ctx.font = fi;
+      const b = it.sub ? ctx.measureText(it.sub).width : 0;
+      it.w = Math.max(a, b) + size * 0.1;
+    } else {
+      ctx.font = fb;
+      it.w = ctx.measureText(it.t).width;
+    }
+    w += it.w;
+  }
+  if (measure) return w;
+  let cx = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  const by = y + size * 0.32;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = color;
+  for (const it of items) {
+    if (it.script) {
+      if (it.sup) {
+        ctx.font = fs;
+        ctx.fillText(it.sup, cx + size * 0.07, by - size * 0.42);
+      }
+      if (it.sub) {
+        ctx.font = fi;
+        ctx.fillText(it.sub, cx + size * 0.02, by + size * 0.24);
+      }
+    } else {
+      ctx.font = fb;
+      ctx.fillText(it.t, cx, by);
+    }
+    cx += it.w;
+  }
+  return w;
+}
+
+/** A polyline through corner points, inner corners rounded, with its length for drawing it on */
+function poly(pts, rad = 0) {
+  let P = pts.map((p) => [...p]);
+  if (rad && pts.length > 2) {
+    P = [pts[0]];
+    for (let i = 1; i < pts.length - 1; i++) {
+      const [px, py] = pts[i - 1];
+      const [cx, cy] = pts[i];
+      const [nx, ny] = pts[i + 1];
+      const d0 = Math.hypot(cx - px, cy - py);
+      const d1 = Math.hypot(nx - cx, ny - cy);
+      const rr = Math.min(rad, d0 / 2, d1 / 2);
+      const a = [cx - ((cx - px) / d0) * rr, cy - ((cy - py) / d0) * rr];
+      const b = [cx + ((nx - cx) / d1) * rr, cy + ((ny - cy) / d1) * rr];
+      for (let k = 0; k <= 6; k++) {
+        const u = k / 6;
+        const v = 1 - u;
+        P.push([v * v * a[0] + 2 * v * u * cx + u * u * b[0], v * v * a[1] + 2 * v * u * cy + u * u * b[1]]);
+      }
+    }
+    P.push(pts[pts.length - 1]);
+  }
+  const cum = [0];
+  for (let i = 1; i < P.length; i++) cum.push(cum[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
+  return { P, cum, len: cum[cum.length - 1] };
+}
+
+function polyAt(E, k) {
+  const s = clamp(k, 0, 1) * E.len;
+  for (let i = 1; i < E.P.length; i++) {
+    if (s <= E.cum[i] || i === E.P.length - 1) {
+      const f = (s - E.cum[i - 1]) / (E.cum[i] - E.cum[i - 1] || 1);
+      return [lerp(E.P[i - 1][0], E.P[i][0], f), lerp(E.P[i - 1][1], E.P[i][1], f)];
+    }
+  }
+  return E.P[E.P.length - 1];
+}
+
+function strokePoly(ctx, E, k, style, width, dash = null) {
+  if (k <= 0) return;
+  const s = clamp(k, 0, 1) * E.len;
+  ctx.strokeStyle = style;
+  ctx.lineWidth = width;
+  ctx.lineJoin = 'round';
+  if (dash) ctx.setLineDash(dash);
+  ctx.beginPath();
+  ctx.moveTo(E.P[0][0], E.P[0][1]);
+  for (let i = 1; i < E.P.length; i++) {
+    if (E.cum[i] <= s) ctx.lineTo(E.P[i][0], E.P[i][1]);
+    else {
+      const f = (s - E.cum[i - 1]) / (E.cum[i] - E.cum[i - 1] || 1);
+      ctx.lineTo(lerp(E.P[i - 1][0], E.P[i][0], f), lerp(E.P[i - 1][1], E.P[i][1], f));
+      break;
+    }
+  }
+  ctx.stroke();
+  if (dash) ctx.setLineDash([]);
+}
+
+function arrowEnd(ctx, E, style, width, size = 3.2) {
+  const [x1, y1] = E.P[E.P.length - 1];
+  const [x0, y0] = polyAt(E, Math.max(0, 1 - 3 / E.len));
+  const a = Math.atan2(y1 - y0, x1 - x0);
+  ctx.strokeStyle = style;
+  ctx.lineWidth = width;
+  ctx.lineJoin = 'miter';
+  ctx.beginPath();
+  ctx.moveTo(x1 - size * Math.cos(a - 0.55), y1 - size * Math.sin(a - 0.55));
+  ctx.lineTo(x1, y1);
+  ctx.lineTo(x1 - size * Math.cos(a + 0.55), y1 - size * Math.sin(a + 0.55));
+  ctx.stroke();
+}
+
+/** An edge: faint when idle, drawn on in ink (or blue) as k goes 0 → 1, a dot riding its tip */
+function link(ctx, E, k, px, { idle = 0.2, on = 0.72, rgb = INK, dash = null, arrow = true, dot = true, halo = false, alpha = 1 } = {}) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  if (halo) strokePoly(ctx, E, 1, page(), 4.5 * px);
+  if (idle > 0) strokePoly(ctx, E, 1, ink(idle), px, dash);
+  if (k > 0) strokePoly(ctx, E, k, `rgba(${rgb}, ${on})`, 1.35 * px, dash);
+  if (arrow) arrowEnd(ctx, E, k >= 1 ? `rgba(${rgb}, ${on})` : ink(idle + 0.12), (k >= 1 ? 1.35 : 1) * px);
+  if (dot && k > 0 && k < 1) {
+    const [x, y] = polyAt(E, k);
+    ctx.fillStyle = `rgba(${rgb}, 1)`;
+    ctx.beginPath();
+    ctx.arc(x, y, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** A vector as a row of circles (the paper's notation); fill runs left to right; heads adds per-head copies behind */
+function dotRow(ctx, cx, cy, n, { pitch = 9, r = 3.4, px = 1, fill = 0, rgbOf = () => INK, heads = 0, spread = 0, alpha = 1 } = {}) {
+  const x0 = cx - ((n - 1) * pitch) / 2;
+  for (let j = spread > 0 ? heads : 0; j >= 0; j--) {
+    const d = j * spread * 2.6;
+    const a = (j ? 0.55 / j : 1) * alpha;
+    for (let i = 0; i < n; i++) {
+      const f = clamp(fill * n - i, 0, 1);
+      const rgb = rgbOf(i);
+      const x = x0 + i * pitch + d;
+      const y = cy - d;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = page();
+      ctx.fill();
+      if (f > 0) {
+        ctx.fillStyle = `rgba(${rgb}, ${0.88 * f * a})`;
+        ctx.fill();
+      }
+      ctx.strokeStyle = `rgba(${f > 0 ? rgb : INK}, ${lerp(0.42, 0.9, f) * a})`;
+      ctx.lineWidth = px;
+      ctx.stroke();
+    }
+  }
+}
+
+/** A box with centred lines of text; solid fills it with ink (shared expert), sel tints it blue (chosen routed expert) */
+function nbox(ctx, x, y, w, h, { px = 1, k = 0, lines = [], size = 11, sub = null, subSize = 8.5, solid = 0, sel = 0, alpha = 1, r = 4, idle = 0.32, labelA = 1 } = {}) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  rrect(ctx, x - w / 2, y - h / 2, w, h, r);
+  ctx.fillStyle = page();
+  ctx.fill();
+  if (solid) {
+    ctx.fillStyle = ink(lerp(0.62, 0.86, k));
+    ctx.fill();
+  }
+  if (sel) {
+    ctx.fillStyle = blue(0.13 * sel);
+    ctx.fill();
+  }
+  ctx.strokeStyle = sel ? tint(sel, lerp(idle, 0.95, Math.max(k, sel))) : ink(lerp(idle, 0.85, k));
+  ctx.lineWidth = px * (1 + 0.35 * k);
+  ctx.stroke();
+  const tc = solid ? page() : sel ? tint(sel, lerp(0.62, 0.95, sel)) : ink(lerp(0.62, 0.9, k));
+  const lh = size * 1.15;
+  const subH = sub ? subSize * 1.35 : 0;
+  let ty = y - (lines.length * lh + subH) / 2 + lh / 2;
+  ctx.save();
+  ctx.globalAlpha *= labelA;
+  for (const L of lines) {
+    tex(ctx, L, x, ty, { size, color: tc, align: 'center' });
+    ty += lh;
+  }
+  if (sub) text(ctx, sub, x, ty - lh / 2 + subH / 2, { font: sans(subSize), color: ink(0.48), align: 'center', baseline: 'middle' });
+  ctx.restore();
+  ctx.restore();
+}
+
+/** ⊕ (add) or ⊗ (scale by a gating weight) */
+function opMark(ctx, x, y, r, kind, { px = 1, k = 0, alpha = 1, rgb = INK } = {}) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = page();
+  ctx.fill();
+  ctx.strokeStyle = `rgba(${rgb}, ${lerp(0.5, 0.95, k)})`;
+  ctx.lineWidth = px * (1.1 + 0.35 * k);
+  ctx.stroke();
+  const a = r * 0.52;
+  ctx.beginPath();
+  if (kind === '+') {
+    ctx.moveTo(x - a, y);
+    ctx.lineTo(x + a, y);
+    ctx.moveTo(x, y - a);
+    ctx.lineTo(x, y + a);
+  } else {
+    const b = a * 0.78;
+    ctx.moveTo(x - b, y - b);
+    ctx.lineTo(x + b, y + b);
+    ctx.moveTo(x + b, y - b);
+    ctx.lineTo(x - b, y + b);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** RoPE: a small dial whose hand turns as the rotation is applied */
+function ropeMark(ctx, x, y, ang, { px = 1, k = 0 } = {}) {
+  const r = 4.6;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = page();
+  ctx.fill();
+  ctx.strokeStyle = ink(lerp(0.45, 0.9, k));
+  ctx.lineWidth = px;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + r * Math.cos(ang), y + r * Math.sin(ang));
+  ctx.lineWidth = px * 1.5;
+  ctx.stroke();
+}
+
+/* ───────────── The whole model, with the block drawn once and ghosted ×L ───────────── */
+
+const MODEL_FIG = (() => {
+  const W = 290;
+  const H = 524;
+  const mx = 136;
+  const rx = 46;
+  const Y = { probs: 40, head: 70, fnorm: 108, top: 138, plus2: 166, ffn: 210, norm2: 258, plus1: 298, attn: 340, norm1: 388, bot: 428, emb: 468, tok: 508 };
+  const BX = { head: [120, 30], fnorm: [120, 22], ffn: [110, 34], norm2: [110, 28], attn: [110, 30], norm1: [110, 28], emb: [110, 22] };
+  const start = Y.tok - 9;
+  const end = Y.probs + 2;
+  const ax = (y) => start - y;
+  const AT = { emb: ax(Y.emb), norm1: ax(Y.norm1), attn: ax(Y.attn), plus1: ax(Y.plus1), norm2: ax(Y.norm2), ffn: ax(Y.ffn), plus2: ax(Y.plus2), top: ax(Y.top), fnorm: ax(Y.fnorm), head: ax(Y.head), end: ax(end), res1: ax(418), res2: ax(282) };
+  const half = (key) => BX[key][1] / 2;
+  const seg = (y0, y1) => ({ E: poly([[mx, y0], [mx, y1]]), a0: ax(y0), a1: ax(y1) });
+  const SEG = [
+    seg(start, Y.emb + half('emb')),
+    seg(Y.emb - half('emb'), Y.norm1 + half('norm1')),
+    seg(Y.norm1 - half('norm1'), Y.attn + half('attn')),
+    seg(Y.attn - half('attn'), Y.plus1 + 7),
+    seg(Y.plus1 - 7, Y.norm2 + half('norm2')),
+    seg(Y.norm2 - half('norm2'), Y.ffn + half('ffn')),
+    seg(Y.ffn - half('ffn'), Y.plus2 + 7),
+    seg(Y.plus2 - 7, Y.fnorm + half('fnorm')),
+    seg(Y.fnorm - half('fnorm'), Y.head + half('head')),
+    seg(Y.head - half('head'), end)
+  ];
+  const RES1 = poly([[mx, 418], [rx, 418], [rx, Y.plus1], [mx - 7, Y.plus1]], 7);
+  const RES2 = poly([[mx, 282], [rx, 282], [rx, Y.plus2], [mx - 7, Y.plus2]], 7);
+  const FRAME = [4, Y.top, 218, Y.bot - Y.top];
+  const PROB = [0.14, 0.3, 0.1, 0.95, 0.24, 0.4, 0.12, 0.2, 0.07];
+  const WORDS = ['The', 'cat', 'sat', 'on'];
+  const rect = (key) => [mx - BX[key][0] / 2, Y[key] - BX[key][1] / 2, BX[key][0], BX[key][1]];
+
+  /** st: the pulse's place along the spine and what has lit; see modelState */
+  function draw(ctx, st, px, { alpha = 1, signposts = 0, hide = {}, compact = false } = {}) {
+    ctx.save();
+    ctx.globalAlpha *= alpha;
+    const lab = (str, x, y, a = 0.55, size = 11, align = 'left') => tex(ctx, str, x, y, { size, color: ink(a), align });
+
+    // Ghosts of the other 60 blocks, behind the one drawn in full
+    for (let j = 2; j >= 1; j--) {
+      const fl = st.ghost ? st.ghost(j) : 0;
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = ink(0.16 + 0.05 * (2 - j) + 0.4 * fl);
+      ctx.lineWidth = px;
+      rrect(ctx, FRAME[0] + 7 * j, FRAME[1] - 7 * j, FRAME[2], FRAME[3], 8);
+      ctx.fillStyle = page();
+      ctx.fill();
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = ink(0.42);
+    ctx.lineWidth = px;
+    rrect(ctx, ...FRAME, 8);
+    ctx.fillStyle = page();
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    lab('Transformer Block', 12, Y.top + 13, 0.7, 11.5);
+    // ×L, the count, and which feed-forward each block uses
+    const cx0 = 242;
+    tex(ctx, '×L', cx0, 238, { size: 16, color: ink(lerp(0.75, 0.95, st.climbK || 0)), weight: 500 });
+    tex(ctx, 'L = 61', cx0, 257, { size: 11, color: ink(0.6) });
+    text(ctx, '1–3 dense', cx0, 274, { font: sans(9.5), color: ink(0.5), baseline: 'middle' });
+    text(ctx, '4–61 MoE', cx0, 288, { font: sans(9.5), color: ink(0.5), baseline: 'middle' });
+    if (st.block) {
+      text(ctx, `block ${st.block}`, cx0, 307, { font: sans(9.5, 500), color: ink(0.62), baseline: 'middle' });
+      text(ctx, 'of 61', cx0, 319, { font: sans(9.5), color: ink(0.5), baseline: 'middle' });
+    }
+
+    // Residual connections around the left
+    link(ctx, RES1, st.r1, px, { idle: 0.26, dot: st.r1 < 0.98 });
+    link(ctx, RES2, st.r2, px, { idle: 0.26, dot: st.r2 < 0.98 });
+    for (const [yc, k] of [[358, st.r1], [224, st.r2]]) {
+      ctx.save();
+      ctx.translate(rx - 8, yc);
+      ctx.rotate(-Math.PI / 2);
+      text(ctx, 'residual', 0, 0, { font: sans(9.5), color: ink(lerp(0.42, 0.65, k)), align: 'center', baseline: 'middle' });
+      ctx.restore();
+    }
+
+    // The spine, lit up to the pulse
+    for (const S of SEG) {
+      const k = clamp((st.s - S.a0) / (S.a1 - S.a0), 0, 1);
+      link(ctx, S.E, k, px, { idle: 0.3, dot: false });
+    }
+    if (st.pulseA > 0) {
+      const y = start - st.s;
+      ctx.fillStyle = page();
+      ctx.beginPath();
+      ctx.arc(mx, y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = ink(0.92 * st.pulseA);
+      ctx.beginPath();
+      ctx.arc(mx, y, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Stations
+    const K = st.k || {};
+    nbox(ctx, mx, Y.emb, ...BX.emb, { px, k: K.emb, lines: ['Embedding'] });
+    nbox(ctx, mx, Y.norm1, ...BX.norm1, { px, k: K.norm1, lines: ['RMSNorm'], sub: 'pre-norm', subSize: 9 });
+    if (!hide.attn) nbox(ctx, mx, Y.attn, ...BX.attn, { px, k: K.attn, lines: ['Attention'] });
+    nbox(ctx, mx, Y.norm2, ...BX.norm2, { px, k: K.norm2, lines: ['RMSNorm'], sub: 'pre-norm', subSize: 9 });
+    if (!hide.ffn) nbox(ctx, mx, Y.ffn, ...BX.ffn, { px, k: K.ffn, lines: ['Feed-Forward', 'Network'] });
+    nbox(ctx, mx, Y.fnorm, ...BX.fnorm, { px, k: K.fnorm, lines: ['RMSNorm (final)'] });
+    nbox(ctx, mx, Y.head, ...BX.head, { px, k: K.head, lines: ['Output Head'], sub: 'linear, softmax', subSize: 9 });
+    opMark(ctx, mx, Y.plus1, 7, '+', { px, k: K.plus1 });
+    opMark(ctx, mx, Y.plus2, 7, '+', { px, k: K.plus2 });
+    text(ctx, 'add', mx + 12, Y.plus1 + 1, { font: sans(9.5), color: ink(0.48), baseline: 'middle' });
+    text(ctx, 'add', mx + 12, Y.plus2 + 1, { font: sans(9.5), color: ink(0.48), baseline: 'middle' });
+    lab('u_{t}', mx + 7, (Y.attn - half('attn') + Y.plus1 + 7) / 2, lerp(0.45, 0.75, K.plus1 || 0), 10.5);
+
+    // Input tokens, the one in flight darker
+    WORDS.forEach((w, i) => {
+      const x = mx + (i - 2) * 36;
+      const on = i === 2 ? st.tok || 0 : 0;
+      text(ctx, w, x, Y.tok, { font: serif(13), color: ink(i === 2 ? lerp(0.5, 0.92, on) : 0.38), align: 'center', baseline: 'middle' });
+    });
+    text(ctx, 'input tokens', mx + 58, Y.tok + 1, { font: sans(9.5), color: ink(0.42), baseline: 'middle' });
+
+    // Next-token probabilities
+    const pk = st.probs || 0;
+    PROB.forEach((v, i) => {
+      const x = mx - 24 + i * 6;
+      const hgt = v * 24 * ease(clamp(pk * 1.4 - i * 0.05, 0, 1));
+      ctx.fillStyle = i === 3 ? tint(st.word || 0, lerp(0.45, 0.95, st.word || 0)) : ink(0.4);
+      ctx.fillRect(x - 1.75, end - 2 - hgt, 3.5, hgt);
+    });
+    ctx.fillStyle = ink(0.3);
+    ctx.fillRect(mx - 28, end - 2, 56, px);
+    if (st.word) text(ctx, 'on', mx - 6, end - 2 - 24 - 9, { font: serif(12), color: blue(0.95 * st.word), align: 'center', baseline: 'middle' });
+    text(ctx, 'next-token', mx - 34, end - 19, { font: sans(9.5), color: ink(0.45), align: 'right', baseline: 'middle' });
+    text(ctx, 'probabilities', mx - 34, end - 7, { font: sans(9.5), color: ink(0.45), align: 'right', baseline: 'middle' });
+
+    // Pointers to the two detail panels (3B's overview)
+    if (signposts > 0) {
+      ctx.save();
+      ctx.globalAlpha *= signposts;
+      ctx.setLineDash([2, 3]);
+      ctx.strokeStyle = ink(0.35);
+      ctx.lineWidth = px;
+      ctx.beginPath();
+      ctx.moveTo(mx + BX.attn[0] / 2 + 2, Y.attn);
+      ctx.lineTo(300, Y.attn);
+      ctx.moveTo(mx + BX.ffn[0] / 2 + 2, Y.ffn);
+      ctx.lineTo(300, Y.ffn);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      text(ctx, compact ? 'MLA' : 'Multi-Head Latent Attention (MLA)', 306, Y.attn, { font: serif(12, true, 500), color: ink(0.7), baseline: 'middle' });
+      text(ctx, 'DeepSeekMoE', 306, Y.ffn, { font: serif(12, true, 500), color: ink(0.7), baseline: 'middle' });
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  return { W, H, Y, BX, mx, AT, rect, draw };
+})();
+
+/** Where the pulse is and what has lit, from a schedule of arrival times (ev) */
+function modelState(t, ev) {
+  const A = MODEL_FIG.AT;
+  const keys = [[ev.tok, 0], [ev.emb, A.emb], [ev.norm1, A.norm1], [ev.attn, A.attn], [ev.attnOut, A.attn], [ev.plus1, A.plus1], [ev.norm2, A.norm2], [ev.ffn, A.ffn], [ev.ffnOut, A.ffn], [ev.plus2, A.plus2], [ev.top, A.top], [ev.climb1, A.top], [ev.fnorm, A.fnorm], [ev.head, A.head], [ev.probs, A.end]];
+  let s = 0;
+  if (t >= keys[keys.length - 1][0]) s = A.end;
+  else {
+    for (let i = 1; i < keys.length; i++) {
+      if (t < keys[i][0]) {
+        const [t0, a] = keys[i - 1];
+        const [t1, b] = keys[i];
+        s = t < t0 ? a : lerp(a, b, ease(span(t, t0, t1)));
+        break;
+      }
+    }
+  }
+  const at = (a) => {
+    for (let i = 1; i < keys.length; i++) if (keys[i][1] >= a && keys[i - 1][1] <= a) return lerp(keys[i - 1][0], keys[i][0], (a - keys[i - 1][1]) / (keys[i][1] - keys[i - 1][1] || 1));
+    return keys[0][0];
+  };
+  const r1Start = at(A.res1);
+  const r2Start = at(A.res2);
+  const resid = (t0, tEnd) => (t < t0 ? 0 : t < tEnd - 350 ? 0.86 * ease(span(t, t0, t0 + 700)) : lerp(0.86 * ease(span(t, t0, t0 + 700)), 1, ease(span(t, tEnd - 350, tEnd))));
+  const flash = (t0, after = 0.5) => Math.max(pulse(t, t0 - 120, t0 + 520, 120, 360), t > t0 ? after : 0);
+  const live = (t0, t1) => (t >= t0 && t <= t1 ? 1 : flash(t0));
+  const climbK = span(t, ev.top, ev.climb1);
+  return {
+    s,
+    pulseA: span(t, ev.tok - 150, ev.tok + 150) * (1 - span(t, ev.probs - 150, ev.probs + 150)),
+    tok: span(t, ev.tok - 200, ev.tok + 200),
+    r1: resid(r1Start, ev.plus1),
+    r2: resid(r2Start, ev.plus2),
+    block: t < ev.norm1 ? 0 : Math.min(61, 1 + Math.floor(60 * ease(climbK))),
+    climbK: pulse(t, ev.top, ev.climb1 + 300, 200, 400),
+    ghost: (j) => (climbK > 0 && climbK < 1 ? Math.max(0, Math.sin(Math.PI * clamp(climbK * 2.2 - (j - 1) * 0.5, 0, 1))) : 0),
+    probs: span(t, ev.probs - 100, ev.probs + 400),
+    word: span(t, ev.word, ev.word + 300),
+    k: {
+      emb: flash(ev.emb),
+      norm1: flash(ev.norm1),
+      attn: live(ev.attn, ev.attnOut),
+      plus1: flash(ev.plus1),
+      norm2: flash(ev.norm2),
+      ffn: live(ev.ffn, ev.ffnOut),
+      plus2: flash(ev.plus2),
+      fnorm: flash(ev.fnorm),
+      head: flash(ev.head)
+    }
+  };
+}
+
+/* ───────────── Multi-Head Latent Attention ───────────── */
+
+const MLA_FIG = (() => {
+  const W = 360;
+  const H = 294;
+  const DUR = 5200;
+  const r0 = 262;
+  const r1 = 214;
+  const r2 = 160;
+  const r3 = 104;
+  const X = { qC: 66, qR: 106, cQ: 86, kR: 193.5, kC: 258, v: 330, cKV: 294, cq: 86, ck: 222, mid: 180 };
+  const hx = (i) => X.mid + (i - 3.5) * 9;
+  const CQ = [70, 78, 86, 94, 102];
+  const CK = [206, 214, 222, 230, 238];
+  const E = {
+    hQ: poly([[hx(1), r0 - 4], [hx(1), 248], [X.cQ, 248], [X.cQ, r1 + 5]], 5),
+    hR: poly([[X.kR, r0 - 4], [X.kR, r1 + 5]]),
+    hKV: poly([[hx(7), r0 - 4], [hx(7), 248], [X.cKV, 248], [X.cKV, r1 + 5]], 5),
+    qC: poly([[X.cQ, r1 - 5], [X.cQ, r1 - 14], [X.qC, r1 - 14], [X.qC, r2 + 5]], 5),
+    qR: poly([[X.cQ, r1 - 5], [X.cQ, r1 - 14], [X.qR, r1 - 14], [X.qR, r2 + 5]], 5),
+    kC: poly([[X.cKV, r1 - 5], [X.cKV, r1 - 14], [X.kC, r1 - 14], [X.kC, r2 + 5]], 5),
+    vC: poly([[X.cKV, r1 - 5], [X.cKV, r1 - 14], [X.v, r1 - 14], [X.v, r2 + 5]], 5),
+    cqC: poly([[X.qC, r2 - 5], [X.qC, r3 + 16], [78, r3 + 16], [78, r3 + 5]], 4),
+    cqR: poly([[X.qR, r2 - 5], [X.qR, r3 + 16], [98, r3 + 16], [98, r3 + 5]], 4),
+    ckC: poly([[X.kC, r2 - 5], [X.kC, r3 + 16], [214, r3 + 16], [214, r3 + 5]], 4),
+    ckR: poly([[X.kR, r1 - 5], [X.kR, r3 + 24], [234, r3 + 24], [234, r3 + 5]], 4),
+    aq: poly([[X.cq, r3 - 5], [X.cq, 77]]),
+    ak: poly([[X.ck, r3 - 5], [X.ck, 77]]),
+    av: poly([[X.v, r2 - 5], [X.v, 77]]),
+    out: poly([[X.mid, 57], [X.mid, 45]])
+  };
+
+  function draw(ctx, p, px, { alpha = 1, live = 0 } = {}) {
+    ctx.save();
+    ctx.globalAlpha *= alpha;
+    const S = (a, b) => span(p, a, b);
+    const hF = S(0, 450);
+    const e1 = S(450, 1100);
+    const r1F = S(1050, 1300);
+    const cached = ease(S(1350, 1750));
+    const e2 = S(1800, 2400);
+    const r2F = S(2350, 2600);
+    const heads = ease(S(2450, 2900));
+    const snap = S(2950, 3550);
+    const snapped = S(3450, 3600);
+    const e4 = S(3600, 3950);
+    const fire = S(3850, 4450);
+    const eo = S(4450, 4750);
+    const uF = S(4700, 5050);
+    const cachedRGB = mixRGB(INK, BLUE, cached);
+
+    // Frame, title, legend
+    ctx.setLineDash([4, 3]);
+    ctx.strokeStyle = ink(0.28 + 0.3 * live);
+    ctx.lineWidth = px;
+    rrect(ctx, 0, 0, W, H, 8);
+    ctx.fillStyle = page();
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    text(ctx, 'Multi-Head Latent Attention (MLA)', 12, 16, { font: serif(12.5, true, 500), color: ink(0.85), baseline: 'middle' });
+    const lw = tex(ctx, 'Cached During Inference', 350, 282, { size: 10.5, color: ink(lerp(0.5, 0.82, Math.max(cached * 0.4, pulse(p, 1350, 2600, 300, 500)))), align: 'right' });
+    ctx.fillStyle = blue(0.9);
+    ctx.beginPath();
+    ctx.arc(350 - lw - 8, 282, 3.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Edges
+    for (const e of [E.hQ, E.hR, E.hKV]) link(ctx, e, e1, px);
+    for (const e of [E.qC, E.qR, E.kC, E.vC]) link(ctx, e, e2, px);
+    link(ctx, E.cqC, snap, px);
+    link(ctx, E.cqR, snap, px);
+    link(ctx, E.ckC, snap, px);
+    link(ctx, E.ckR, snap, px, { halo: true });
+    for (const e of [E.aq, E.ak, E.av]) link(ctx, e, e4, px);
+    link(ctx, E.out, eo, px);
+    ropeMark(ctx, X.kR, 238, -Math.PI / 2 + Math.PI * 1.5 * ease(S(550, 1100)), { px, k: Math.max(pulse(p, 500, 1300, 150, 300), e1 >= 1 ? 0.45 : 0) });
+    ropeMark(ctx, X.qR, 183, -Math.PI / 2 + Math.PI * 1.5 * ease(S(1950, 2400)), { px, k: Math.max(pulse(p, 1900, 2600, 150, 300), e2 >= 1 ? 0.45 : 0) });
+
+    // Multi-Head Attention
+    ctx.save();
+    rrect(ctx, 30, 58, 310, 18, 4);
+    ctx.fillStyle = page();
+    ctx.fill();
+    if (fire > 0) {
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = ink(0.08 + 0.06 * pulse(p, 3850, 4700, 100, 400));
+      ctx.fillRect(30, 58, 310 * ease(fire), 18);
+      ctx.restore();
+    }
+    ctx.strokeStyle = ink(lerp(0.32, 0.85, fire));
+    ctx.lineWidth = px * (1 + 0.35 * fire);
+    rrect(ctx, 30, 58, 310, 18, 4);
+    ctx.stroke();
+    ctx.restore();
+    tex(ctx, 'Multi-Head Attention', 180, 67, { size: 11.5, color: ink(lerp(0.6, 0.9, fire)), align: 'center' });
+    tex(ctx, 'n_{h} = 128', 333, 67, { size: 9.5, color: ink(0.5), align: 'right' });
+
+    // Vectors
+    dotRow(ctx, X.mid, r0, 8, { px, fill: hF });
+    dotRow(ctx, X.cQ, r1, 4, { px, fill: r1F });
+    dotRow(ctx, X.kR, r1, 2, { px, pitch: 8, fill: r1F, rgbOf: () => cachedRGB });
+    dotRow(ctx, X.cKV, r1, 3, { px, fill: r1F, rgbOf: () => cachedRGB });
+    const per = { px, pitch: 8, r: 3, fill: r2F, heads: 2, spread: heads };
+    dotRow(ctx, X.qC, r2, 3, per);
+    dotRow(ctx, X.qR, r2, 2, per);
+    dotRow(ctx, X.kC, r2, 3, per);
+    dotRow(ctx, X.v, r2, 3, per);
+    const cat = { px, pitch: 8, r: 3, fill: snapped, heads: 2, spread: heads };
+    dotRow(ctx, X.cq, r3, 5, cat);
+    dotRow(ctx, X.ck, r3, 5, { ...cat, rgbOf: (i) => (i >= 3 ? cachedRGB : INK) });
+    // the concatenations snapping together
+    if (snap > 0 && snapped < 1) {
+      const fly = (sx, dx, i, rgb) => {
+        const k = clamp(snap * 1.35 - i * 0.07, 0, 1);
+        const x = lerp(sx, dx, easeOutBack(k));
+        const y = lerp(r2, r3, easeOutBack(k));
+        ctx.fillStyle = `rgba(${rgb}, 0.9)`;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      };
+      [58, 66, 74, 102, 110].forEach((sx, i) => fly(sx, CQ[i], i, INK));
+      [250, 258, 266].forEach((sx, i) => fly(sx, CK[i], i, INK));
+      [189.5, 197.5].forEach((sx, i) => fly(sx, CK[3 + i], 3 + i, cachedRGB));
+    }
+    dotRow(ctx, X.mid, 40, 8, { px, fill: uF });
+
+    // Labels
+    const L = (str, x, y, a, align = 'left', size = 11) => tex(ctx, str, x, y, { size, color: ink(lerp(0.48, 0.85, a)), align });
+    L('Input Hidden h_{t}', 140, r0, hF, 'right');
+    L('Latent', 66, r1 - 7, r1F, 'right');
+    L('c^{Q}_{t}', 66, r1 + 8, r1F, 'right');
+    L('k^{R}_{t}', 205, r1, r1F);
+    L('Latent', 311, r1 - 7, r1F);
+    L('c^{KV}_{t}', 311, r1 + 8, r1F);
+    L('apply RoPE', 203, 238, e1, 'left', 10);
+    L('apply RoPE', 114, 183, e2, 'left', 10);
+    L('{q^{C}_{t,i}}', 54, r2, r2F, 'right');
+    L('{q^{R}_{t,i}}', 122, r2, r2F);
+    L('{k^{C}_{t,i}}', 244, r2, r2F, 'right');
+    L('{v^{C}_{t,i}}', 316, r2, r2F, 'right');
+    L('{[q^{C}_{t,i}; q^{R}_{t,i}]}', 114, r3, snapped, 'left', 10.5);
+    L('{[k^{C}_{t,i}; k^{R}_{t}]}', 250, r3, snapped, 'left', 10.5);
+    L('Output Hidden u_{t}', 142, 40, uF, 'right');
+    ctx.restore();
+  }
+
+  return { W, H, DUR, draw };
+})();
+
+/* ───────────── DeepSeekMoE ───────────── */
+
+const MOE_FIG = (() => {
+  const W = 360;
+  const H = 256;
+  const DUR = 4500;
+  const ux = (i) => 190 + (i - 3.5) * 9;
+  const RX = [104, 140, 176, 212, 278, 318];
+  const RL = ['1', '2', '3', '4', 'N_{r}−1', 'N_{r}'];
+  const AFF = [0.36, 0.52, 0.94, 0.28, 0.84, 0.44];
+  const SEL = [2, 4];
+  const EY = 134;
+  const BW = 30;
+  const BH = 24;
+  const BASE = 190;
+  const BARH = 24;
+  const SX = 40;
+  const E = {
+    uR: poly([[190, 238.5], [190, 224]]),
+    uS: poly([[ux(0), 238.5], [ux(0), 231], [SX, 231], [SX, EY + BH / 2 + 1]], 6),
+    rB: poly([[190, 204], [190, BASE + 2]]),
+    d: SEL.map((i) => poly([[RX[i], BASE - AFF[i] * BARH - 3], [RX[i], EY + BH / 2 + 1]])),
+    oa: SEL.map((i) => poly([[RX[i], EY - BH / 2], [RX[i], 110.5]])),
+    ob: [poly([[RX[SEL[0]], 97.5], [RX[SEL[0]], 90], [190, 90], [190, 84.5]], 4), poly([[RX[SEL[1]], 97.5], [RX[SEL[1]], 78], [196.5, 78]], 6)],
+    oS: poly([[SX, EY - BH / 2], [SX, 78], [183.5, 78]], 6),
+    out: poly([[190, 71.5], [190, 52]])
+  };
+
+  function draw(ctx, p, px, { alpha = 1, live = 0 } = {}) {
+    ctx.save();
+    ctx.globalAlpha *= alpha;
+    const S = (a, b) => span(p, a, b);
+    const uF = S(0, 400);
+    const eIn = S(400, 950);
+    const on = S(900, 1200);
+    const eRB = S(1100, 1300);
+    const bar = (i) => ease(S(1250 + i * 70, 1650 + i * 70));
+    const sel = ease(S(1850, 2150));
+    const eD = S(2150, 2500);
+    const selBox = ease(S(2450, 2750));
+    const eOA = S(2750, 3050);
+    const gate = Math.max(pulse(p, 2950, 3500, 150, 300), p > 3200 ? 0.55 : 0);
+    const eOB = S(3200, 3500);
+    const eS = S(2750, 3500);
+    const plus = Math.max(pulse(p, 3450, 4000, 150, 300), p > 3700 ? 0.55 : 0);
+    const eOut = S(3600, 3800);
+    const hF = S(3750, 4100);
+
+    ctx.setLineDash([4, 3]);
+    ctx.strokeStyle = ink(0.28 + 0.3 * live);
+    ctx.lineWidth = px;
+    rrect(ctx, 0, 0, W, H, 8);
+    ctx.fillStyle = page();
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    text(ctx, 'DeepSeekMoE', 12, 16, { font: serif(12.5, true, 500), color: ink(0.85), baseline: 'middle' });
+    text(ctx, 'in blocks 4–61 (1–3 are dense)', 12, 31, { font: sans(9), color: ink(0.48), baseline: 'middle' });
+    // legend: solid for shared, outline for routed
+    const lg = (y, str, solid) => {
+      const w = tex(ctx, str, 348, y, { size: 10.5, color: ink(0.62), align: 'right' });
+      const x = 348 - w - 16;
+      ctx.beginPath();
+      ctx.rect(x, y - 4.5, 9, 9);
+      if (solid) {
+        ctx.fillStyle = ink(0.8);
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = ink(0.55);
+        ctx.lineWidth = px;
+        ctx.stroke();
+      }
+    };
+    lg(14, 'Shared Expert, N_{s} = 1', true);
+    lg(30, 'Routed Expert, N_{r} = 256', false);
+
+    // Edges
+    link(ctx, E.uR, eIn, px);
+    link(ctx, E.uS, eIn, px);
+    link(ctx, E.rB, eRB, px);
+    E.d.forEach((e) => link(ctx, e, eD, px, { rgb: BLUE, dash: [3, 2.5], idle: 0.1, on: 0.9 }));
+    E.oa.forEach((e) => link(ctx, e, eOA, px, { arrow: false }));
+    E.ob.forEach((e) => link(ctx, e, eOB, px));
+    link(ctx, E.oS, eS, px);
+    link(ctx, E.out, eOut, px);
+    SEL.forEach((i) => opMark(ctx, RX[i], 104, 6, 'x', { px, k: gate, rgb: mixRGB(INK, BLUE, selBox) }));
+    opMark(ctx, 190, 78, 6.5, '+', { px, k: plus });
+
+    // Experts
+    nbox(ctx, SX, EY, BW, BH, { px, k: on, lines: ['1'], size: 10.5, solid: 1 });
+    RX.forEach((x, i) => nbox(ctx, x, EY, BW, BH, { px, lines: [RL[i]], size: 10.5, sel: SEL.includes(i) ? selBox : 0 }));
+    text(ctx, '…', 245, EY, { font: serif(14), color: ink(0.55), align: 'center', baseline: 'middle' });
+
+    // Router and its scores
+    nbox(ctx, 190, 214, 64, 20, { px, k: on, lines: ['Router'], size: 11 });
+    ctx.fillStyle = ink(0.3);
+    ctx.fillRect(92, BASE, 238, px);
+    RX.forEach((x, i) => {
+      const h = AFF[i] * BARH * bar(i);
+      const chosen = SEL.includes(i);
+      ctx.fillStyle = chosen ? tint(sel, lerp(0.45, 0.95, sel)) : ink(0.42);
+      ctx.fillRect(x - 3.5, BASE - h, 7, h);
+    });
+    text(ctx, '…', 245, BASE - 7, { font: serif(14), color: ink(0.45), align: 'center', baseline: 'middle' });
+    tex(ctx, 'Top-K_{r}', 86, 176, { size: 11, color: ink(lerp(0.5, 0.85, sel)), align: 'right' });
+    tex(ctx, 'K_{r} = 8', 86, 191, { size: 9.5, color: ink(0.5), align: 'right' });
+
+    // Vectors and labels
+    dotRow(ctx, 190, 242, 8, { px, fill: uF });
+    dotRow(ctx, 190, 48, 8, { px, fill: hF });
+    tex(ctx, 'Input Hidden u_{t}', 152, 242, { size: 11, color: ink(lerp(0.48, 0.85, uF)), align: 'right' });
+    tex(ctx, 'Output Hidden h′_{t}', 152, 48, { size: 11, color: ink(lerp(0.48, 0.85, hF)), align: 'right' });
+    ctx.restore();
+  }
+
+  return { W, H, DUR, draw };
+})();
+
+
+// One thing on screen at a time. The whole model first; when the token reaches Attention the
+// camera dives into the box, which opens into the MLA panel and plays; back out, up to the
+// Feed-Forward box and into DeepSeekMoE; back out, and the token climbs the other 60 blocks to
+// the final norm, the head and the next-token probabilities.
+function createZoom(W, H, dpr) {
+  const narrow = W < 520;
+  const M = MODEL_FIG;
+  const ev = { tok: 300, emb: 700, norm1: 1150, attn: 1550, zin1: [1650, 2900], mla0: 3000, zout1: [8300, 9550], attnOut: 9650, plus1: 10050, norm2: 10450, ffn: 10850, zin2: [10950, 12200], moe0: 12300, zout2: [16900, 18150], ffnOut: 18250, plus2: 18650, top: 18950, climb1: 20150, fnorm: 20550, head: 20950, probs: 21350, word: 21550 };
+  const LOOP = 25200;
+  const backdrop = makeBackdrop(W, H, dpr);
+  const K = 0.42; // a panel's size in the model's coordinates
+  const Zb = narrow ? Math.min(340 / M.W, (H - 20) / M.H) : Math.min(1, (H - 24) / M.H);
+  const VB = { Z: Zb, cx: narrow ? M.W / 2 : M.mx + (W / 2 - 250) / Zb, cy: M.H / 2 };
+  const target = (P) => Math.min(1.45, (W - 30) / P.W, (H - 30) / P.H);
+  const anchors = {
+    mla: { P: MLA_FIG, x: M.mx, y: M.Y.attn, box: M.rect('attn'), label: 'Attention', lines: ['Attention'] },
+    moe: { P: MOE_FIG, x: M.mx, y: M.Y.ffn, box: M.rect('ffn'), label: 'Feed-Forward Network', lines: ['Feed-Forward', 'Network'] }
+  };
+
+  function camera(t) {
+    const zin = (r) => ease(span(t, r[0], r[1]));
+    let which = null;
+    let u = 0;
+    if (t >= ev.zin1[0] && t < ev.zin2[0]) {
+      which = 'mla';
+      u = t < ev.zout1[0] ? zin(ev.zin1) : 1 - zin(ev.zout1);
+    } else if (t >= ev.zin2[0]) {
+      which = 'moe';
+      u = t < ev.zout2[0] ? zin(ev.zin2) : 1 - zin(ev.zout2);
+    }
+    if (!which || u <= 0) return { Z: VB.Z, cx: VB.cx, cy: VB.cy, which: null, u: 0 };
+    const A = anchors[which];
+    const Zt = target(A.P) / K;
+    const Z = Math.exp(lerp(Math.log(VB.Z), Math.log(Zt), u));
+    // the anchor's screen position glides to the centre while the scale grows
+    const sx0 = W / 2 + (A.x - VB.cx) * VB.Z;
+    const sy0 = H / 2 + (A.y - VB.cy) * VB.Z;
+    const sx = lerp(sx0, W / 2, u);
+    const sy = lerp(sy0, H / 2, u);
+    return { Z, cx: A.x - (sx - W / 2) / Z, cy: A.y - (sy - H / 2) / Z, which, u };
+  }
+
+  return looping(LOOP, (ctx, t) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(backdrop, 0, 0, W, H);
+    ctx.save();
+    ctx.globalAlpha = loopAlpha(t, LOOP);
+    const cam = camera(t);
+    const st = modelState(t, ev);
+    const px = 1 / cam.Z;
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(cam.Z, cam.Z);
+    ctx.translate(-cam.cx, -cam.cy);
+
+    const modelA = 1 - span(cam.u, 0.05, 0.4);
+    M.draw(ctx, st, px, { alpha: modelA, signposts: narrow ? 0 : 1, hide: { attn: cam.which === 'mla', ffn: cam.which === 'moe' } });
+
+    if (cam.which) {
+      const A = anchors[cam.which];
+      const pw = A.P.W * K;
+      const ph = A.P.H * K;
+      const m = ease(span(cam.u, 0.05, 0.62));
+      const [bx, by, bw, bh] = A.box;
+      const rx = lerp(bx, A.x - pw / 2, m);
+      const ry = lerp(by, A.y - ph / 2, m);
+      const rw = lerp(bw, pw, m);
+      const rh = lerp(bh, ph, m);
+      // the box opening into its panel
+      ctx.save();
+      ctx.globalAlpha *= 1 - span(cam.u, 0.6, 0.78);
+      rrect(ctx, rx, ry, rw, rh, lerp(4, 8 * K, m));
+      ctx.fillStyle = page();
+      ctx.fill();
+      ctx.strokeStyle = ink(lerp(0.85, 0.4, m));
+      ctx.lineWidth = px * 1.3;
+      ctx.stroke();
+      ctx.restore();
+      ctx.save();
+      ctx.globalAlpha *= 1 - span(cam.u, 0, 0.3);
+      A.lines.forEach((ln, i) => tex(ctx, ln, A.x, A.y + (i - (A.lines.length - 1) / 2) * 12.6, { size: 11, color: ink(0.9), align: 'center' }));
+      ctx.restore();
+      const panelA = span(cam.u, 0.36, 0.8);
+      if (panelA > 0) {
+        ctx.save();
+        ctx.translate(A.x - pw / 2, A.y - ph / 2);
+        ctx.scale(K, K);
+        const p = cam.which === 'mla' ? t - ev.mla0 : t - ev.moe0;
+        A.P.draw(ctx, p, px / K, { alpha: panelA, live: 1 });
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }, { still: 23600 });
+}
+
+/* ───────────── Sizing ───────────── */
+
+/**
+ * Each sketch has two layouts, drawn at a design width: 680 px across for wide frames, 360
+ * for phones and other tall frames. This scales whichever one applies to the real frame,
+ * so a 600 px or a 414 px figure gets the same composition as the one checked here.
+ */
+function fitted(create) {
+  return (W, H, dpr) => {
+    const tall = W < 520 || H > W * 0.9;
+    const vw = tall ? 360 : 680;
+    const s = W / vw;
+    const inner = create(vw, H / s, dpr * s);
+    return {
+      ...inner,
+      draw(ctx) {
+        ctx.save();
+        ctx.scale(s, s);
+        inner.draw(ctx);
+        ctx.restore();
+      }
+    };
+  };
+}
+
+  return fitted(createZoom);
+})();
+
+/* ───────────── DeepSeekMoE: routing, and load balancing without an auxiliary loss ───────────── */
+
+// route · one MoE layer, token by token. The shared expert always runs, the router scores all
+//         256 routed experts, the top 8 fire (at most 4 nodes per token) and their outputs are
+//         summed by their gating weights.
+// balance · auxiliary-loss-free load balancing, as a small simulation (16 experts, top 2): each
+//         expert's bias is nudged down when it's overloaded and up when it's underloaded, which
+//         changes which experts are picked and never their weights, until the load evens out.
+// Their helpers and fitted() (a 680-wide design, or 360-wide on phones) stay inside this scope.
+const DS_MOE = (() => {
+const INK = '28, 25, 23';
+const BLUE = '77, 107, 254'; // DeepSeek's blue, as on the title card
+const SERIF = 'Newsreader, Georgia, serif';
+const SANS = 'Inter, sans-serif';
+const FEATHER = 28;
+const TAU = Math.PI * 2;
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
+const easeOut = (k) => 1 - (1 - k) ** 3;
+/** How far t is through [a, b], from 0 to 1 */
+const span = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+/** Rise over [a, a + inMs], hold, fall over [b - outMs, b] */
+const pulse = (t, a, b, inMs = 300, outMs = 300) => Math.min(span(t, a, a + inMs), 1 - span(t, b - outMs, b));
+const ink = (a) => `rgba(${INK}, ${a})`;
+const blue = (a = 1) => `rgba(${BLUE}, ${a})`;
+const INK_RGB = INK.split(',').map(Number);
+const BLUE_RGB = BLUE.split(',').map(Number);
+/** Ink turning blue as k goes 0 → 1 */
+const inkToBlue = (k, a) => `rgba(${INK_RGB.map((v, i) => Math.round(lerp(v, BLUE_RGB[i], k))).join(', ')}, ${a})`;
+const sigmoid = (x) => 1 / (1 + Math.exp(-x));
+
+function seeded(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const gauss = (r) => Math.sqrt(-2 * Math.log(1 - r())) * Math.cos(2 * Math.PI * r());
+
+function pageColor() {
+  return getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() || '#fdfaf6';
+}
+
+function makeLayer(W, H, dpr) {
+  const c = document.createElement('canvas');
+  c.width = Math.round(W * dpr);
+  c.height = Math.round(H * dpr);
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { canvas: c, ctx: g };
+}
+
+/** Erase toward each edge of a layer, so whatever it holds fades out there. */
+function featherEdges(g, W, H, size, sides = 'tblr') {
+  g.save();
+  g.globalCompositeOperation = 'destination-out';
+  const edges = {
+    t: [0, 0, 0, size, 0, 0, W, size],
+    b: [0, H, 0, H - size, 0, H - size, W, size],
+    l: [0, 0, size, 0, 0, 0, size, H],
+    r: [W, 0, W - size, 0, W - size, 0, size, H]
+  };
+  for (const side of sides) {
+    const [x0, y0, x1, y1, rx, ry, rw, rh] = edges[side];
+    const grad = g.createLinearGradient(x0, y0, x1, y1);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.35)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = grad;
+    g.fillRect(rx, ry, rw, rh);
+  }
+  g.restore();
+}
+
+/** The page colour, opaque in the middle and dissolving at the edges. */
+function makeBackdrop(W, H, dpr) {
+  const layer = makeLayer(W, H, dpr);
+  layer.ctx.fillStyle = pageColor();
+  layer.ctx.fillRect(0, 0, W, H);
+  featherEdges(layer.ctx, W, H, FEATHER);
+  return layer.canvas;
+}
+
+/** Fade in as a loop starts and out as it ends */
+const loopAlpha = (clock, loop, inMs = 400, outMs = 600) => Math.min(span(clock, 0, inMs), 1 - span(clock, loop - outMs, loop));
+
+function looping(LOOP, draw, extra = {}) {
+  let clock = 0;
+  return {
+    loopMs: LOOP,
+    prewarm: 0,
+    ...extra,
+    step(dt) {
+      clock = (clock + dt) % LOOP;
+    },
+    draw(ctx) {
+      draw(ctx, clock);
+    }
+  };
+}
+
+function text(ctx, str, x, y, { font = `400 11px ${SANS}`, color = ink(0.5), align = 'left', baseline = 'alphabetic', halo = null } = {}) {
+  ctx.font = font;
+  ctx.textAlign = align;
+  ctx.textBaseline = baseline;
+  if (halo) {
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = halo;
+    ctx.strokeText(str, x, y);
+  }
+  ctx.fillStyle = color;
+  ctx.fillText(str, x, y);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+function rrect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
+}
+
+const bezPoint = ([a, b, c, d], t) => {
+  const u = 1 - t;
+  return {
+    x: u * u * u * a.x + 3 * u * u * t * b.x + 3 * u * t * t * c.x + t * t * t * d.x,
+    y: u * u * u * a.y + 3 * u * u * t * b.y + 3 * u * t * t * c.y + t * t * t * d.y
+  };
+};
+
+/** Stroke a cubic from k0 to k1 of the way along */
+function strokeCurve(ctx, p, k0 = 0, k1 = 1, n = 32) {
+  if (k1 <= k0) return;
+  ctx.beginPath();
+  for (let j = 0; j <= n; j++) {
+    const q = bezPoint(p, lerp(k0, k1, j / n));
+    if (j) ctx.lineTo(q.x, q.y);
+    else ctx.moveTo(q.x, q.y);
+  }
+  ctx.stroke();
+}
+
+/** A small open arrowhead at (x, y) pointing along angle a */
+function arrowHead(ctx, x, y, a, size, color, width = 1.2) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x - size * Math.cos(a - 0.5), y - size * Math.sin(a - 0.5));
+  ctx.lineTo(x, y);
+  ctx.lineTo(x - size * Math.cos(a + 0.5), y - size * Math.sin(a + 0.5));
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+}
+
+/** A tick, drawn on as k goes 0 → 1 */
+function tick(ctx, x, y, s, color, k = 1, width = 1.5) {
+  if (k <= 0) return;
+  const pts = [[x - s, y], [x - s * 0.35, y + s * 0.65], [x + s, y - s * 0.75]];
+  const l1 = Math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]);
+  const l2 = Math.hypot(pts[2][0] - pts[1][0], pts[2][1] - pts[1][1]);
+  const d = k * (l1 + l2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(...pts[0]);
+  if (d <= l1) ctx.lineTo(lerp(pts[0][0], pts[1][0], d / l1), lerp(pts[0][1], pts[1][1], d / l1));
+  else {
+    ctx.lineTo(...pts[1]);
+    const e = (d - l1) / l2;
+    ctx.lineTo(lerp(pts[1][0], pts[2][0], e), lerp(pts[1][1], pts[2][1], e));
+  }
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+}
+
+function dot(ctx, x, y, r, color) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, TAU);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+/* ───────────── 1A · Route: one MoE layer, token by token ───────────── */
+
+// DeepSeek-V3's MoE layer at its real size: 1 shared expert and 256 routed experts (the 16 × 16
+// grid), 8 routed experts per token. The router's affinity is a sigmoid of the token against
+// each expert's centroid; the top 8 are kept and their scores normalized into weights, which
+// set the line widths into the sum. The shared expert is the same size as one routed expert.
+// The pick also keeps V3's node limit: the experts sit on 8 nodes of 32 (two grid rows each),
+// a token may use at most 4 nodes, and nodes are ranked by the sum of their 2 best scores.
+// Scores are drawn at random (seeded), so which experts win is illustrative.
+const ROUTE = (() => {
+  const NR = 256;
+  const KR = 8;
+  const NODES = 8;
+  const M = 4;
+  const WORDS = ['the', 'tide', 'came', 'in', 'at', 'dawn'];
+  const r = seeded(2412);
+  const per = NR / NODES;
+  const tokens = WORDS.map(() => {
+    const s = Array.from({ length: NR }, () => sigmoid(-3 + 1.4 * gauss(r)));
+    const nodeScore = Array.from({ length: NODES }, (_, n) => {
+      const best = s.slice(n * per, (n + 1) * per).sort((a, b) => b - a);
+      return best.slice(0, KR / M).reduce((a, v) => a + v, 0);
+    });
+    const nodes = new Set([...nodeScore.keys()].sort((a, b) => nodeScore[b] - nodeScore[a]).slice(0, M));
+    const top = [...s.keys()].filter((i) => nodes.has(Math.floor(i / per))).sort((a, b) => s[b] - s[a]).slice(0, KR);
+    const sum = top.reduce((a, i) => a + s[i], 0);
+    const g = new Map(top.map((i) => [i, s[i] / sum]));
+    const lo = Math.min(...s);
+    const hi = Math.max(...s);
+    const heat = s.map((v) => ((v - lo) / (hi - lo)) ** 1.5);
+    // Each top-8 expert's place in the sweep, so they turn blue in order of score
+    const rank = new Map(top.map((i, k) => [i, k]));
+    return { s, top, g, heat, rank, vec: Array.from({ length: 6 }, () => r()), out: Array.from({ length: 6 }, () => r()) };
+  });
+  return { NR, KR, WORDS, tokens };
+})();
+
+function createRoute(W, H, dpr) {
+  const narrow = W < 520;
+  const PAGE = pageColor();
+  const backdrop = makeBackdrop(W, H, dpr);
+  const { NR, KR, WORDS, tokens } = ROUTE;
+  const P = 12;   // grid pitch
+  const C = 9;    // expert cell
+  const GS = 16 * P - (P - C);
+  let L;
+  if (!narrow) {
+    const gy = Math.round(H / 2 - GS / 2 + 14);
+    L = {
+      tok: { x: 70, y: gy + GS / 2, dir: 'v' },
+      word: [70, gy + GS / 2 + 44, 'center'],
+      router: { x: 150, y: gy + GS / 2 },
+      routerLabel: [150, gy + GS / 2 + 24, 'center'],
+      grid: { x: 232, y: gy },
+      shared: { x: 232 + Math.round(GS / 2 - C / 2), y: gy - 40 },
+      sharedLabel: [232 + GS / 2, gy - 50, 'center'],
+      gridLabel: [[232, gy + GS + 22, 'left', '256 routed experts']],
+      topLabel: [232 + GS, gy + GS + 22, 'right'],
+      sum: { x: 520, y: gy + GS / 2 },
+      sumLabel: [520, gy + GS / 2 + 28, 'center'],
+      out: { x: 604, y: gy + GS / 2, dir: 'v' },
+      outLabel: [604, gy + GS / 2 + 40, 'center']
+    };
+  } else {
+    const gx = Math.round(W / 2 - GS / 2);
+    const gy = 138;
+    L = {
+      tok: { x: W / 2, y: 62, dir: 'h' },
+      word: [W / 2, 42, 'center'],
+      router: { x: W / 2, y: 100 },
+      routerLabel: [W / 2 + 12, 104, 'left'],
+      grid: { x: gx, y: gy },
+      shared: { x: 30, y: 96 },
+      sharedLabel: [44, 104, 'left'],
+      gridLabel: [[gx + GS + 12, gy + GS / 2 - 8, 'left', '256'], [gx + GS + 12, gy + GS / 2 + 7, 'left', 'routed'], [gx + GS + 12, gy + GS / 2 + 22, 'left', 'experts']],
+      topLabel: [gx + GS + 12, gy + GS / 2 + 44, 'left'],
+      sum: { x: W / 2, y: gy + GS + 46 },
+      sumLabel: [W / 2 + 16, gy + GS + 50, 'left'],
+      out: { x: W / 2, y: gy + GS + 88, dir: 'h' },
+      outLabel: [W / 2 + 30, gy + GS + 92, 'left']
+    };
+  }
+  const cell = (i) => ({ x: L.grid.x + (i % 16) * P, y: L.grid.y + Math.floor(i / 16) * P });
+  const centre = (i) => {
+    const c = cell(i);
+    return { x: c.x + C / 2, y: c.y + C / 2 };
+  };
+  const SH = { x: L.shared.x + C / 2, y: L.shared.y + C / 2 };
+  const R = L.router;
+  const S = L.sum;
+
+  // Paths: token → router, router → each routed expert, expert → sum, and the shared expert's own
+  const dispatch = (i) => {
+    const c = centre(i);
+    return narrow
+      ? [{ x: R.x, y: R.y + 5 }, { x: R.x, y: R.y + 46 }, { x: c.x, y: c.y - 46 }, c]
+      : [{ x: R.x + 5, y: R.y }, { x: R.x + 52, y: R.y }, { x: c.x - 52, y: c.y }, c];
+  };
+  const gather = (i) => {
+    const c = centre(i);
+    return narrow
+      ? [c, { x: c.x, y: c.y + 56 }, { x: S.x, y: S.y - 44 }, { x: S.x, y: S.y - 8 }]
+      : [c, { x: c.x + 64, y: c.y }, { x: S.x - 56, y: S.y }, { x: S.x - 8, y: S.y }];
+  };
+  const tokEdge = narrow ? { x: L.tok.x - 24, y: L.tok.y } : { x: L.tok.x, y: L.tok.y - 24 };
+  const toShared = narrow
+    ? [tokEdge, { x: SH.x + 30, y: L.tok.y }, { x: SH.x, y: SH.y - 34 }, { x: SH.x, y: SH.y - 6 }]
+    : [tokEdge, { x: L.tok.x, y: SH.y }, { x: SH.x - 70, y: SH.y }, { x: SH.x - 6, y: SH.y }];
+  const fromShared = narrow
+    ? [{ x: SH.x, y: SH.y + 6 }, { x: SH.x, y: S.y + 10 }, { x: S.x - 50, y: S.y }, { x: S.x - 8, y: S.y }]
+    : [{ x: SH.x + 6, y: SH.y }, { x: S.x, y: SH.y }, { x: S.x, y: S.y - 50 }, { x: S.x, y: S.y - 8 }];
+  const toRouter = narrow
+    ? [{ x: L.tok.x, y: L.tok.y + 5 }, { x: L.tok.x, y: L.tok.y + 15 }, { x: R.x, y: R.y - 15 }, { x: R.x, y: R.y - 5 }]
+    : [{ x: L.tok.x + 5, y: L.tok.y }, { x: L.tok.x + 30, y: L.tok.y }, { x: R.x - 30, y: R.y }, { x: R.x - 5, y: R.y }];
+  const toOut = narrow
+    ? [{ x: S.x, y: S.y + 8 }, { x: S.x, y: S.y + 16 }, { x: L.out.x, y: L.out.y - 14 }, { x: L.out.x, y: L.out.y - 5 }]
+    : [{ x: S.x + 8, y: S.y }, { x: S.x + 30, y: S.y }, { x: L.out.x - 30, y: L.out.y }, { x: L.out.x - 5, y: L.out.y }];
+
+  // Timeline: the first token slowly, the rest quicker
+  const T0 = 300;
+  const FIRST = 3800;
+  const NEXT = 2500;
+  const starts = WORDS.map((_, k) => (k ? T0 + FIRST + (k - 1) * NEXT : T0));
+  const durs = WORDS.map((_, k) => (k ? NEXT : FIRST));
+  const END = T0 + FIRST + (WORDS.length - 1) * NEXT;
+  const LOOP = END + 1800;
+  // Phases, as fractions of a token's time
+  const PH = { in: [0, 0.1], route: [0.06, 0.2], shared: [0.06, 0.42], sweep: [0.2, 0.44], pick: [0.42, 0.54], send: [0.5, 0.66], fire: [0.64, 0.72], back: [0.7, 0.84], out: [0.82, 0.89], fade: [0.94, 1] };
+
+  /** The token's (or output's) hidden vector, six cells along dir */
+  function vector(ctx, at, vals, alpha, color = (a) => ink(a)) {
+    for (let j = 0; j < 6; j++) {
+      const o = (j - 2.5) * 7;
+      const x = at.dir === 'v' ? at.x : at.x + o;
+      const y = at.dir === 'v' ? at.y + o : at.y;
+      ctx.fillStyle = color((0.15 + 0.7 * vals[j]) * alpha);
+      ctx.fillRect(x - 2.5, y - 2.5, 5, 5);
+    }
+  }
+
+  function travelDot(ctx, p, k, color, r = 2.4) {
+    if (k <= 0 || k >= 1) return;
+    const q = bezPoint(p, ease(k));
+    dot(ctx, q.x, q.y, r, color);
+  }
+
+  return looping(LOOP, (ctx, t) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(backdrop, 0, 0, W, H);
+    const a = loopAlpha(t, LOOP, 400, 700);
+    ctx.save();
+    ctx.globalAlpha = a;
+
+    // Which token is in the layer, and how far through it is
+    let k = WORDS.length - 1;
+    for (let j = 0; j < WORDS.length; j++) if (t < starts[j] + durs[j]) { k = j; break; }
+    const tk = tokens[k];
+    const u = t < starts[0] ? 0 : (t - starts[k]) / durs[k];
+    const ph = (name) => span(u, PH[name][0], PH[name][1]);
+    const fade = t > END ? 0 : 1 - ph('fade');
+    const live = t < END;
+
+    // Lines, under the experts
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = ink(0.28 * fade);
+    ctx.lineWidth = 1;
+    strokeCurve(ctx, toRouter, 0, live ? ease(ph('route')) : 0);
+    strokeCurve(ctx, toShared, 0, live ? ease(span(u, 0.06, 0.22)) : 0);
+    strokeCurve(ctx, fromShared, 0, live ? ease(ph('back')) : 0);
+    strokeCurve(ctx, toOut, 0, live ? ease(ph('out')) : 0);
+    if (live) {
+      for (const i of tk.top) {
+        const w = 0.4 + 9 * tk.g.get(i);
+        ctx.lineWidth = w;
+        ctx.strokeStyle = blue(0.55 * fade);
+        strokeCurve(ctx, dispatch(i), 0, ease(ph('send')));
+        ctx.strokeStyle = blue(0.4 * fade);
+        strokeCurve(ctx, gather(i), 0, ease(ph('back')));
+      }
+    }
+
+    // The 256 routed experts
+    const sweep = ph('sweep');
+    const pick = ph('pick');
+    const fire = ph('fire');
+    for (let i = 0; i < NR; i++) {
+      const c = cell(i);
+      let fill = ink(0.075);
+      // Experts earlier tokens used keep a faint tint
+      let used = 0;
+      for (let j = 0; j < k; j++) if (tokens[j].g.has(i)) used = 1;
+      if (t >= END && tk.g.has(i)) used = 1;
+      if (used) fill = blue(0.2);
+      ctx.fillStyle = fill;
+      ctx.fillRect(c.x, c.y, C, C);
+      if (!live) continue;
+      // The router's sweep: each expert darkens with its score as the wave passes
+      const col = i % 16;
+      const row = Math.floor(i / 16);
+      const at = narrow ? row / 15 : col / 15;
+      const wave = span(sweep, at * 0.55, at * 0.55 + 0.25);
+      const front = sweep > 0 && sweep < 1 ? Math.max(0, 1 - Math.abs(sweep - at * 0.55 - 0.08) / 0.09) : 0;
+      const chosen = tk.g.has(i);
+      const heat = (0.85 * tk.heat[i] * wave + 0.16 * front) * (1 - (chosen ? 0 : pick)) * fade;
+      if (heat > 0.002) {
+        ctx.fillStyle = ink(heat);
+        ctx.fillRect(c.x, c.y, C, C);
+      }
+      if (chosen) {
+        const b = span(pick, tk.rank.get(i) * 0.06, tk.rank.get(i) * 0.06 + 0.5) * fade;
+        if (b > 0) {
+          const grow = 1 + 0.35 * Math.sin(Math.PI * fire) * fade;
+          const e = (C * grow - C) / 2;
+          ctx.fillStyle = blue(b);
+          ctx.fillRect(c.x - e, c.y - e, C + 2 * e, C + 2 * e);
+        }
+      }
+    }
+
+    // The shared expert: same size as one routed expert, and every token uses it
+    const shFire = live ? Math.sin(Math.PI * span(u, 0.36, 0.5)) : 0;
+    const se = 1.6 * shFire;
+    ctx.fillStyle = ink(0.78);
+    ctx.fillRect(L.shared.x - se, L.shared.y - se, C + 2 * se, C + 2 * se);
+
+    // Router, sum, token and output
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = ink(0.55);
+    ctx.beginPath();
+    ctx.arc(R.x, R.y, 5, 0, TAU);
+    ctx.stroke();
+    if (live) dot(ctx, R.x, R.y, 2.2, ink(0.7 * Math.sin(Math.PI * span(u, 0.16, 0.42))));
+    ctx.beginPath();
+    ctx.arc(S.x, S.y, 8, 0, TAU);
+    ctx.strokeStyle = ink(0.55);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(S.x - 4, S.y);
+    ctx.lineTo(S.x + 4, S.y);
+    ctx.moveTo(S.x, S.y - 4);
+    ctx.lineTo(S.x, S.y + 4);
+    ctx.stroke();
+
+    const wIn = t < starts[0] ? 0 : Math.min(ph('in') * 1, 1);
+    if (live) {
+      vector(ctx, L.tok, tk.vec, wIn * fade);
+      vector(ctx, L.out, tk.out, ph('out') * fade);
+    }
+
+    // Pulses
+    if (live) {
+      travelDot(ctx, toRouter, span(u, 0.06, 0.18), ink(0.7));
+      travelDot(ctx, toShared, span(u, 0.08, 0.38), ink(0.7));
+      travelDot(ctx, fromShared, span(u, 0.7, 0.82), ink(0.7));
+      for (const i of tk.top) {
+        travelDot(ctx, dispatch(i), span(u, 0.52, 0.66), blue(0.95), 2.2);
+        travelDot(ctx, gather(i), span(u, 0.7, 0.82), blue(0.95), 2.2);
+      }
+      travelDot(ctx, toOut, span(u, 0.82, 0.89), ink(0.7));
+    }
+
+    // Labels
+    const lab = `italic 400 ${narrow ? 12.5 : 13}px ${SERIF}`;
+    if (live) text(ctx, WORDS[k], L.word[0], L.word[1], { font: `500 ${narrow ? 16 : 17}px ${SERIF}`, color: ink(0.85 * wIn * fade), align: L.word[2] });
+    text(ctx, 'router', L.routerLabel[0], L.routerLabel[1], { font: lab, color: ink(0.55), align: L.routerLabel[2], halo: PAGE });
+    text(ctx, 'shared expert', L.sharedLabel[0], L.sharedLabel[1], { font: lab, color: ink(0.55), align: L.sharedLabel[2], halo: PAGE });
+    for (const [x, y, al, s] of L.gridLabel) text(ctx, s, x, y, { font: lab, color: ink(0.55), align: al });
+    const topA = live ? pick * fade : 0;
+    if (topA > 0) text(ctx, `top ${KR}`, L.topLabel[0], L.topLabel[1], { font: `500 11px ${SANS}`, color: blue(0.9 * topA), align: L.topLabel[2] });
+    text(ctx, 'weighted sum', L.sumLabel[0], L.sumLabel[1], { font: lab, color: ink(0.45), align: L.sumLabel[2], halo: PAGE });
+    if (live) text(ctx, 'output', L.outLabel[0], L.outLabel[1], { font: lab, color: ink(0.55 * ph('out') * fade), align: L.outLabel[2] });
+    ctx.restore();
+  }, { still: starts[2] + durs[2] * 0.92 });
+}
+
+/* ───────────── 1B · Balance: the bias, step by step ───────────── */
+
+// A small simulation of the auxiliary-loss-free strategy, run once: 16 routed experts, top 2,
+// 2,048 tokens a step drawn around a skewed mean so a few experts start out popular. Each
+// step routes every token by sigmoid score plus bias, counts each expert's load, then moves
+// every bias by a fixed step γ: down if the expert took more than an even share, up if less.
+// The bias only decides the top-k; it never enters the weights. Sizes and γ are illustrative
+// (DeepSeek-V3: 256 experts, top 8, γ = 0.001).
+const BALANCE = (() => {
+  const NE = 16;
+  const K = 2;
+  const T = 2048;
+  const STEPS = 60;
+  const GAMMA = 0.005;
+  const D = 6;
+  const r = seeded(11);
+  const E = Array.from({ length: NE }, () => Array.from({ length: D }, () => gauss(r)));
+  const mu = Array.from({ length: D }, () => gauss(r) * 0.5);
+  const even = (K * T) / NE;
+  const b = new Float64Array(NE);
+  const loads = [];
+  const bias = [Array.from(b)];
+  const s = new Float64Array(NE);
+  const u = new Float64Array(D);
+  for (let st = 0; st < STEPS; st++) {
+    const load = new Float64Array(NE);
+    for (let t = 0; t < T; t++) {
+      for (let j = 0; j < D; j++) u[j] = mu[j] + gauss(r);
+      for (let i = 0; i < NE; i++) {
+        let dotp = 0;
+        for (let j = 0; j < D; j++) dotp += E[i][j] * u[j];
+        s[i] = sigmoid(dotp / Math.sqrt(D));
+      }
+      // Top K by score + bias
+      let first = -1;
+      let second = -1;
+      for (let i = 0; i < NE; i++) {
+        const v = s[i] + b[i];
+        if (first < 0 || v > s[first] + b[first]) {
+          second = first;
+          first = i;
+        } else if (second < 0 || v > s[second] + b[second]) second = i;
+      }
+      load[first]++;
+      load[second]++;
+    }
+    loads.push(Array.from(load, (l) => l / even));
+    for (let i = 0; i < NE; i++) b[i] += GAMMA * Math.sign(even - load[i]);
+    bias.push(Array.from(b));
+  }
+  const bmax = Math.max(...bias.flat().map(Math.abs));
+  return { NE, K, STEPS, GAMMA, loads, bias, bmax };
+})();
+
+function createBalance(W, H, dpr) {
+  const narrow = W < 520;
+  const PAGE = pageColor();
+  const backdrop = makeBackdrop(W, H, dpr);
+  const { NE, STEPS, loads, bias, bmax } = BALANCE;
+  let L;
+  if (!narrow) {
+    L = { x0: 140, x1: 630, base: 228, unit: 46, cap: 3.3, bz: 300, bpx: 34, barW: 13, title: null, loadLabel: [40, 150], biasLabel: [40, 304], evenLabel: [638, 0, 'left'], step: [630, 40], note: [630, 360, 'right'] };
+  } else {
+    L = { x0: 62, x1: 340, base: 270, unit: 50, cap: 3.3, bz: 352, bpx: 32, barW: 9, title: [20, 52], loadLabel: null, biasLabel: [20, 356], evenLabel: [20, 0, 'left'], step: [340, 52], note: [20, 430, 'left'] };
+  }
+  const pitch = (L.x1 - L.x0) / NE;
+  const X = (i) => L.x0 + (i + 0.5) * pitch;
+  const evenY = L.base - L.unit;
+  const bScale = L.bpx / bmax;
+
+  // Step times: the first three slow enough to read, then a time-lapse
+  const T0 = 500;
+  const durs = Array.from({ length: STEPS }, (_, s) => (s === 0 ? 3000 : s === 1 ? 1500 : s === 2 ? 1100 : Math.max(85, 700 * 0.8 ** (s - 3))));
+  const starts = [];
+  let acc = T0;
+  for (const d of durs) {
+    starts.push(acc);
+    acc += d;
+  }
+  const END = acc;
+  const LOOP = END + 3200;
+  const over = loads[0].indexOf(Math.max(...loads[0]));
+  const under = loads[0].indexOf(Math.min(...loads[0]));
+
+  function state(t) {
+    if (t < T0) return { s: 0, k: 0, bk: 0, d: durs[0] };
+    let s = STEPS - 1;
+    for (let j = 0; j < STEPS; j++) if (t < starts[j] + durs[j]) { s = j; break; }
+    const k = span(t, starts[s], starts[s] + durs[s] * 0.5);
+    const bk = span(t, starts[s] + durs[s] * 0.6, starts[s] + durs[s] * 0.95);
+    return { s, k, bk, d: durs[s] };
+  }
+
+  return looping(LOOP, (ctx, t) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(backdrop, 0, 0, W, H);
+    const a = loopAlpha(t, LOOP, 400, 700);
+    ctx.save();
+    ctx.globalAlpha = a;
+    const { s, k, bk, d } = state(t);
+    const slow = d > 600;
+    const lab = `italic 400 ${narrow ? 12.5 : 13}px ${SERIF}`;
+    const intro = span(t, 200, 700);
+
+    // Baselines
+    ctx.strokeStyle = ink(0.25 * intro);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(L.x0 - 4, L.base + 0.5);
+    ctx.lineTo(L.x1 + 4, L.base + 0.5);
+    ctx.stroke();
+    ctx.strokeStyle = ink(0.16 * intro);
+    ctx.beginPath();
+    ctx.moveTo(L.x0 - 4, L.bz + 0.5);
+    ctx.lineTo(L.x1 + 4, L.bz + 0.5);
+    ctx.stroke();
+
+    // The step-1 loads stay behind as outlines once the time-lapse starts
+    const ghost = span(t, starts[3], starts[3] + 600);
+    if (ghost > 0) {
+      ctx.strokeStyle = ink(0.2 * ghost);
+      ctx.lineWidth = 1;
+      for (let i = 0; i < NE; i++) {
+        const h = Math.min(L.cap, loads[0][i]) * L.unit;
+        ctx.strokeRect(Math.round(X(i) - L.barW / 2) + 0.5, L.base - h + 0.5, L.barW - 1, h);
+      }
+    }
+
+    // Load bars, easing from the last step's loads to this step's; the part over an even share darker
+    const grow = ease(k);
+    for (let i = 0; i < NE; i++) {
+      const prev = s === 0 ? 0 : loads[s - 1][i];
+      const v = lerp(prev, loads[s][i], s === 0 ? grow : easeOut(k));
+      const h = Math.min(L.cap, v) * L.unit;
+      const x = Math.round(X(i) - L.barW / 2);
+      const under = Math.min(h, L.unit);
+      ctx.fillStyle = ink(0.24);
+      ctx.fillRect(x, L.base - under, L.barW, under);
+      if (h > L.unit) {
+        ctx.fillStyle = ink(0.72);
+        ctx.fillRect(x, L.base - h, L.barW, h - L.unit);
+      }
+    }
+
+    // The even share
+    const evenA = span(t, starts[0] + 900, starts[0] + 1400);
+    if (evenA > 0) {
+      ctx.setLineDash([3, 4]);
+      ctx.strokeStyle = ink(0.55 * evenA);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(L.x0 - 4, evenY + 0.5);
+      ctx.lineTo(lerp(L.x0 - 4, L.x1 + 4, ease(evenA)), evenY + 0.5);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const ex = L.evenLabel[0];
+      text(ctx, 'even', ex, evenY + (narrow ? -6 : 4), { font: lab, color: ink(0.55 * evenA), align: L.evenLabel[2] });
+    }
+
+    // Biases: stems from zero, nudged by γ at the end of each step
+    for (let i = 0; i < NE; i++) {
+      const bv = lerp(bias[s][i], bias[s + 1][i], ease(bk));
+      const y = L.bz - bv * bScale;
+      ctx.strokeStyle = blue(0.85);
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(X(i), L.bz);
+      ctx.lineTo(X(i), y);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      dot(ctx, X(i), y, 2.2, blue(0.95));
+      // On the slow steps, a chevron shows which way each bias is about to move
+      const dir = Math.sign(bias[s + 1][i] - bias[s][i]);
+      if (slow && dir && t > starts[s]) {
+        const ca = pulse(t, starts[s] + d * 0.5, starts[s] + d, 200, 250);
+        if (ca > 0) {
+          const cy = y - dir * 9;
+          ctx.strokeStyle = blue(0.9 * ca);
+          ctx.lineWidth = 1.3;
+          ctx.lineJoin = 'round';
+          ctx.beginPath();
+          ctx.moveTo(X(i) - 3.5, cy + dir * 2.5);
+          ctx.lineTo(X(i), cy - dir * 1.5);
+          ctx.lineTo(X(i) + 3.5, cy + dir * 2.5);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Step 1: name the most and least loaded experts
+    const name = Math.min(span(t, starts[0] + 1200, starts[0] + 1600), 1 - span(t, starts[2], starts[2] + 500));
+    // Centred over a column, but kept inside the frame
+    const fit = (str, x, font) => {
+      ctx.font = font;
+      const w = ctx.measureText(str).width;
+      return clamp(x, 16 + w / 2, W - 16 - w / 2);
+    };
+    if (name > 0) {
+      const ho = Math.min(L.cap, loads[s][over]) * L.unit;
+      text(ctx, 'overloaded', fit('overloaded', X(over), lab), L.base - ho - 8, { font: lab, color: ink(0.7 * name), align: 'center', halo: PAGE });
+      text(ctx, 'underloaded', fit('underloaded', X(under), lab), L.base - 10, { font: lab, color: ink(0.7 * name), align: 'center', halo: PAGE });
+    }
+    if (ghost > 0) {
+      const h = Math.min(L.cap, loads[0][over]) * L.unit;
+      const f = `400 10px ${SANS}`;
+      text(ctx, 'step 1', fit('step 1', X(over), f), L.base - h - 6, { font: f, color: ink(0.45 * ghost), align: 'center' });
+    }
+
+    // Labels
+    if (L.loadLabel) text(ctx, 'expert load', L.loadLabel[0], L.loadLabel[1], { font: lab, color: ink(0.6 * intro) });
+    if (L.title) text(ctx, 'expert load', L.title[0], L.title[1], { font: lab, color: ink(0.6 * intro) });
+    text(ctx, 'bias', L.biasLabel[0], L.biasLabel[1], { font: lab, color: blue(0.9 * intro) });
+    text(ctx, 'the bias moves the pick, never the weights', L.note[0], L.note[1], { font: `italic 400 ${narrow ? 12 : 12.5}px ${SERIF}`, color: ink(0.45 * intro), align: L.note[2] });
+    if (t >= T0) text(ctx, `step ${s + 1}`, L.step[0], L.step[1], { font: `500 11px ${SANS}`, color: ink(0.55), align: 'right' });
+    ctx.restore();
+  }, { still: END + 1200 });
+}
+
+
+/* ───────────── Sizing ───────────── */
+
+/**
+ * Each sketch has two layouts, drawn at a design width: 680 px across for wide frames, 360
+ * for phones and other tall frames. This scales whichever one applies to the real frame,
+ * so a 600 px or a 414 px figure gets the same composition as the one checked here.
+ */
+function fitted(create) {
+  return (W, H, dpr) => {
+    const tall = W < 520 || H > W * 0.9;
+    const vw = tall ? 360 : 680;
+    const s = W / vw;
+    const inner = create(vw, H / s, dpr * s);
+    return {
+      ...inner,
+      draw(ctx) {
+        ctx.save();
+        ctx.scale(s, s);
+        inner.draw(ctx);
+        ctx.restore();
+      }
+    };
+  };
+}
+  return { route: fitted(createRoute), balance: fitted(createBalance) };
+})();
+
+/* ───────────── Inside a DeepSeek block: RMSNorm and SwiGLU ───────────── */
+
+// rmsnorm · a vector divided by its root mean square until it meets the ±1 guides (the mean
+//           isn't subtracted), then scaled entry by entry by the learned gains.
+// swiglu  · the gate and up projections side by side, SiLU on the gate, the two multiplied column
+//           by column, and W₂ back down to the model's width. Its input is rmsnorm's output.
+// Their helpers and fitted() (a 680-wide design, or 360-wide on phones) stay inside this scope.
+const DS_BLOCK = (() => {
+const INK = '28, 25, 23';
+const BLUE = '77, 107, 254';
+const SERIF = 'Newsreader, Georgia, serif';
+const SANS = 'Inter, sans-serif';
+const FEATHER = 28;
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
+const easeOut = (k) => 1 - (1 - k) ** 3;
+/** How far t is through [a, b], from 0 to 1 */
+const span = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+/** Rise over [a, a + inMs], hold, fall over [b - outMs, b] */
+const pulse = (t, a, b, inMs = 300, outMs = 300) => Math.min(span(t, a, a + inMs), 1 - span(t, b - outMs, b));
+const ink = (a) => `rgba(${INK}, ${a})`;
+const blue = (a = 1) => `rgba(${BLUE}, ${a})`;
+const INK_RGB = INK.split(',').map(Number);
+const BLUE_RGB = BLUE.split(',').map(Number);
+/** Ink turning blue as k goes 0 → 1 */
+const tint = (k, a) => `rgba(${INK_RGB.map((v, i) => Math.round(lerp(v, BLUE_RGB[i], clamp(k, 0, 1)))).join(', ')}, ${a})`;
+const serif = (size, italic = true, weight = 400) => `${italic ? 'italic ' : ''}${weight} ${size}px ${SERIF}`;
+const sans = (size, weight = 400) => `${weight} ${size}px ${SANS}`;
+
+function seeded(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const gauss = (r) => Math.sqrt(-2 * Math.log(1 - r())) * Math.cos(2 * Math.PI * r());
+
+/* Vectors */
+const rms = (v) => Math.sqrt(v.reduce((s, x) => s + x * x, 0) / v.length);
+const scaleV = (v, k) => v.map((x) => x * k);
+const addV = (a, b) => a.map((x, i) => x + b[i]);
+const lerpV = (a, b, k) => a.map((x, i) => lerp(x, b[i], k));
+const normV = (v) => scaleV(v, 1 / rms(v));
+const matVec = (M, v) => M.map((row) => row.reduce((s, w, j) => s + w * v[j], 0));
+const randVec = (r, n, sd = 1) => Array.from({ length: n }, () => gauss(r) * sd);
+const randMat = (r, rows, cols, sd) => Array.from({ length: rows }, () => randVec(r, cols, sd));
+const silu = (x) => x / (1 + Math.exp(-x));
+
+function pageColor() {
+  return getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() || '#fdfaf6';
+}
+
+function makeLayer(W, H, dpr) {
+  const c = document.createElement('canvas');
+  c.width = Math.round(W * dpr);
+  c.height = Math.round(H * dpr);
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { canvas: c, ctx: g };
+}
+
+/** Erase toward each edge of a layer, so whatever it holds fades out there. */
+function featherEdges(g, W, H, size, sides = 'tblr') {
+  g.save();
+  g.globalCompositeOperation = 'destination-out';
+  const edges = {
+    t: [0, 0, 0, size, 0, 0, W, size],
+    b: [0, H, 0, H - size, 0, H - size, W, size],
+    l: [0, 0, size, 0, 0, 0, size, H],
+    r: [W, 0, W - size, 0, W - size, 0, size, H]
+  };
+  for (const side of sides) {
+    const [x0, y0, x1, y1, rx, ry, rw, rh] = edges[side];
+    const grad = g.createLinearGradient(x0, y0, x1, y1);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.35)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = grad;
+    g.fillRect(rx, ry, rw, rh);
+  }
+  g.restore();
+}
+
+/** The page colour, opaque in the middle and dissolving at the edges. */
+function makeBackdrop(W, H, dpr) {
+  const layer = makeLayer(W, H, dpr);
+  layer.ctx.fillStyle = pageColor();
+  layer.ctx.fillRect(0, 0, W, H);
+  featherEdges(layer.ctx, W, H, FEATHER);
+  return layer.canvas;
+}
+
+/** Fade in as a loop starts and out as it ends */
+const loopAlpha = (clock, loop, inMs = 400, outMs = 600) => Math.min(span(clock, 0, inMs), 1 - span(clock, loop - outMs, loop));
+
+function looping(LOOP, draw, extra = {}) {
+  let clock = 0;
+  return {
+    loopMs: LOOP,
+    prewarm: 0,
+    ...extra,
+    step(dt) {
+      clock = (clock + dt) % LOOP;
+    },
+    draw(ctx) {
+      draw(ctx, clock);
+    }
+  };
+}
+
+function text(ctx, str, x, y, { font = sans(11), color = ink(0.5), align = 'left', baseline = 'alphabetic', halo = 0 } = {}) {
+  ctx.font = font;
+  ctx.textAlign = align;
+  ctx.textBaseline = baseline;
+  if (halo) {
+    ctx.save();
+    ctx.strokeStyle = pageColor();
+    ctx.lineWidth = halo;
+    ctx.lineJoin = 'round';
+    ctx.strokeText(str, x, y);
+    ctx.restore();
+  }
+  ctx.fillStyle = color;
+  ctx.fillText(str, x, y);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+/**
+ * A short run of maths in Newsreader: an array of pieces, each a string or { t, sub, roman, a }.
+ * A piece with sub is set smaller and lower; a sets that piece's own alpha (0–1, times color's).
+ */
+function rich(ctx, pieces, x, y, { size = 13, color = [INK, 0.7], align = 'left', italic = true } = {}) {
+  const parts = pieces.map((p) => (typeof p === 'string' ? { t: p } : p));
+  const fontOf = (p) => serif(p.sub ? size * 0.72 : size, italic && !p.roman);
+  let total = 0;
+  for (const p of parts) {
+    ctx.font = fontOf(p);
+    p.w = ctx.measureText(p.t).width + (p.sub ? 0.5 : 0);
+    total += p.w;
+  }
+  let cx = align === 'center' ? x - total / 2 : align === 'right' ? x - total : x;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  for (const p of parts) {
+    ctx.font = fontOf(p);
+    ctx.fillStyle = `rgba(${color[0]}, ${color[1] * (p.a ?? 1)})`;
+    ctx.fillText(p.t, cx, y + (p.sub ? size * 0.22 : 0));
+    cx += p.w;
+  }
+  return total;
+}
+
+function rrect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
+}
+
+/**
+ * A vector drawn as a small bar chart: one signed bar per entry, up for positive, down for
+ * negative, centred on (cx, cy). colorOf(i) can tint single bars.
+ */
+function glyph(ctx, vals, cx, cy, { pitch = 3, bw = 2, S = 6, clip = 16, color = blue(0.95), colorOf = null, alpha = 1, backing = 0, base = 0.25 } = {}) {
+  if (alpha <= 0) return;
+  const n = vals.length;
+  const w = (n - 1) * pitch;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  if (backing) {
+    ctx.save();
+    ctx.globalAlpha *= backing;
+    ctx.fillStyle = pageColor();
+    rrect(ctx, cx - w / 2 - bw - 2, cy - clip - 2, w + bw * 2 + 4, clip * 2 + 4, 3);
+    ctx.fill();
+    ctx.restore();
+  }
+  if (base) {
+    ctx.fillStyle = ink(base);
+    ctx.fillRect(cx - w / 2 - bw / 2 - 1, cy - 0.35, w + bw + 2, 0.7);
+  }
+  for (let i = 0; i < n; i++) {
+    const h = clamp(vals[i] * S, -clip, clip);
+    const x = cx - w / 2 + i * pitch - bw / 2;
+    ctx.fillStyle = colorOf ? colorOf(i) : color;
+    if (h >= 0) ctx.fillRect(x, cy - h, bw, Math.max(h, 0.6));
+    else ctx.fillRect(x, cy, bw, -h);
+  }
+  ctx.restore();
+}
+
+/** Piecewise-linear track through keyframes [t, value]; the first segment eases out */
+function track(keys, t) {
+  if (t <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++) {
+    if (t <= keys[i][0]) {
+      const [t0, a] = keys[i - 1];
+      const [t1, b] = keys[i];
+      const k = (t - t0) / (t1 - t0 || 1);
+      return lerp(a, b, i === 1 ? easeOut(k) : k);
+    }
+  }
+  return keys[keys.length - 1][1];
+}
+
+/* ═════════════ 1A · One token, 61 blocks ═════════════ */
+
+// The residual stream is one line. Each of the 61 blocks reads from it twice and writes back:
+// an arc above for attention (MLA), an arc below for the feed-forward (dense in the first three
+// blocks, DeepSeekMoE in the other 58). A token's vector rides the line and the arcs light as it
+// passes. After the last block, the final RMSNorm and the output head give the next token. Then
+// the MTP branch: the last hidden state drops to a second line, meets the embedding of the true
+// next token, passes one more block and the shared head, and predicts the token after that.
+// Desktop runs left to right; phones run bottom to top, with the MTP line on the right.
+let PAGE_CACHE = null;
+const page = () => PAGE_CACHE || (PAGE_CACHE = pageColor());
+const mixRGB = (a, b, k) => {
+  const A = a.split(',').map(Number);
+  const B = b.split(',').map(Number);
+  return A.map((v, i) => Math.round(lerp(v, B[i], clamp(k, 0, 1)))).join(', ');
+};
+const easeOutBack = (k) => 1 + 2.4 * (k - 1) ** 3 + 1.4 * (k - 1) ** 2;
+
+/** A small subset of TeX for labels: x^{KV}_{t} sets a superscript and a subscript after x */
+function texParse(str) {
+  const items = [];
+  let i = 0;
+  const group = () => {
+    if (str[i] === '{') {
+      const j = str.indexOf('}', i);
+      const s = str.slice(i + 1, j);
+      i = j + 1;
+      return s;
+    }
+    return str[i++];
+  };
+  while (i < str.length) {
+    const ch = str[i];
+    if (ch === '^' || ch === '_') {
+      i++;
+      const s = group();
+      const key = ch === '^' ? 'sup' : 'sub';
+      const last = items[items.length - 1];
+      if (last && last.script && !last[key]) last[key] = s;
+      else items.push({ script: true, sup: key === 'sup' ? s : '', sub: key === 'sub' ? s : '' });
+      continue;
+    }
+    let j = i;
+    while (j < str.length && str[j] !== '^' && str[j] !== '_') j++;
+    items.push({ t: str.slice(i, j) });
+    i = j;
+  }
+  return items;
+}
+
+/** Draws a label with super- and subscripts, vertically centred on y; returns its width */
+function tex(ctx, str, x, y, { size = 11, color = ink(0.7), align = 'left', weight = 400, measure = false } = {}) {
+  const items = texParse(str);
+  const fb = serif(size, true, weight);
+  const fs = serif(size * 0.68, false);
+  const fi = serif(size * 0.68, true);
+  let w = 0;
+  for (const it of items) {
+    if (it.script) {
+      ctx.font = fs;
+      const a = it.sup ? ctx.measureText(it.sup).width : 0;
+      ctx.font = fi;
+      const b = it.sub ? ctx.measureText(it.sub).width : 0;
+      it.w = Math.max(a, b) + size * 0.1;
+    } else {
+      ctx.font = fb;
+      it.w = ctx.measureText(it.t).width;
+    }
+    w += it.w;
+  }
+  if (measure) return w;
+  let cx = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  const by = y + size * 0.32;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = color;
+  for (const it of items) {
+    if (it.script) {
+      if (it.sup) {
+        ctx.font = fs;
+        ctx.fillText(it.sup, cx + size * 0.07, by - size * 0.42);
+      }
+      if (it.sub) {
+        ctx.font = fi;
+        ctx.fillText(it.sub, cx + size * 0.02, by + size * 0.24);
+      }
+    } else {
+      ctx.font = fb;
+      ctx.fillText(it.t, cx, by);
+    }
+    cx += it.w;
+  }
+  return w;
+}
+
+/** A polyline through corner points, inner corners rounded, with its length for drawing it on */
+function poly(pts, rad = 0) {
+  let P = pts.map((p) => [...p]);
+  if (rad && pts.length > 2) {
+    P = [pts[0]];
+    for (let i = 1; i < pts.length - 1; i++) {
+      const [px, py] = pts[i - 1];
+      const [cx, cy] = pts[i];
+      const [nx, ny] = pts[i + 1];
+      const d0 = Math.hypot(cx - px, cy - py);
+      const d1 = Math.hypot(nx - cx, ny - cy);
+      const rr = Math.min(rad, d0 / 2, d1 / 2);
+      const a = [cx - ((cx - px) / d0) * rr, cy - ((cy - py) / d0) * rr];
+      const b = [cx + ((nx - cx) / d1) * rr, cy + ((ny - cy) / d1) * rr];
+      for (let k = 0; k <= 6; k++) {
+        const u = k / 6;
+        const v = 1 - u;
+        P.push([v * v * a[0] + 2 * v * u * cx + u * u * b[0], v * v * a[1] + 2 * v * u * cy + u * u * b[1]]);
+      }
+    }
+    P.push(pts[pts.length - 1]);
+  }
+  const cum = [0];
+  for (let i = 1; i < P.length; i++) cum.push(cum[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
+  return { P, cum, len: cum[cum.length - 1] };
+}
+
+function polyAt(E, k) {
+  const s = clamp(k, 0, 1) * E.len;
+  for (let i = 1; i < E.P.length; i++) {
+    if (s <= E.cum[i] || i === E.P.length - 1) {
+      const f = (s - E.cum[i - 1]) / (E.cum[i] - E.cum[i - 1] || 1);
+      return [lerp(E.P[i - 1][0], E.P[i][0], f), lerp(E.P[i - 1][1], E.P[i][1], f)];
+    }
+  }
+  return E.P[E.P.length - 1];
+}
+
+function strokePoly(ctx, E, k, style, width, dash = null) {
+  if (k <= 0) return;
+  const s = clamp(k, 0, 1) * E.len;
+  ctx.strokeStyle = style;
+  ctx.lineWidth = width;
+  ctx.lineJoin = 'round';
+  if (dash) ctx.setLineDash(dash);
+  ctx.beginPath();
+  ctx.moveTo(E.P[0][0], E.P[0][1]);
+  for (let i = 1; i < E.P.length; i++) {
+    if (E.cum[i] <= s) ctx.lineTo(E.P[i][0], E.P[i][1]);
+    else {
+      const f = (s - E.cum[i - 1]) / (E.cum[i] - E.cum[i - 1] || 1);
+      ctx.lineTo(lerp(E.P[i - 1][0], E.P[i][0], f), lerp(E.P[i - 1][1], E.P[i][1], f));
+      break;
+    }
+  }
+  ctx.stroke();
+  if (dash) ctx.setLineDash([]);
+}
+
+function arrowEnd(ctx, E, style, width, size = 3.2) {
+  const [x1, y1] = E.P[E.P.length - 1];
+  const [x0, y0] = polyAt(E, Math.max(0, 1 - 3 / E.len));
+  const a = Math.atan2(y1 - y0, x1 - x0);
+  ctx.strokeStyle = style;
+  ctx.lineWidth = width;
+  ctx.lineJoin = 'miter';
+  ctx.beginPath();
+  ctx.moveTo(x1 - size * Math.cos(a - 0.55), y1 - size * Math.sin(a - 0.55));
+  ctx.lineTo(x1, y1);
+  ctx.lineTo(x1 - size * Math.cos(a + 0.55), y1 - size * Math.sin(a + 0.55));
+  ctx.stroke();
+}
+
+/** An edge: faint when idle, drawn on in ink (or blue) as k goes 0 → 1, a dot riding its tip */
+function link(ctx, E, k, px, { idle = 0.2, on = 0.72, rgb = INK, dash = null, arrow = true, dot = true, halo = false, alpha = 1 } = {}) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  if (halo) strokePoly(ctx, E, 1, page(), 4.5 * px);
+  if (idle > 0) strokePoly(ctx, E, 1, ink(idle), px, dash);
+  if (k > 0) strokePoly(ctx, E, k, `rgba(${rgb}, ${on})`, 1.35 * px, dash);
+  if (arrow) arrowEnd(ctx, E, k >= 1 ? `rgba(${rgb}, ${on})` : ink(idle + 0.12), (k >= 1 ? 1.35 : 1) * px);
+  if (dot && k > 0 && k < 1) {
+    const [x, y] = polyAt(E, k);
+    ctx.fillStyle = `rgba(${rgb}, 1)`;
+    ctx.beginPath();
+    ctx.arc(x, y, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** A vector as a row of circles (the paper's notation); fill runs left to right; heads adds per-head copies behind */
+function dotRow(ctx, cx, cy, n, { pitch = 9, r = 3.4, px = 1, fill = 0, rgbOf = () => INK, heads = 0, spread = 0, alpha = 1 } = {}) {
+  const x0 = cx - ((n - 1) * pitch) / 2;
+  for (let j = spread > 0 ? heads : 0; j >= 0; j--) {
+    const d = j * spread * 2.6;
+    const a = (j ? 0.55 / j : 1) * alpha;
+    for (let i = 0; i < n; i++) {
+      const f = clamp(fill * n - i, 0, 1);
+      const rgb = rgbOf(i);
+      const x = x0 + i * pitch + d;
+      const y = cy - d;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = page();
+      ctx.fill();
+      if (f > 0) {
+        ctx.fillStyle = `rgba(${rgb}, ${0.88 * f * a})`;
+        ctx.fill();
+      }
+      ctx.strokeStyle = `rgba(${f > 0 ? rgb : INK}, ${lerp(0.42, 0.9, f) * a})`;
+      ctx.lineWidth = px;
+      ctx.stroke();
+    }
+  }
+}
+
+/** A box with centred lines of text; solid fills it with ink (shared expert), sel tints it blue (chosen routed expert) */
+function nbox(ctx, x, y, w, h, { px = 1, k = 0, lines = [], size = 11, sub = null, subSize = 8.5, solid = 0, sel = 0, alpha = 1, r = 4, idle = 0.32, labelA = 1 } = {}) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  rrect(ctx, x - w / 2, y - h / 2, w, h, r);
+  ctx.fillStyle = page();
+  ctx.fill();
+  if (solid) {
+    ctx.fillStyle = ink(lerp(0.62, 0.86, k));
+    ctx.fill();
+  }
+  if (sel) {
+    ctx.fillStyle = blue(0.13 * sel);
+    ctx.fill();
+  }
+  ctx.strokeStyle = sel ? tint(sel, lerp(idle, 0.95, Math.max(k, sel))) : ink(lerp(idle, 0.85, k));
+  ctx.lineWidth = px * (1 + 0.35 * k);
+  ctx.stroke();
+  const tc = solid ? page() : sel ? tint(sel, lerp(0.62, 0.95, sel)) : ink(lerp(0.62, 0.9, k));
+  const lh = size * 1.15;
+  const subH = sub ? subSize * 1.35 : 0;
+  let ty = y - (lines.length * lh + subH) / 2 + lh / 2;
+  ctx.save();
+  ctx.globalAlpha *= labelA;
+  for (const L of lines) {
+    tex(ctx, L, x, ty, { size, color: tc, align: 'center' });
+    ty += lh;
+  }
+  if (sub) text(ctx, sub, x, ty - lh / 2 + subH / 2, { font: sans(subSize), color: ink(0.48), align: 'center', baseline: 'middle' });
+  ctx.restore();
+  ctx.restore();
+}
+
+/** ⊕ (add) or ⊗ (scale by a gating weight) */
+function opMark(ctx, x, y, r, kind, { px = 1, k = 0, alpha = 1, rgb = INK } = {}) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = page();
+  ctx.fill();
+  ctx.strokeStyle = `rgba(${rgb}, ${lerp(0.5, 0.95, k)})`;
+  ctx.lineWidth = px * (1.1 + 0.35 * k);
+  ctx.stroke();
+  const a = r * 0.52;
+  ctx.beginPath();
+  if (kind === '+') {
+    ctx.moveTo(x - a, y);
+    ctx.lineTo(x + a, y);
+    ctx.moveTo(x, y - a);
+    ctx.lineTo(x, y + a);
+  } else {
+    const b = a * 0.78;
+    ctx.moveTo(x - b, y - b);
+    ctx.lineTo(x + b, y + b);
+    ctx.moveTo(x + b, y - b);
+    ctx.lineTo(x - b, y + b);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** RoPE: a small dial whose hand turns as the rotation is applied */
+function ropeMark(ctx, x, y, ang, { px = 1, k = 0 } = {}) {
+  const r = 4.6;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = page();
+  ctx.fill();
+  ctx.strokeStyle = ink(lerp(0.45, 0.9, k));
+  ctx.lineWidth = px;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + r * Math.cos(ang), y + r * Math.sin(ang));
+  ctx.lineWidth = px * 1.5;
+  ctx.stroke();
+}
+
+/* ═════════════ RMSNorm and SwiGLU, each on its own ═════════════ */
+
+/**
+ * 2A's vector and its RMSNorm, shared by the two standalone figures so RMSNorm's output is
+ * exactly SwiGLU's input. Same seed and draw order as 2A, so the values match it too.
+ */
+function normExample() {
+  const n = 12;
+  const r = seeded(29);
+  const x = randVec(r, n, 1.25).map((v) => clamp(v + 0.55, -2.6, 3.1));
+  const g = Array.from({ length: n }, () => 0.6 + r() * 0.85);
+  const xr = rms(x);
+  const xg = x.map((v, i) => (v / xr) * g[i]);
+  return { n, r, x, g, xr, xg, mean: x.reduce((s, v) => s + v, 0) / n };
+}
+
+/** A number drawn with every digit in a cell of the same width, so it doesn't shimmy as it counts */
+function digits(ctx, str, x, y, { font = sans(11, 500), color = ink(0.6), align = 'left' } = {}) {
+  ctx.font = font;
+  let cell = 0;
+  for (const d of '0123456789') cell = Math.max(cell, ctx.measureText(d).width);
+  const wOf = (ch) => (ch >= '0' && ch <= '9' ? cell : ctx.measureText(ch).width);
+  const width = [...str].reduce((s, ch) => s + wOf(ch), 0);
+  let cx = align === 'right' ? x - width : align === 'center' ? x - width / 2 : x;
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const ch of str) {
+    const w = wOf(ch);
+    ctx.fillText(ch, cx + w / 2, y);
+    cx += w;
+  }
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  return width;
+}
+
+/* ───────────── RMSNorm ───────────── */
+
+// One vector, large. Its root mean square appears as a pair of blue dashed lines with the value
+// beside them; the vector is divided by it, the lines close in on the ±1 guides and the value
+// counts down to 1.00. A dotted line marks the mean, which scales along with everything and is
+// never moved to zero. Then each entry is multiplied by its own learned gain, left to right.
+// Twelve entries and every value are illustrative; the arithmetic is exact.
+function createRMSNorm(W, H, dpr) {
+  const narrow = W < 520;
+  const { n, x, g, xr, mean } = normExample();
+  const T = { x: 300, rms: 1300, mean: 2000, div: 2700, gain: 4300, scale: 4800 };
+  const LOOP = 10000;
+  const backdrop = makeBackdrop(W, H, dpr);
+  const LY = narrow
+    ? { title: [18, 28], cx: 176, cy: 228, pitch: 21, bw: 12, S: 32, gainY: 96, gainS: 17, guide: [44, 308], formula: [180, 382], def: [180, 411], note: [180, 435], fsize: 19, dsize: 13 }
+    : { title: [40, 40], cx: 320, cy: 202, pitch: 26, bw: 14, S: 30, gainY: 86, gainS: 16, guide: [156, 484], formula: [320, 322], def: [320, 351], note: null, fsize: 20, dsize: 13.5 };
+  const w = (n - 1) * LY.pitch;
+  const left = LY.cx - w / 2 - LY.bw / 2;
+  const right = LY.cx + w / 2 + LY.bw / 2;
+  const barX = (i) => LY.cx - w / 2 + i * LY.pitch;
+
+  function dashedPair(ctx, k, color, dash, x0, x1) {
+    ctx.save();
+    ctx.setLineDash(dash);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (const s of [1, -1]) {
+      const y = Math.round(LY.cy - s * k * LY.S) + 0.5;
+      ctx.moveTo(x0, y);
+      ctx.lineTo(x1, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  return looping(LOOP, (ctx, t) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(backdrop, 0, 0, W, H);
+    ctx.save();
+    ctx.globalAlpha = loopAlpha(t, LOOP);
+
+    const grow = ease(span(t, T.x, T.x + 700));
+    const div = ease(span(t, T.div, T.div + 1200));
+    const scaleNow = lerp(1, 1 / xr, div);
+    const gk = (i) => ease(span(t, T.scale + i * 80, T.scale + i * 80 + 420));
+    const vals = x.map((v, i) => v * scaleNow * grow * lerp(1, g[i], gk(i)));
+    const [g0, g1] = LY.guide;
+
+    // ±1: where the RMS lines are headed
+    const gA = span(t, T.x, T.x + 400);
+    dashedPair(ctx, 1, ink(0.3 * gA), [2, 3], g0, g1);
+    text(ctx, '1', g1 + 7, LY.cy - LY.S, { font: sans(10.5), color: ink(0.45 * gA), baseline: 'middle' });
+    text(ctx, '−1', g1 + 7, LY.cy + LY.S, { font: sans(10.5), color: ink(0.45 * gA), baseline: 'middle' });
+
+    // The mean, scaled along with the vector and never subtracted
+    const meanK = pulse(t, T.mean, T.scale + 300, 350, 450);
+    if (meanK > 0) {
+      const y = Math.round(LY.cy - mean * scaleNow * LY.S) + 0.5;
+      ctx.save();
+      ctx.setLineDash([1, 3]);
+      ctx.strokeStyle = ink(0.55 * meanK);
+      ctx.beginPath();
+      ctx.moveTo(g0, y);
+      ctx.lineTo(right + 4, y);
+      ctx.stroke();
+      ctx.restore();
+      if (narrow) text(ctx, 'mean', g0 - 4, y, { font: sans(10), color: ink(0.6 * meanK), align: 'right', baseline: 'middle' });
+      else {
+        text(ctx, 'mean', g0 - 6, y - 7, { font: sans(10.5), color: ink(0.6 * meanK), align: 'right', baseline: 'middle' });
+        text(ctx, 'not subtracted', g0 - 6, y + 7, { font: sans(10.5), color: ink(0.45 * meanK), align: 'right', baseline: 'middle' });
+      }
+    }
+
+    // The vector; while its gain is applied, an entry and its gain light together
+    const lit = (i) => gk(i) > 0.02 && gk(i) < 0.98;
+    glyph(ctx, vals, LY.cx, LY.cy, { pitch: LY.pitch, bw: LY.bw, S: LY.S, clip: 200, colorOf: (i) => (lit(i) ? blue(0.95) : ink(0.78)), base: 0.35 });
+
+    // RMS: the pair of lines and the value, live as the vector is divided
+    const rmsK = pulse(t, T.rms, T.scale + 500, 400, 500);
+    if (rmsK > 0) {
+      const open = ease(span(t, T.rms, T.rms + 600));
+      const level = xr * scaleNow * open;
+      dashedPair(ctx, level, blue(0.9 * rmsK), [5, 3], g0 - 6, g1 + 2);
+      const y = LY.cy - level * LY.S;
+      const value = (xr * scaleNow).toFixed(2);
+      if (narrow) {
+        text(ctx, 'rms', g1 + 20, y - 7, { font: serif(12.5), color: blue(0.95 * rmsK), baseline: 'middle' });
+        digits(ctx, value, g1 + 20, y + 7, { font: sans(10.5, 500), color: blue(0.95 * rmsK) });
+      } else {
+        text(ctx, 'rms', g1 + 26, y, { font: serif(13.5), color: blue(0.95 * rmsK), baseline: 'middle' });
+        digits(ctx, value, g1 + 50, y, { font: sans(11.5, 500), color: blue(0.95 * rmsK) });
+      }
+    }
+
+    // Learned gains: thin bars above, one per entry
+    const gnA = pulse(t, T.gain, LOOP - 900, 350, 600);
+    if (gnA > 0) {
+      for (let i = 0; i < n; i++) {
+        const hgt = g[i] * LY.gainS * ease(span(t, T.gain + i * 25, T.gain + 300 + i * 25));
+        ctx.fillStyle = lit(i) ? blue(1) : blue(0.55 + 0.3 * (gk(i) > 0.98 ? 0 : 1));
+        ctx.fillRect(barX(i) - 1.25, LY.gainY - hgt, 2.5, hgt);
+      }
+      ctx.fillStyle = ink(0.25 * gnA);
+      ctx.fillRect(left - 2, LY.gainY, right - left + 4, 0.75);
+      text(ctx, 'g', left - 12, LY.gainY - 6, { font: serif(15), color: blue(0.95 * gnA), align: 'right', baseline: 'middle' });
+      if (!narrow) text(ctx, 'learned, one per entry', right + 10, LY.gainY - 6, { font: sans(10.5), color: ink(0.45 * gnA), baseline: 'middle' });
+    }
+
+    // The formula, term by term, and the RMS it divides by
+    const fa = (t0) => lerp(0.22, 1, span(t, t0, t0 + 400));
+    rich(ctx, [{ t: 'x', a: fa(T.x) }, { t: ' ÷ rms(x)', a: fa(T.div) }, { t: ' ⊙ g', a: fa(T.scale) }], LY.formula[0], LY.formula[1], { size: LY.fsize, color: [INK, 0.85], align: 'center' });
+    const dA = span(t, T.rms, T.rms + 500);
+    if (dA > 0) {
+      ctx.font = serif(LY.dsize);
+      const def = 'rms(x) = √mean(x²) = ';
+      const w1 = ctx.measureText(def).width;
+      ctx.font = sans(LY.dsize - 2, 500);
+      const w2 = ctx.measureText(xr.toFixed(2)).width;
+      const x0 = LY.def[0] - (w1 + w2) / 2;
+      text(ctx, def, x0, LY.def[1], { font: serif(LY.dsize), color: ink(0.55 * dA), baseline: 'middle' });
+      digits(ctx, xr.toFixed(2), x0 + w1, LY.def[1], { font: sans(LY.dsize - 2, 500), color: blue(0.9 * dA) });
+    }
+    if (LY.note) text(ctx, 'no mean is subtracted', LY.note[0], LY.note[1], { font: sans(10.5), color: ink(0.45 * span(t, T.mean, T.mean + 400)), align: 'center', baseline: 'middle' });
+    text(ctx, 'RMSNorm', LY.title[0], LY.title[1], { font: serif(narrow ? 16 : 17, true, 500), color: ink(0.85), baseline: 'middle' });
+    ctx.restore();
+  }, { still: 4100 });
+}
+
+/* ───────────── SwiGLU ───────────── */
+
+// RMSNorm's output goes in. W₁ and W₃ project it up to the hidden size (gate and up rows), SiLU
+// bends the gate (its curve is drawn beside, each gate value landing on it), and the gate and
+// up rows are multiplied column by column into the row between them. W₂ projects the product
+// back down to the model's width. The size labels are a dense FFN's (blocks 1 to 3); the bar
+// counts (12 and 20) and every value are illustrative, the arithmetic exact.
+function createSwiGLU(W, H, dpr) {
+  const narrow = W < 520;
+  const ex = normExample();
+  const { n, r, xg } = ex;
+  const m = 20;
+  const W1 = randMat(r, m, n, 1.24 / Math.sqrt(n));
+  const W3 = randMat(r, m, n, 1.24 / Math.sqrt(n));
+  const W2 = randMat(r, n, m, 1.1 / Math.sqrt(m));
+  const a = matVec(W1, xg);
+  const b = matVec(W3, xg);
+  const sa = a.map(silu);
+  const p = sa.map((v, i) => v * b[i]);
+  const out = matVec(W2, p);
+  const T = { x: 300, proj: 1100, silu: 2300, mul: 3700, down: 5700 };
+  const MUL_MS = 1800;
+  const LOOP = 11400;
+  const backdrop = makeBackdrop(W, H, dpr);
+
+  const LY = narrow
+    ? {
+        title: [18, 26], formula: [18, 50], fsize: 13.5,
+        X: { cx: 150, cy: 104, pitch: 7.5, bw: 4.6, S: 14, clip: 28 }, xLab: [100, 104, 'right'], xDim: [200, 104, 'left'],
+        rows: { cx: 180, pitch: 13, bw: 7.5 }, gate: { cy: 194, S: 12, clip: 24 }, prod: { cy: 270, S: 17, clip: 24 }, up: { cy: 346, S: 12, clip: 24 },
+        plot: [262, 330, 70, 122], O: { cx: 190, cy: 432, pitch: 7.5, bw: 4.6, S: 14, clip: 24 }, oLab: [136, 432, 'right'], oDim: null,
+        note: [180, 470, 'center']
+      }
+    : {
+        title: [36, 34], formula: [36, 60], fsize: 15,
+        X: { cx: 76, cy: 206, pitch: 6.5, bw: 4, S: 17, clip: 44 }, xLab: [76, 152, 'center'], xDim: [76, 262, 'center'],
+        rows: { cx: 296, pitch: 9, bw: 5.2 }, gate: { cy: 112, S: 14, clip: 30 }, prod: { cy: 206, S: 20, clip: 30 }, up: { cy: 300, S: 14, clip: 30 },
+        plot: [404, 492, 74, 146], O: { cx: 562, cy: 206, pitch: 6.5, bw: 4, S: 17, clip: 44 }, oLab: [562, 152, 'center'], oDim: [562, 262, 'center'],
+        note: [36, 364, 'left']
+      };
+  const R = LY.rows;
+  const rw = (m - 1) * R.pitch;
+  const rLeft = R.cx - rw / 2 - R.bw / 2;
+  const rRight = R.cx + rw / 2 + R.bw / 2;
+  const colX = (i) => R.cx - rw / 2 + i * R.pitch;
+  const xw = (spec, k) => (k - 1) * spec.pitch + spec.bw;
+  const X = LY.X;
+  const O = LY.O;
+
+  // Connectors
+  const E = narrow
+    ? {
+        w1: poly([[X.cx, X.cy + X.clip + 2], [X.cx, LY.gate.cy - LY.gate.clip - 6]]),
+        w3: poly([[X.cx - 24, X.cy + X.clip + 2], [X.cx - 24, X.cy + X.clip + 16], [24, X.cy + X.clip + 16], [24, LY.up.cy], [rLeft - 6, LY.up.cy]], 10),
+        w2: poly([[rRight + 6, LY.prod.cy], [340, LY.prod.cy], [340, O.cy], [O.cx + xw(O, n) / 2 + 6, O.cy]], 12)
+      }
+    : {
+        w1: poly([[X.cx + xw(X, n) / 2 + 4, X.cy], [150, X.cy], [150, LY.gate.cy], [rLeft - 8, LY.gate.cy]], 16),
+        w3: poly([[X.cx + xw(X, n) / 2 + 4, X.cy], [150, X.cy], [150, LY.up.cy], [rLeft - 8, LY.up.cy]], 16),
+        w2: poly([[rRight + 8, LY.prod.cy], [O.cx - xw(O, n) / 2 - 8, O.cy]])
+      };
+
+  function siluPlot(ctx, k, gateK) {
+    if (k <= 0) return;
+    const [x0, x1, y0, y1] = LY.plot;
+    const X0 = -4;
+    const X1 = 3;
+    const Y0 = -0.6;
+    const Y1 = 3;
+    const px = (u) => lerp(x0, x1, (u - X0) / (X1 - X0));
+    const py = (v) => lerp(y1, y0, (v - Y0) / (Y1 - Y0));
+    ctx.save();
+    ctx.globalAlpha *= k;
+    ctx.strokeStyle = ink(0.25);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x0, Math.round(py(0)) + 0.5);
+    ctx.lineTo(x1, Math.round(py(0)) + 0.5);
+    ctx.moveTo(Math.round(px(0)) + 0.5, y0);
+    ctx.lineTo(Math.round(px(0)) + 0.5, y1);
+    ctx.stroke();
+    // y = x, faint, for comparison
+    ctx.setLineDash([2, 3]);
+    ctx.strokeStyle = ink(0.18);
+    ctx.beginPath();
+    ctx.moveTo(px(Y0), py(Y0));
+    ctx.lineTo(px(X1), py(X1));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = blue(0.9);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i <= 60; i++) {
+      const u = lerp(X0, X1, i / 60);
+      if (i) ctx.lineTo(px(u), py(silu(u)));
+      else ctx.moveTo(px(u), py(silu(u)));
+    }
+    ctx.stroke();
+    // each gate value, landing on the curve as it is bent
+    for (let i = 0; i < m; i++) {
+      const kk = gateK(i);
+      if (kk <= 0) continue;
+      const u = clamp(a[i], X0, X1);
+      ctx.fillStyle = ink(0.75 * Math.min(1, kk * 2));
+      ctx.beginPath();
+      ctx.arc(px(u), py(lerp(u, silu(u), kk)), 1.9, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    text(ctx, 'SiLU', (x0 + x1) / 2, y0 - 10, { font: serif(narrow ? 12.5 : 13.5), color: blue(0.95), align: 'center', baseline: 'middle' });
+    ctx.restore();
+  }
+
+  return looping(LOOP, (ctx, t) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(backdrop, 0, 0, W, H);
+    ctx.save();
+    ctx.globalAlpha = loopAlpha(t, LOOP);
+    const fa = (t0) => lerp(0.22, 1, span(t, t0, t0 + 400));
+
+    text(ctx, 'SwiGLU', LY.title[0], LY.title[1], { font: serif(narrow ? 16 : 17, true, 500), color: ink(0.85), baseline: 'middle' });
+    rich(ctx, [
+      { t: 'W', a: fa(T.down) }, { t: '2', sub: true, a: fa(T.down) }, { t: '( ', a: fa(T.down) },
+      { t: 'SiLU(', a: fa(T.silu) }, { t: 'W', a: fa(T.proj) }, { t: '1', sub: true, a: fa(T.proj) }, { t: 'x', a: fa(T.x) }, { t: ')', a: fa(T.silu) },
+      { t: ' ⊙ ', a: fa(T.mul) }, { t: 'W', a: fa(T.proj) }, { t: '3', sub: true, a: fa(T.proj) }, { t: 'x', a: fa(T.x) }, { t: ' )', a: fa(T.down) }
+    ], LY.formula[0], LY.formula[1] + 5, { size: LY.fsize, color: [INK, 0.82], align: 'left' });
+
+    // The input
+    const xk = (i) => ease(span(t, T.x + i * 30, T.x + 450 + i * 30));
+    glyph(ctx, xg.map((v, i) => v * xk(i)), X.cx, X.cy, { ...X, color: ink(0.78), base: 0.35 });
+    const lab = (str, [lx, ly, al], a, font = serif(narrow ? 13 : 14)) => text(ctx, str, lx, ly, { font, color: ink(a), align: al, baseline: 'middle' });
+    lab('x', LY.xLab, 0.7 * span(t, T.x, T.x + 300));
+    lab('7,168', LY.xDim, 0.45 * span(t, T.x, T.x + 300), sans(10));
+
+    // W₁ and W₃: up to the hidden size
+    const pk = span(t, T.proj, T.proj + 600);
+    const pIn = span(t, T.proj - 250, T.proj);
+    link(ctx, E.w1, pk, 1, { idle: 0.12, on: 0.4, alpha: pIn });
+    link(ctx, E.w3, pk, 1, { idle: 0.12, on: 0.4, alpha: pIn });
+    const pA = span(t, T.proj + 300, T.proj + 700);
+    if (narrow) {
+      rich(ctx, ['W', { t: '1', sub: true }], X.cx + 8, (X.cy + X.clip + LY.gate.cy - LY.gate.clip) / 2 + 4, { size: 13, color: [INK, 0.62 * pA] });
+      rich(ctx, ['W', { t: '3', sub: true }], 30, (LY.prod.cy + LY.up.cy) / 2 + 4, { size: 13, color: [INK, 0.62 * pA] });
+    } else {
+      rich(ctx, ['W', { t: '1', sub: true }], 158, (X.cy + LY.gate.cy) / 2 + 4, { size: 14, color: [INK, 0.62 * pA] });
+      rich(ctx, ['W', { t: '3', sub: true }], 158, (X.cy + LY.up.cy) / 2 + 4, { size: 14, color: [INK, 0.62 * pA] });
+    }
+    const rk = (i) => ease(span(t, T.proj + 350 + i * 22, T.proj + 750 + i * 22));
+    const gateK = (i) => ease(span(t, T.silu + 350 + i * 45, T.silu + 750 + i * 45));
+    const sweep = (t - T.mul) / MUL_MS;
+    const col = sweep >= 0 && sweep < 1 ? Math.floor(sweep * m) : -1;
+    const done = (i) => (sweep >= 1 ? 1 : sweep < 0 ? 0 : i < col ? 1 : i === col ? ease(sweep * m - col) : 0);
+
+    // The column being multiplied, a light band across the three rows
+    if (col >= 0) {
+      ctx.fillStyle = blue(0.1);
+      ctx.fillRect(colX(col) - R.pitch / 2 + 0.5, LY.gate.cy - LY.gate.clip - 4, R.pitch - 1, LY.up.cy + LY.up.clip + 4 - (LY.gate.cy - LY.gate.clip - 4));
+    }
+    const rowGlyph = (vals, spec, colorOf, alpha = 1) => glyph(ctx, vals, R.cx, spec.cy, { pitch: R.pitch, bw: R.bw, S: spec.S, clip: spec.clip, colorOf, alpha, base: 0.3 });
+    const bending = (i) => gateK(i) > 0.02 && gateK(i) < 0.98;
+    rowGlyph(a.map((v, i) => lerp(v, sa[i], gateK(i)) * rk(i)), LY.gate, (i) => (i === col || bending(i) ? blue(1) : ink(0.78)), span(t, T.proj + 300, T.proj + 500));
+    rowGlyph(b.map((v, i) => v * rk(i)), LY.up, (i) => (i === col ? blue(1) : ink(0.78)), span(t, T.proj + 300, T.proj + 500));
+    rowGlyph(p.map((v, i) => v * done(i)), LY.prod, (i) => (i === col ? blue(1) : ink(0.78)), span(t, T.mul - 300, T.mul));
+    const rowLab = (str, spec, a, font) => text(ctx, str, R.cx, spec.cy + spec.clip + (narrow ? 9 : 10), { font, color: ink(a), align: 'center', baseline: 'middle' });
+    rowLab('gate, 18,432', LY.gate, 0.48 * pA, sans(10));
+    rowLab('up, 18,432', LY.up, 0.48 * pA, sans(10));
+    rowLab('SiLU(gate) ⊙ up', LY.prod, 0.62 * span(t, T.mul - 300, T.mul), serif(narrow ? 12.5 : 13));
+    siluPlot(ctx, span(t, T.silu, T.silu + 350), gateK);
+
+    // W₂: back down to the model's width
+    const dk = span(t, T.down, T.down + 500);
+    link(ctx, E.w2, dk, 1, { idle: 0.12, on: 0.4, alpha: span(t, T.down - 250, T.down) });
+    const dA = span(t, T.down + 200, T.down + 600);
+    if (narrow) rich(ctx, ['W', { t: '2', sub: true }], 334, (LY.up.cy + LY.up.clip + O.cy) / 2 + 4, { size: 13, color: [INK, 0.62 * dA], align: 'right' });
+    else rich(ctx, ['W', { t: '2', sub: true }], (rRight + O.cx - xw(O, n) / 2) / 2, LY.prod.cy - 12, { size: 14, color: [INK, 0.62 * dA], align: 'center' });
+    const ok = (i) => ease(span(t, T.down + 350 + i * 35, T.down + 750 + i * 35));
+    glyph(ctx, out.map((v, i) => v * ok(i)), O.cx, O.cy, { ...O, color: blue(0.95), alpha: span(t, T.down + 300, T.down + 500), base: 0.35 });
+    if (LY.oDim) {
+      lab('output', LY.oLab, 0.7 * dA);
+      lab('7,168', LY.oDim, 0.45 * dA, sans(10));
+    } else {
+      text(ctx, '7,168', LY.oLab[0], LY.oLab[1], { font: sans(10), color: ink(0.45 * dA), align: 'right', baseline: 'middle' });
+      ctx.font = sans(10);
+      lab('output', [LY.oLab[0] - ctx.measureText('7,168').width - 6, LY.oLab[1], 'right'], 0.7 * dA);
+    }
+    text(ctx, 'sizes of a dense FFN; each MoE expert is 7,168 → 2,048 → 7,168', LY.note[0], LY.note[1], { font: sans(narrow ? 9 : 10), color: ink(0.42 * span(t, T.proj, T.proj + 600)), align: LY.note[2], baseline: 'middle' });
+    ctx.restore();
+  }, { still: 8600 });
+}
+
+/* ───────────── Sizing ───────────── */
+
+/**
+ * Each sketch has two layouts, drawn at a design width: 680 px across for wide frames, 360
+ * for phones and other tall frames. This scales whichever one applies to the real frame,
+ * so a 600 px or a 414 px figure gets the same composition as the one checked here.
+ */
+function fitted(create) {
+  return (W, H, dpr) => {
+    const tall = W < 520 || H > W * 0.9;
+    const vw = tall ? 360 : 680;
+    const s = W / vw;
+    const inner = create(vw, H / s, dpr * s);
+    return {
+      ...inner,
+      draw(ctx) {
+        ctx.save();
+        ctx.scale(s, s);
+        inner.draw(ctx);
+        ctx.restore();
+      }
+    };
+  };
+}
+  return { rmsnorm: fitted(createRMSNorm), swiglu: fitted(createSwiGLU) };
+})();
+
+/* ───────────── Multi-Head Latent Attention and its compressed cache ───────────── */
+
+// squares · MLA counted to scale, one square per 64 numbers: the hidden state (7,168) compresses
+//           into the latent c^KV (512), and every head's keys and values (128 heads × 128 each)
+//           are recovered from it; the latent is what stays in the cache.
+// memory  · one layer's worth of memory filled two ways: every head's keys and values (32,768 a
+//           token) fill it after 4 tokens, the latent and rotary key (576 a token) after 227.
+// Sizes are DeepSeek-V3's (report §4.2). Helpers and fitted() stay inside this scope.
+const DS_MLA = (() => {
+const INK = '28, 25, 23';
+const BLUE = '77, 107, 254';
+const SERIF = 'Newsreader, Georgia, serif';
+const SANS = 'Inter, sans-serif';
+const FEATHER = 28;
+
+// DeepSeek-V3 (arXiv 2412.19437, section 4.2)
+const D_MODEL = 7168;
+const N_HEADS = 128;
+const D_HEAD = 128;
+const D_C = 512;
+const D_ROPE = 64;
+const MHA_PER_TOKEN = 2 * N_HEADS * D_HEAD;   // 32,768
+const MLA_PER_TOKEN = D_C + D_ROPE;           // 576
+const SQUARE = 64;                            // numbers per square in the squares figures
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
+const easeOut = (k) => 1 - (1 - k) ** 3;
+const easeIn = (k) => k * k * k;
+/** How far t is through [a, b], from 0 to 1 */
+const span = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+/** 0 → 1 → 0 over [a, b] */
+const bump = (t, a, b) => Math.sin(Math.PI * span(t, a, b));
+const ink = (a) => `rgba(${INK}, ${a})`;
+const blue = (a = 1) => `rgba(${BLUE}, ${a})`;
+const INK_RGB = INK.split(',').map(Number);
+const BLUE_RGB = BLUE.split(',').map(Number);
+/** Ink turning blue as k goes 0 → 1 */
+const inkToBlue = (k, a) => `rgba(${INK_RGB.map((v, i) => Math.round(lerp(v, BLUE_RGB[i], k))).join(', ')}, ${a})`;
+const fmt = (n) => n.toLocaleString('en-US');
+
+// Seeded randomness, so each loop plays out the same way every time
+function seeded(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function pageColor() {
+  return getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() || '#fdfaf6';
+}
+
+function makeLayer(W, H, dpr) {
+  const c = document.createElement('canvas');
+  c.width = Math.round(W * dpr);
+  c.height = Math.round(H * dpr);
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { canvas: c, ctx: g };
+}
+
+/** Erase toward each edge of a layer, so whatever it holds fades out there. */
+function featherEdges(g, W, H, size, sides = 'tblr') {
+  g.save();
+  g.globalCompositeOperation = 'destination-out';
+  const edges = {
+    t: [0, 0, 0, size, 0, 0, W, size],
+    b: [0, H, 0, H - size, 0, H - size, W, size],
+    l: [0, 0, size, 0, 0, 0, size, H],
+    r: [W, 0, W - size, 0, W - size, 0, size, H]
+  };
+  for (const side of sides) {
+    const [x0, y0, x1, y1, rx, ry, rw, rh] = edges[side];
+    const grad = g.createLinearGradient(x0, y0, x1, y1);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.35)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = grad;
+    g.fillRect(rx, ry, rw, rh);
+  }
+  g.restore();
+}
+
+/** The page colour, opaque in the middle and dissolving at the edges. */
+function makeBackdrop(W, H, dpr) {
+  const layer = makeLayer(W, H, dpr);
+  layer.ctx.fillStyle = pageColor();
+  layer.ctx.fillRect(0, 0, W, H);
+  featherEdges(layer.ctx, W, H, FEATHER);
+  return layer.canvas;
+}
+
+/** Fade in as a loop starts and out as it ends */
+const loopAlpha = (clock, loop, inMs = 400, outMs = 600) => Math.min(span(clock, 0, inMs), 1 - span(clock, loop - outMs, loop));
+
+function looping(LOOP, draw, extra = {}) {
+  let clock = 0;
+  return {
+    loopMs: LOOP,
+    prewarm: 0,
+    ...extra,
+    step(dt) {
+      clock = (clock + dt) % LOOP;
+    },
+    draw(ctx) {
+      draw(ctx, clock);
+    }
+  };
+}
+
+function text(ctx, str, x, y, { font = `400 11px ${SANS}`, color = ink(0.5), align = 'left', halo = 0 } = {}) {
+  ctx.font = font;
+  ctx.textAlign = align;
+  if (halo) {
+    ctx.save();
+    ctx.strokeStyle = pageColor();
+    ctx.lineWidth = halo;
+    ctx.lineJoin = 'round';
+    ctx.strokeText(str, x, y);
+    ctx.restore();
+  }
+  ctx.fillStyle = color;
+  ctx.fillText(str, x, y);
+  ctx.textAlign = 'left';
+}
+
+/**
+ * A symbol with a script, as in the paper: an italic letter and an upright superscript
+ * (c^KV, W^DKV). Returns its width.
+ */
+function symbol(ctx, base, sup, x, y, { size = 14, color = ink(0.6), align = 'left', halo = 0 } = {}) {
+  const fBase = `italic 400 ${size}px ${SERIF}`;
+  const fSup = `400 ${Math.round(size * 0.64 * 10) / 10}px ${SERIF}`;
+  ctx.font = fBase;
+  const wb = ctx.measureText(base).width;
+  ctx.font = fSup;
+  const ws = ctx.measureText(sup).width;
+  const w = wb + 1 + ws;
+  const x0 = align === 'right' ? x - w : align === 'center' ? x - w / 2 : x;
+  text(ctx, base, x0, y, { font: fBase, color, halo });
+  text(ctx, sup, x0 + wb + 1, y - size * 0.4, { font: fSup, color, halo });
+  return w;
+}
+
+function arrow(ctx, x0, y0, x1, y1, { color = ink(0.3), head = 5 } = {}) {
+  const a = Math.atan2(y1 - y0, x1 - x0);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.moveTo(x1 - head * Math.cos(a - 0.45), y1 - head * Math.sin(a - 0.45));
+  ctx.lineTo(x1, y1);
+  ctx.lineTo(x1 - head * Math.cos(a + 0.45), y1 - head * Math.sin(a + 0.45));
+  ctx.stroke();
+}
+
+/** A point on the quadratic curve from p0 through control c to p1 */
+const quad = (p0, c, p1, k) => ({
+  x: (1 - k) ** 2 * p0.x + 2 * (1 - k) * k * c.x + k * k * p1.x,
+  y: (1 - k) ** 2 * p0.y + 2 * (1 - k) * k * c.y + k * k * p1.y
+});
+
+/* ───────────── MLA · A  Counted in squares ───────────── */
+
+// One square is 64 numbers, so every block is to scale: the hidden state is 7,168 / 64 = 112
+// squares, the latent 512 / 64 = 8, and the keys and values 2 × 128 heads × 128 / 64 = 512
+// (each head's key is 2 squares and its value 2). The squares fly from the hidden state into
+// the latent and back out to every head; which source square goes where is only for show,
+// since every output of a projection reads all of its input.
+function createSquares(W, H, dpr) {
+  const narrow = W < 520;
+  const LOOP = 14500;
+  const P = 7;                      // square pitch
+  const T = 6;                      // square size
+  const HEAD = 2 * P - 1 + 3;       // a head's two squares, then a wider gap to the next head
+  const HEADS_PER_ROW = 8;
+  const blockW = HEADS_PER_ROW * HEAD - 3;
+  const blockH = (N_HEADS / HEADS_PER_ROW) * P - 1;
+  const nH = D_MODEL / SQUARE;      // 112
+  const nC = D_C / SQUARE;          // 8
+  const backdrop = makeBackdrop(W, H, dpr);
+  const rand = seeded(11);
+
+  // Where each block sits, and how its squares are laid out
+  const L = narrow
+    ? {
+      h: { x: 131, y: 76, cols: 14 },
+      c: { x: 152, y: 204, cols: 8 },
+      k: { x: 46, y: 300 },
+      v: { x: 189, y: 300 }
+    }
+    : {
+      h: { x: 50, y: 142, cols: 8 },
+      c: { x: 232, y: 163, cols: 1 },
+      k: { x: 382, y: 69 },
+      v: { x: 382, y: 199 }
+    };
+
+  const hSq = Array.from({ length: nH }, (_, i) => ({
+    x: L.h.x + (i % L.h.cols) * P,
+    y: L.h.y + Math.floor(i / L.h.cols) * P,
+    a: 0.32 + 0.3 * rand()
+  }));
+  const cSq = Array.from({ length: nC }, (_, i) => ({
+    x: L.c.x + (i % L.c.cols) * P,
+    y: L.c.y + Math.floor(i / L.c.cols) * P
+  }));
+  const headSquares = (B) => {
+    const out = [];
+    for (let h = 0; h < N_HEADS; h++) {
+      for (let t = 0; t < 2; t++) {
+        out.push({ h, x: B.x + (h % HEADS_PER_ROW) * HEAD + t * P, y: B.y + Math.floor(h / HEADS_PER_ROW) * P, a: 0.3 + 0.28 * rand() });
+      }
+    }
+    return out;
+  };
+  const kSq = headSquares(L.k);
+  const vSq = headSquares(L.v);
+
+  // The script: fold in, then unfold, then dim everything but the latent
+  const M = {
+    hIn: [250, 1250],
+    fold: 1700,         // first square leaves the hidden state
+    foldEach: 11,
+    fly: 760,
+    unfold: 4300,
+    unfoldEach: 17,
+    flyOut: 680,
+    labels: 3300,
+    keep: [9600, 10500],
+    out: LOOP - 600
+  };
+
+  // Fold: the squares nearest the latent leave first; each latent square takes 14 of them
+  const fold = hSq
+    .map((s, i) => ({ s, i, order: (narrow ? 7 - Math.floor(i / L.h.cols) : L.h.cols - 1 - (i % L.h.cols)) + rand() * 1.6 }))
+    .sort((p, q) => p.order - q.order);
+  fold.forEach((f, rank) => {
+    f.start = M.fold + rank * M.foldEach;
+    f.to = (f.i * 3 + Math.floor(f.i / 8)) % nC;
+    f.bend = (rand() - 0.5) * 26;
+  });
+  const foldDone = M.fold + (nH - 1) * M.foldEach + M.fly;
+  // When each latent square takes its last piece
+  const cFull = new Array(nC).fill(0);
+  for (const f of fold) cFull[f.to] = Math.max(cFull[f.to], f.start + M.fly);
+
+  // Unfold: head by head; each square leaves from one latent square, chosen to look mixed
+  const unfold = [];
+  [kSq, vSq].forEach((list, which) => {
+    list.forEach((sq, j) => {
+      unfold.push({ sq, start: M.unfold + sq.h * M.unfoldEach + (j % 2) * 40 + which * 90, from: (j * 5 + sq.h) % nC, bend: (rand() - 0.5) * 30 });
+    });
+  });
+  const unfoldDone = M.unfold + (N_HEADS - 1) * M.unfoldEach + 130 + M.flyOut;
+
+  const sq = (ctx, x, y, color, s = 1) => {
+    ctx.fillStyle = color;
+    const d = (T * (1 - s)) / 2;
+    ctx.fillRect(x + d, y + d, T * s, T * s);
+  };
+  const centre = (s) => ({ x: s.x + T / 2, y: s.y + T / 2 });
+
+  return looping(LOOP, (ctx, t) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(backdrop, 0, 0, W, H);
+    ctx.save();
+    ctx.globalAlpha = loopAlpha(t, LOOP);
+
+    const keep = ease(span(t, ...M.keep));
+
+    // The hidden state arrives, then empties into the latent, leaving a faint trace
+    for (const f of fold) {
+      const s = f.s;
+      const k = (s.y - L.h.y) / (L.h.cols === 8 ? 14 * P : 8 * P);
+      const shown = easeOut(span(t, M.hIn[0] + k * 700, M.hIn[0] + k * 700 + 300));
+      const left = span(t, f.start, f.start + 120);
+      sq(ctx, s.x, s.y, ink(lerp(s.a, 0.1, left) * shown), lerp(0.5, 1, shown));
+    }
+
+    // The latent fills as its squares arrive
+    const filled = new Array(nC).fill(0);
+    for (const f of fold) if (t >= f.start + M.fly) filled[f.to]++;
+    for (let i = 0; i < nC; i++) {
+      const k = filled[i] / (nH / nC);
+      const pop = 1 + 0.25 * bump(t, cFull[i], cFull[i] + 260);
+      const outline = 0.14 * (1 - k);
+      if (outline > 0) {
+        ctx.strokeStyle = blue(outline + 0.08 * span(t, M.fold - 300, M.fold));
+        ctx.lineWidth = 1;
+        ctx.strokeRect(cSq[i].x + 0.5, cSq[i].y + 0.5, T - 1, T - 1);
+      }
+      if (k > 0) sq(ctx, cSq[i].x, cSq[i].y, blue(0.2 + 0.8 * k), Math.min(1.25, pop));
+    }
+
+    // Keys and values, head by head, dimming at the end (they can be rebuilt from the latent)
+    for (const u of unfold) {
+      const landed = t >= u.start + M.flyOut;
+      if (!landed) {
+        // faint place-holders show where every head will go
+        const ghost = 0.05 * span(t, M.unfold - 900, M.unfold - 200);
+        if (ghost > 0) sq(ctx, u.sq.x, u.sq.y, ink(ghost));
+        continue;
+      }
+      const fresh = 1 - span(t, u.start + M.flyOut, u.start + M.flyOut + 500);
+      sq(ctx, u.sq.x, u.sq.y, ink(lerp(u.sq.a + 0.25 * fresh, 0.07, keep)));
+    }
+
+    // Squares in flight
+    for (const f of fold) {
+      const k = span(t, f.start, f.start + M.fly);
+      if (k <= 0 || k >= 1) continue;
+      const p0 = centre(f.s);
+      const p1 = centre(cSq[f.to]);
+      const c = { x: (p0.x + p1.x) / 2 + (narrow ? f.bend : 0), y: (p0.y + p1.y) / 2 + (narrow ? 0 : f.bend) };
+      const p = quad(p0, c, p1, ease(k));
+      const s = lerp(1, 0.7, Math.sin(Math.PI * k));
+      ctx.fillStyle = inkToBlue(ease(k), lerp(f.s.a + 0.15, 0.9, k));
+      ctx.fillRect(p.x - (T * s) / 2, p.y - (T * s) / 2, T * s, T * s);
+    }
+    for (const u of unfold) {
+      const k = span(t, u.start, u.start + M.flyOut);
+      if (k <= 0 || k >= 1) continue;
+      const p0 = centre(cSq[u.from]);
+      const p1 = centre(u.sq);
+      const c = { x: (p0.x + p1.x) / 2 + (narrow ? u.bend : 0), y: (p0.y + p1.y) / 2 + (narrow ? 0 : u.bend) };
+      const p = quad(p0, c, p1, ease(k));
+      const s = lerp(0.6, 1, k);
+      ctx.fillStyle = inkToBlue(1 - ease(k), lerp(0.85, u.sq.a + 0.25, k));
+      ctx.fillRect(p.x - (T * s) / 2, p.y - (T * s) / 2, T * s, T * s);
+    }
+
+    // Labels
+    const la = (a, b) => easeOut(span(t, a, b));
+    const hA = la(M.hIn[0], M.hIn[0] + 500);
+    const cA = la(foldDone - 600, foldDone);
+    const kvA = la(unfoldDone - 900, unfoldDone - 200);
+    const arrowA = (a) => 0.3 * a;
+    const lab = `italic 400 ${narrow ? 13.5 : 14}px ${SERIF}`;
+    const num = `400 11px ${SANS}`;
+    const cBox = { x0: cSq[0].x, y0: cSq[0].y, x1: cSq[nC - 1].x + T, y1: cSq[nC - 1].y + T };
+    const hBox = { x0: L.h.x, y0: L.h.y, x1: hSq[nH - 1].x + T, y1: hSq[nH - 1].y + T };
+    const kBox = { x0: L.k.x, y0: L.k.y, x1: L.k.x + blockW, y1: L.k.y + blockH };
+    const vBox = { x0: L.v.x, y0: L.v.y, x1: L.v.x + blockW, y1: L.v.y + blockH };
+    const keyA = 1 - 0.55 * keep;
+
+    if (narrow) {
+      const hx = (hBox.x0 + hBox.x1) / 2;
+      text(ctx, 'hidden state', hx, hBox.y0 - 13, { font: lab, color: ink(0.6 * hA), align: 'center' });
+      text(ctx, fmt(D_MODEL), hBox.x1 + 10, (hBox.y0 + hBox.y1) / 2 + 4, { font: num, color: ink(0.45 * hA) });
+      const ax = W / 2;
+      if (cA > 0 || t > M.fold) {
+        const a = la(M.fold - 200, M.fold + 300);
+        arrow(ctx, ax, hBox.y1 + 12, ax, cBox.y0 - 12, { color: ink(arrowA(a)) });
+        symbol(ctx, 'W', 'DKV', ax + 9, (hBox.y1 + cBox.y0) / 2 + 4, { size: 13, color: ink(0.5 * a) });
+      }
+      symbol(ctx, 'c', 'KV', cBox.x0 - 10, cBox.y1 + 1, { size: 15, color: blue(0.95 * cA), align: 'right' });
+      text(ctx, fmt(D_C), cBox.x1 + 10, cBox.y1, { font: num, color: blue(0.85 * cA) });
+      const ua = la(M.unfold - 300, M.unfold + 200);
+      if (ua > 0) {
+        arrow(ctx, cBox.x0 + 14, cBox.y1 + 12, (kBox.x0 + kBox.x1) / 2 + 12, kBox.y0 - 26, { color: ink(arrowA(ua) * keyA) });
+        arrow(ctx, cBox.x1 - 14, cBox.y1 + 12, (vBox.x0 + vBox.x1) / 2 - 12, vBox.y0 - 26, { color: ink(arrowA(ua) * keyA) });
+        symbol(ctx, 'W', 'UK', (cBox.x0 + kBox.x0) / 2 + 6, (cBox.y1 + kBox.y0) / 2 + 2, { size: 13, color: ink(0.5 * ua * keyA), align: 'right' });
+        symbol(ctx, 'W', 'UV', (cBox.x1 + vBox.x1) / 2 - 6, (cBox.y1 + vBox.y0) / 2 + 2, { size: 13, color: ink(0.5 * ua * keyA) });
+      }
+      text(ctx, 'keys', (kBox.x0 + kBox.x1) / 2, kBox.y0 - 10, { font: lab, color: ink(0.6 * kvA * keyA), align: 'center' });
+      text(ctx, 'values', (vBox.x0 + vBox.x1) / 2, vBox.y0 - 10, { font: lab, color: ink(0.6 * kvA * keyA), align: 'center' });
+      text(ctx, `128 heads · ${fmt(N_HEADS * D_HEAD)}`, (kBox.x0 + kBox.x1) / 2, kBox.y1 + 19, { font: num, color: ink(0.45 * kvA * keyA), align: 'center' });
+      text(ctx, `128 heads · ${fmt(N_HEADS * D_HEAD)}`, (vBox.x0 + vBox.x1) / 2, vBox.y1 + 19, { font: num, color: ink(0.45 * kvA * keyA), align: 'center' });
+    } else {
+      const hx = (hBox.x0 + hBox.x1) / 2;
+      text(ctx, 'hidden state', hx, hBox.y0 - 13, { font: lab, color: ink(0.6 * hA), align: 'center' });
+      text(ctx, fmt(D_MODEL), hx, hBox.y1 + 21, { font: num, color: ink(0.45 * hA), align: 'center' });
+      const cy = (cBox.y0 + cBox.y1) / 2;
+      const a = la(M.fold - 200, M.fold + 300);
+      arrow(ctx, hBox.x1 + 14, cy, cBox.x0 - 14, cy, { color: ink(arrowA(a)) });
+      symbol(ctx, 'W', 'DKV', (hBox.x1 + cBox.x0) / 2, cy - 9, { size: 13, color: ink(0.5 * a), align: 'center', halo: 4 });
+      const cx = (cBox.x0 + cBox.x1) / 2;
+      symbol(ctx, 'c', 'KV', cx, cBox.y0 - 12, { size: 15, color: blue(0.95 * cA), align: 'center' });
+      text(ctx, fmt(D_C), cx, cBox.y1 + 21, { font: num, color: blue(0.85 * cA), align: 'center' });
+      const ua = la(M.unfold - 300, M.unfold + 200);
+      const kMid = (kBox.y0 + kBox.y1) / 2;
+      const vMid = (vBox.y0 + vBox.y1) / 2;
+      arrow(ctx, cBox.x1 + 16, cy - 10, kBox.x0 - 16, kMid + 8, { color: ink(arrowA(ua) * keyA) });
+      arrow(ctx, cBox.x1 + 16, cy + 10, vBox.x0 - 16, vMid - 8, { color: ink(arrowA(ua) * keyA) });
+      symbol(ctx, 'W', 'UK', (cBox.x1 + kBox.x0) / 2 - 4, (cy + kMid) / 2 - 10, { size: 13, color: ink(0.5 * ua * keyA), align: 'center', halo: 4 });
+      symbol(ctx, 'W', 'UV', (cBox.x1 + vBox.x0) / 2 - 4, (cy + vMid) / 2 + 22, { size: 13, color: ink(0.5 * ua * keyA), align: 'center', halo: 4 });
+      const lx = kBox.x1 + 16;
+      text(ctx, 'keys', lx, kMid - 2, { font: lab, color: ink(0.6 * kvA * keyA) });
+      text(ctx, `128 heads · ${fmt(N_HEADS * D_HEAD)}`, lx, kMid + 14, { font: num, color: ink(0.45 * kvA * keyA) });
+      text(ctx, 'values', lx, vMid - 2, { font: lab, color: ink(0.6 * kvA * keyA) });
+      text(ctx, `128 heads · ${fmt(N_HEADS * D_HEAD)}`, lx, vMid + 14, { font: num, color: ink(0.45 * kvA * keyA) });
+    }
+
+    // The one kept: a ring round the latent, and the word
+    if (keep > 0) {
+      ctx.strokeStyle = blue(0.7 * keep);
+      ctx.lineWidth = 1;
+      const pad = 4.5;
+      ctx.beginPath();
+      ctx.roundRect(cBox.x0 - pad, cBox.y0 - pad, cBox.x1 - cBox.x0 + 2 * pad, cBox.y1 - cBox.y0 + 2 * pad, 3);
+      ctx.stroke();
+      if (narrow) text(ctx, 'kept in the cache', W / 2, cBox.y1 + 30, { font: `italic 400 13px ${SERIF}`, color: blue(0.9 * keep), align: 'center' });
+      else text(ctx, 'kept in the cache', (cBox.x0 + cBox.x1) / 2, cBox.y1 + 40, { font: `italic 400 13px ${SERIF}`, color: blue(0.9 * keep), align: 'center' });
+    }
+
+    // Key: one square is 64 numbers
+    const kx = narrow ? 30 : 50;
+    const ky = narrow ? H - 30 : H - 38;
+    const keyAlpha = hA;
+    sq(ctx, kx, ky - T + 0.5, ink(0.45 * keyAlpha));
+    text(ctx, `= ${SQUARE} numbers`, kx + T + 6, ky, { font: num, color: ink(0.45 * keyAlpha) });
+
+    ctx.restore();
+  }, { still: 8600 });
+}
+
+/* ───────────── Cache · B  Same memory ───────────── */
+
+// Two equal blocks of memory, 2,048 squares of 64 numbers each, filling from the bottom as
+// tokens arrive. A token takes 512 squares when every head's keys and values are kept
+// (32,768 / 64) and 9 when only the latent is (8 for the latent, 1 for the small rotary key).
+// The first fills after 4 tokens; the second holds 227, with 5 squares to spare. The size of
+// the blocks is arbitrary; the counts in them follow from the paper's dimensions.
+function createMemory(W, H, dpr) {
+  const narrow = W < 520;
+  const COLS = narrow ? 32 : 64;
+  const ROWS = 2048 / COLS;
+  const CELLS = COLS * ROWS;
+  const MHA_SQ = MHA_PER_TOKEN / SQUARE;   // 512
+  const MLA_SQ = MLA_PER_TOKEN / SQUARE;   // 9
+  const NMHA = Math.floor(CELLS / MHA_SQ); // 4
+  const NMLA = Math.floor(CELLS / MLA_SQ); // 227
+  const P = 4.4;
+  const S = 3.4;
+  const fw = COLS * P - (P - S);
+  const fh = ROWS * P - (P - S);
+  const backdrop = makeBackdrop(W, H, dpr);
+  const A = narrow ? { x: 32, y: 116 } : { x: 46, y: 118 };
+  const B = narrow ? { x: W - 32 - fw, y: 116 } : { x: W - 46 - fw, y: 118 };
+
+  // When each token arrives: the first four together, then the latent alone, faster and faster
+  const T0 = 700;
+  const EVERY = 1050;
+  const mhaAt = Array.from({ length: NMHA }, (_, n) => T0 + n * EVERY);
+  const mlaAt = [];
+  let at = T0;
+  let gap = EVERY;
+  for (let n = 0; n < NMLA; n++) {
+    mlaAt.push(at);
+    if (n >= NMHA - 1) gap = Math.max(17, gap * 0.72);
+    at += gap;
+  }
+  const mlaDone = mlaAt[NMLA - 1] + 200;
+  const LOOP = Math.round(mlaDone + 3400);
+  const WRITE_MHA = 620;
+
+  // Cell k, filling from the bottom row up, left to right
+  const cellXY = (F, k) => ({ x: F.x + (k % COLS) * P, y: F.y + fh - S - Math.floor(k / COLS) * P });
+
+  function frame(ctx, F, t, perToken, arrivals, colorFor, writeMs) {
+    // empty memory
+    ctx.fillStyle = ink(0.045);
+    for (let k = 0; k < CELLS; k++) {
+      const p = cellXY(F, k);
+      ctx.fillRect(p.x, p.y, S, S);
+    }
+    let count = 0;
+    for (let n = 0; n < arrivals.length; n++) {
+      const t0 = arrivals[n];
+      if (t < t0) break;
+      count++;
+      const age = t - t0;
+      const ms = writeMs(n);
+      const wrote = ms ? Math.floor(perToken * span(age, 0, ms)) : perToken;
+      for (let q = 0; q < wrote; q++) {
+        const k = n * perToken + q;
+        const p = cellXY(F, k);
+        ctx.fillStyle = colorFor(n, q, age);
+        ctx.fillRect(p.x, p.y, S, S);
+      }
+    }
+    return count;
+  }
+
+  return looping(LOOP, (ctx, t) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(backdrop, 0, 0, W, H);
+    ctx.save();
+    ctx.globalAlpha = loopAlpha(t, LOOP);
+
+    const nA = frame(ctx, A, t, MHA_SQ, mhaAt, (n, q, age) => {
+      const fresh = 1 - span(age, WRITE_MHA, WRITE_MHA + 900);
+      return ink((n % 2 ? 0.25 : 0.42) + 0.2 * fresh);
+    }, () => WRITE_MHA);
+    // the latent writes square by square while it keeps pace, then all at once
+    const nB = frame(ctx, B, t, MLA_SQ, mlaAt, (n, q, age) => {
+      const fresh = 1 - span(age, 200, n < NMHA ? 1000 : 500);
+      const base = n % 2 ? 0.7 : 0.9;
+      return blue(Math.min(1, base + 0.12 * fresh));
+    }, (n) => (n < NMHA ? 220 : 0));
+
+    // Frames, names and counts
+    const la = easeOut(span(t, 200, 800));
+    const lab = `italic 400 ${narrow ? 14 : 15}px ${SERIF}`;
+    const num = `400 11px ${SANS}`;
+    const big = `500 ${narrow ? 17 : 19}px ${SERIF}`;
+    const fullA = span(t, mhaAt[NMHA - 1] + WRITE_MHA, mhaAt[NMHA - 1] + WRITE_MHA + 400);
+    const fullB = span(t, mlaDone, mlaDone + 400);
+    for (const [F, full] of [[A, fullA], [B, fullB]]) {
+      ctx.strokeStyle = ink(0.16 + 0.22 * full);
+      ctx.lineWidth = 1;
+      ctx.strokeRect(F.x - 3.5, F.y - 3.5, fw + 7, fh + 7);
+    }
+    const head = (F, name, per, color, numColor) => {
+      if (narrow) {
+        text(ctx, name, F.x - 3, F.y - 30, { font: lab, color });
+        text(ctx, per, F.x - 3, F.y - 13, { font: num, color: numColor });
+      } else {
+        text(ctx, name, F.x - 3, F.y - 14, { font: lab, color });
+        text(ctx, per, F.x + fw + 3, F.y - 14, { font: num, color: numColor, align: 'right' });
+      }
+    };
+    head(A, 'every head', `${fmt(MHA_PER_TOKEN)} a token`, ink(0.62 * la), ink(0.45 * la));
+    head(B, 'latent', `${fmt(MLA_PER_TOKEN)} a token`, blue(0.95 * la), blue(0.85 * la));
+    const countY = A.y + fh + (narrow ? 30 : 32);
+    const tokens = (k) => `${k} token${k === 1 ? '' : 's'}`;
+    if (nA) text(ctx, tokens(nA), A.x - 3, countY, { font: big, color: ink(0.82 * la) });
+    if (nB) text(ctx, tokens(nB), B.x - 3, countY, { font: big, color: blue(0.95 * la) });
+    if (fullA > 0) text(ctx, 'full', narrow ? A.x - 3 : A.x + fw + 3, narrow ? countY + 18 : countY, { font: num, color: ink(0.5 * fullA), align: narrow ? 'left' : 'right' });
+    if (fullB > 0) text(ctx, 'full', narrow ? B.x - 3 : B.x + fw + 3, narrow ? countY + 18 : countY, { font: num, color: blue(0.8 * fullB), align: narrow ? 'left' : 'right' });
+
+    // What the two blocks share, and the unit
+    const ty = narrow ? 52 : 58;
+    text(ctx, 'the same memory, per layer', narrow ? 29 : W / 2, ty, { font: `italic 400 ${narrow ? 14 : 15}px ${SERIF}`, color: ink(0.55 * la), align: narrow ? 'left' : 'center' });
+    const kx = narrow ? W - 29 - 76 : W / 2 - 38;
+    const ky = narrow ? ty : H - 34;
+    ctx.fillStyle = ink(0.42 * la);
+    ctx.fillRect(kx, ky - S - 1, S, S);
+    text(ctx, `= ${SQUARE} numbers`, kx + S + 5, ky, { font: num, color: ink(0.45 * la) });
+
+    ctx.restore();
+  }, { still: Math.round(mlaDone + 1600) });
+}
+
+/* ───────────── Sizing ───────────── */
+
+/**
+ * Each sketch has two layouts, drawn at a design width: 680 px across for wide frames, 360
+ * for phones and other tall frames. This scales whichever one applies to the real frame,
+ * so a 600 px or a 414 px figure gets the same composition as the one checked here.
+ */
+function fitted(create) {
+  return (W, H, dpr) => {
+    const tall = W < 520 || H > W * 0.9;
+    const vw = tall ? 360 : 680;
+    const s = W / vw;
+    const inner = create(vw, H / s, dpr * s);
+    return {
+      ...inner,
+      draw(ctx) {
+        ctx.save();
+        ctx.scale(s, s);
+        inner.draw(ctx);
+        ctx.restore();
+      }
+    };
+  };
+}
+
+  return { squares: fitted(createSquares), memory: fitted(createMemory) };
+})();
+
+/* ───────────── Training: the loss over 10 billion tokens ───────────── */
+
+// loss · the mini model's training run: training loss, validation loss and the MTP module's
+//        loss, with the learning-rate schedule under them. The view opens on the first billion
+//        tokens (the loss starts at 10.98, beside a uniform guess's ln 49,152 = 10.80), then
+//        pulls back to the whole run.
+// Every value is measured: the arrays are the run's metrics.csv, reduced by the script in
+// drafts/deepseek-animations/training (training and MTP loss as means over 100 steps, 20 over the
+// first 4,000; validation at each evaluation). The learning rate is the schedule's own formula,
+// which matches the logged values. Helpers and fitted() stay inside this scope.
+const DS_TRAIN = (() => {
+const INK = '28, 25, 23';
+const BLUE = '77, 107, 254';
+const SERIF = 'Newsreader, Georgia, serif';
+const SANS = 'Inter, sans-serif';
+const FEATHER = 28;
+const TAU = Math.PI * 2;
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
+/** How far t is through [a, b], from 0 to 1 */
+const span = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+const ink = (a) => `rgba(${INK}, ${a})`;
+const blue = (a = 1) => `rgba(${BLUE}, ${a})`;
+const commas = (n) => Math.round(n).toLocaleString('en-US');
+
+function pageColor() {
+  return getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() || '#fdfaf6';
+}
+
+function makeLayer(W, H, dpr) {
+  const c = document.createElement('canvas');
+  c.width = Math.round(W * dpr);
+  c.height = Math.round(H * dpr);
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { canvas: c, ctx: g };
+}
+
+/** Erase toward each edge of a layer, so whatever it holds fades out there. */
+function featherEdges(g, W, H, size, sides = 'tblr') {
+  g.save();
+  g.globalCompositeOperation = 'destination-out';
+  const edges = {
+    t: [0, 0, 0, size, 0, 0, W, size],
+    b: [0, H, 0, H - size, 0, H - size, W, size],
+    l: [0, 0, size, 0, 0, 0, size, H],
+    r: [W, 0, W - size, 0, W - size, 0, size, H]
+  };
+  for (const side of sides) {
+    const [x0, y0, x1, y1, rx, ry, rw, rh] = edges[side];
+    const grad = g.createLinearGradient(x0, y0, x1, y1);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.35)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = grad;
+    g.fillRect(rx, ry, rw, rh);
+  }
+  g.restore();
+}
+
+/** The page colour, opaque in the middle and dissolving at the edges. */
+function makeBackdrop(W, H, dpr) {
+  const layer = makeLayer(W, H, dpr);
+  layer.ctx.fillStyle = pageColor();
+  layer.ctx.fillRect(0, 0, W, H);
+  featherEdges(layer.ctx, W, H, FEATHER);
+  return layer.canvas;
+}
+
+/** Fade in as a loop starts and out as it ends */
+const loopAlpha = (clock, loop, inMs = 400, outMs = 600) => Math.min(span(clock, 0, inMs), 1 - span(clock, loop - outMs, loop));
+
+function looping(LOOP, draw, extra = {}) {
+  let clock = 0;
+  return {
+    loopMs: LOOP,
+    prewarm: 0,
+    ...extra,
+    step(dt) {
+      clock = (clock + dt) % LOOP;
+    },
+    draw(ctx) {
+      draw(ctx, clock);
+    }
+  };
+}
+
+function text(ctx, str, x, y, { font = `400 11px ${SANS}`, color = ink(0.5), align = 'left', baseline = 'alphabetic', halo = null } = {}) {
+  ctx.font = font;
+  ctx.textAlign = align;
+  ctx.textBaseline = baseline;
+  if (halo) {
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = halo;
+    ctx.strokeText(str, x, y);
+  }
+  ctx.fillStyle = color;
+  ctx.fillText(str, x, y);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+function dot(ctx, x, y, r, color) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, TAU);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function hline(ctx, x0, x1, y, color, dash = null) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  if (dash) ctx.setLineDash(dash);
+  ctx.beginPath();
+  ctx.moveTo(x0, Math.round(y) + 0.5);
+  ctx.lineTo(x1, Math.round(y) + 0.5);
+  ctx.stroke();
+  if (dash) ctx.setLineDash([]);
+}
+
+/* ───────────── The run ───────────── */
+
+// 38,147 optimizer steps of 262,144 tokens: 10.0 billion tokens.
+const RUN = (() => {
+  const STEPS = 38147;
+  const B = 262144 / 1e9;   // billions of tokens per step
+  const WARMUP = 500;
+  const DECAY = 30000;      // the step the cosine decay starts at
+  const LR_MIN = 3e-5;
+  const PEAK = 3e-4;        // the learning rate after warm-up
+  /** The schedule in the training config: linear warm-up, constant, cosine decay to the minimum */
+  const lrAt = (step) => (step <= WARMUP
+    ? LR_MIN + ((PEAK - LR_MIN) * (step - 1)) / WARMUP
+    : step <= DECAY
+      ? PEAK
+      : LR_MIN + (PEAK - LR_MIN) * 0.5 * (1 + Math.cos((Math.PI * (step - DECAY)) / (STEPS - DECAY))));
+
+  // Loss × 1000. EARLY and EARLY_MTP: means over 20 steps, steps 1 to 4,000.
+  // TRAIN and MTP: means over 100 steps. VAL: every 500 steps, and once more at the last step.
+  const EARLY = [
+    10277, 9280, 8600, 7984, 7464, 7113, 6869, 6691, 6549, 6425, 6310, 6201, 6113, 6003, 5928, 5875, 5819, 5756, 5691, 5619, 5571, 5524,
+    5455, 5421, 5372, 5304, 5244, 5205, 5203, 5121, 5093, 5053, 5015, 5013, 4958, 4939, 4894, 4860, 4834, 4806, 4791, 4760, 4738, 4722,
+    4700, 4685, 4657, 4643, 4633, 4598, 4571, 4576, 4534, 4535, 4535, 4521, 4493, 4443, 4463, 4445, 4440, 4402, 4375, 4396, 4377, 4359,
+    4368, 4327, 4336, 4308, 4324, 4294, 4274, 4261, 4241, 4224, 4206, 4199, 4211, 4195, 4172, 4160, 4123, 4129, 4128, 4119, 4103, 4095,
+    4069, 4080, 4029, 4056, 4051, 4045, 4039, 4028, 4009, 3997, 4002, 3987, 3984, 3973, 3985, 3973, 3945, 3964, 3956, 3929, 3953, 3932,
+    3915, 3914, 3920, 3927, 3892, 3903, 3891, 3900, 3893, 3885, 3873, 3868, 3864, 3860, 3865, 3843, 3862, 3843, 3828, 3820, 3820, 3816,
+    3818, 3814, 3820, 3806, 3806, 3814, 3790, 3797, 3787, 3777, 3797, 3792, 3786, 3782, 3796, 3778, 3756, 3769, 3749, 3783, 3771, 3747,
+    3757, 3750, 3735, 3713, 3746, 3721, 3756, 3743, 3746, 3719, 3724, 3719, 3700, 3714, 3709, 3708, 3689, 3706, 3709, 3698, 3690, 3699,
+    3693, 3698, 3678, 3687, 3700, 3692, 3670, 3673, 3684, 3672, 3655, 3660, 3647, 3655, 3674, 3661, 3654, 3675, 3661, 3650, 3665, 3654,
+    3637, 3651
+  ];
+  const EARLY_MTP = [
+    10587, 9604, 8823, 8163, 7623, 7279, 7046, 6870, 6730, 6609, 6496, 6393, 6310, 6207, 6135, 6087, 6032, 5972, 5909, 5840, 5795, 5748,
+    5685, 5656, 5612, 5546, 5490, 5455, 5450, 5377, 5350, 5314, 5276, 5279, 5229, 5209, 5167, 5134, 5107, 5082, 5067, 5036, 5015, 5001,
+    4980, 4964, 4935, 4921, 4912, 4878, 4849, 4857, 4812, 4813, 4817, 4804, 4775, 4727, 4746, 4729, 4727, 4690, 4661, 4684, 4668, 4654,
+    4666, 4627, 4638, 4615, 4631, 4604, 4590, 4581, 4567, 4555, 4543, 4541, 4558, 4545, 4522, 4513, 4481, 4493, 4490, 4484, 4473, 4466,
+    4443, 4458, 4401, 4432, 4435, 4428, 4421, 4415, 4393, 4381, 4397, 4383, 4375, 4363, 4375, 4362, 4332, 4359, 4347, 4320, 4338, 4322,
+    4303, 4308, 4310, 4316, 4290, 4294, 4281, 4295, 4290, 4274, 4262, 4255, 4258, 4248, 4256, 4227, 4250, 4227, 4215, 4199, 4206, 4198,
+    4202, 4199, 4201, 4195, 4190, 4193, 4170, 4177, 4161, 4150, 4171, 4168, 4161, 4151, 4170, 4153, 4128, 4141, 4122, 4157, 4139, 4114,
+    4126, 4117, 4104, 4080, 4113, 4085, 4122, 4108, 4114, 4088, 4094, 4085, 4061, 4077, 4076, 4070, 4053, 4070, 4067, 4054, 4051, 4058,
+    4052, 4056, 4036, 4045, 4053, 4049, 4025, 4029, 4037, 4026, 4007, 4012, 3997, 4011, 4026, 4015, 4009, 4028, 4014, 4003, 4018, 3999,
+    3984, 3998
+  ];
+  const TRAIN = [
+    8721, 6729, 6111, 5752, 5469, 5215, 5026, 4867, 4742, 4643, 4550, 4473, 4398, 4340, 4279, 4207, 4143, 4093, 4044, 4005, 3972, 3947,
+    3913, 3894, 3866, 3839, 3818, 3803, 3788, 3776, 3761, 3733, 3738, 3710, 3698, 3691, 3684, 3658, 3665, 3651, 3636, 3623, 3624, 3607,
+    3602, 3601, 3589, 3586, 3577, 3563, 3556, 3548, 3535, 3536, 3531, 3530, 3527, 3507, 3506, 3500, 3491, 3480, 3488, 3474, 3480, 3462,
+    3461, 3461, 3444, 3443, 3451, 3433, 3431, 3431, 3421, 3421, 3415, 3412, 3404, 3406, 3400, 3398, 3390, 3393, 3398, 3385, 3376, 3378,
+    3382, 3368, 3369, 3371, 3378, 3356, 3366, 3355, 3356, 3358, 3357, 3344, 3352, 3344, 3342, 3331, 3346, 3331, 3338, 3328, 3326, 3329,
+    3325, 3316, 3328, 3325, 3315, 3309, 3303, 3293, 3297, 3294, 3292, 3292, 3293, 3294, 3281, 3287, 3282, 3288, 3271, 3281, 3270, 3278,
+    3275, 3269, 3268, 3255, 3261, 3267, 3257, 3259, 3256, 3247, 3253, 3258, 3258, 3252, 3248, 3246, 3251, 3248, 3239, 3239, 3238, 3243,
+    3240, 3236, 3225, 3226, 3229, 3225, 3228, 3228, 3222, 3227, 3221, 3214, 3225, 3223, 3213, 3221, 3222, 3204, 3217, 3212, 3223, 3224,
+    3222, 3212, 3227, 3220, 3216, 3213, 3217, 3211, 3216, 3209, 3207, 3204, 3202, 3203, 3200, 3196, 3202, 3197, 3196, 3202, 3196, 3209,
+    3192, 3190, 3196, 3184, 3196, 3196, 3184, 3193, 3189, 3178, 3178, 3178, 3187, 3183, 3186, 3177, 3181, 3176, 3180, 3188, 3182, 3182,
+    3180, 3175, 3181, 3177, 3179, 3174, 3187, 3174, 3186, 3166, 3183, 3183, 3193, 3189, 3184, 3180, 3188, 3172, 3176, 3173, 3175, 3181,
+    3177, 3172, 3179, 3172, 3166, 3177, 3168, 3174, 3171, 3157, 3175, 3169, 3164, 3159, 3176, 3166, 3171, 3159, 3160, 3158, 3157, 3163,
+    3162, 3163, 3167, 3167, 3161, 3162, 3166, 3167, 3163, 3168, 3157, 3155, 3154, 3151, 3156, 3152, 3152, 3158, 3158, 3155, 3145, 3151,
+    3148, 3147, 3175, 3163, 3164, 3155, 3168, 3162, 3159, 3165, 3161, 3164, 3156, 3156, 3152, 3164, 3166, 3162, 3154, 3148, 3164, 3150,
+    3154, 3149, 3154, 3145, 3154, 3150, 3150, 3159, 3149, 3145, 3143, 3144, 3140, 3134, 3135, 3126, 3141, 3139, 3140, 3131, 3132, 3133,
+    3120, 3130, 3117, 3118, 3116, 3104, 3111, 3109, 3112, 3102, 3093, 3107, 3110, 3091, 3094, 3084, 3098, 3096, 3089, 3089, 3081, 3076,
+    3079, 3078, 3074, 3070, 3071, 3066, 3076, 3071, 3062, 3070, 3056, 3066, 3056, 3052, 3058, 3050, 3046, 3060, 3047, 3053, 3051, 3045,
+    3044, 3041, 3053, 3049, 3046, 3045, 3041, 3049
+  ];
+  const MTP = [
+    8960, 6907, 6308, 5968, 5699, 5464, 5290, 5140, 5020, 4922, 4830, 4756, 4686, 4640, 4595, 4548, 4500, 4465, 4423, 4394, 4361, 4337,
+    4305, 4287, 4256, 4223, 4201, 4185, 4162, 4149, 4132, 4100, 4105, 4074, 4059, 4049, 4038, 4011, 4018, 4000, 3984, 3970, 3968, 3951,
+    3943, 3941, 3927, 3925, 3913, 3898, 3891, 3881, 3866, 3866, 3863, 3857, 3855, 3833, 3832, 3826, 3816, 3803, 3811, 3795, 3802, 3783,
+    3782, 3781, 3762, 3762, 3770, 3750, 3749, 3748, 3736, 3737, 3728, 3726, 3718, 3720, 3714, 3713, 3703, 3706, 3712, 3697, 3687, 3689,
+    3692, 3677, 3678, 3680, 3688, 3666, 3675, 3663, 3664, 3664, 3664, 3651, 3658, 3652, 3648, 3637, 3651, 3635, 3643, 3632, 3629, 3632,
+    3629, 3619, 3632, 3628, 3617, 3611, 3605, 3595, 3601, 3594, 3595, 3594, 3595, 3594, 3582, 3587, 3582, 3589, 3570, 3582, 3570, 3579,
+    3575, 3568, 3567, 3553, 3559, 3566, 3557, 3556, 3553, 3545, 3551, 3556, 3555, 3548, 3544, 3542, 3548, 3544, 3534, 3535, 3532, 3537,
+    3534, 3531, 3520, 3520, 3525, 3521, 3521, 3521, 3516, 3520, 3514, 3507, 3520, 3514, 3506, 3513, 3514, 3495, 3508, 3501, 3512, 3513,
+    3512, 3501, 3518, 3510, 3504, 3503, 3506, 3500, 3503, 3497, 3493, 3492, 3490, 3491, 3488, 3482, 3488, 3484, 3483, 3489, 3483, 3495,
+    3479, 3477, 3482, 3470, 3483, 3482, 3468, 3478, 3473, 3463, 3464, 3462, 3472, 3467, 3472, 3461, 3466, 3460, 3463, 3472, 3466, 3465,
+    3463, 3459, 3464, 3460, 3462, 3458, 3471, 3457, 3468, 3449, 3465, 3465, 3474, 3470, 3465, 3461, 3470, 3453, 3458, 3453, 3456, 3461,
+    3457, 3452, 3458, 3453, 3446, 3458, 3448, 3455, 3450, 3436, 3454, 3448, 3443, 3439, 3456, 3445, 3449, 3437, 3439, 3437, 3436, 3442,
+    3442, 3441, 3445, 3447, 3438, 3440, 3445, 3445, 3442, 3447, 3435, 3434, 3432, 3429, 3436, 3430, 3430, 3436, 3436, 3433, 3422, 3428,
+    3425, 3424, 3453, 3440, 3441, 3434, 3446, 3441, 3439, 3444, 3439, 3442, 3436, 3433, 3430, 3442, 3443, 3440, 3432, 3426, 3441, 3427,
+    3432, 3425, 3432, 3423, 3430, 3427, 3426, 3436, 3425, 3422, 3420, 3419, 3418, 3412, 3411, 3403, 3418, 3415, 3418, 3408, 3409, 3411,
+    3397, 3408, 3393, 3396, 3392, 3381, 3389, 3387, 3390, 3380, 3371, 3385, 3388, 3369, 3372, 3361, 3376, 3373, 3367, 3368, 3360, 3354,
+    3358, 3356, 3352, 3348, 3350, 3344, 3354, 3351, 3341, 3348, 3335, 3345, 3334, 3331, 3337, 3328, 3325, 3338, 3326, 3332, 3330, 3324,
+    3324, 3320, 3333, 3329, 3325, 3324, 3321, 3329
+  ];
+  const VAL = [
+    5353, 4601, 4236, 3990, 3858, 3757, 3688, 3637, 3592, 3554, 3521, 3495, 3473, 3445, 3425, 3407, 3392, 3373, 3362, 3347, 3337, 3325,
+    3313, 3303, 3295, 3289, 3284, 3274, 3267, 3264, 3252, 3252, 3240, 3236, 3229, 3224, 3217, 3214, 3210, 3204, 3200, 3198, 3195, 3188,
+    3187, 3183, 3184, 3175, 3170, 3169, 3165, 3162, 3158, 3160, 3156, 3150, 3148, 3148, 3145, 3140, 3140, 3134, 3130, 3124, 3114, 3104,
+    3095, 3085, 3075, 3066, 3056, 3048, 3041, 3036, 3032, 3029, 3029
+  ];
+
+  const mid20 = (i) => i * 20 + 10.5;
+  const mid100 = (i) => i * 100 + Math.min(100, STEPS - i * 100) / 2 + 0.5;
+  const coarse = (vals, from = 0) => vals.slice(from).map((v, i) => [mid100(from + i), v / 1000]);
+  const fine = (vals) => vals.map((v, i) => [mid20(i), v / 1000]);
+  const evals = (vals) => vals.map((v, i) => [i < vals.length - 1 ? (i + 1) * 500 : STEPS, v / 1000]);
+
+  return {
+    STEPS,
+    B,
+    DECAY,
+    lrAt,
+    first: 10.975,                 // the loss at step 1
+    uniform: Math.log(49152),      // guessing uniformly over the vocabulary
+    train: [[1, 10.975], ...fine(EARLY), ...coarse(TRAIN, 40)],
+    mtp: [...fine(EARLY_MTP), ...coarse(MTP, 40)],
+    val: evals(VAL)
+  };
+})();
+
+/** Stroke [step, value] points up to step `upTo`, ending exactly there. */
+function trace(ctx, pts, X, Y, upTo) {
+  ctx.beginPath();
+  let prev = null;
+  for (const p of pts) {
+    if (p[0] > upTo) {
+      if (prev) ctx.lineTo(X(upTo), Y(lerp(prev[1], p[1], (upTo - prev[0]) / (p[0] - prev[0]))));
+      break;
+    }
+    if (prev) ctx.lineTo(X(p[0]), Y(p[1]));
+    else ctx.moveTo(X(p[0]), Y(p[1]));
+    prev = p;
+  }
+  ctx.stroke();
+}
+
+/** The learning rate up to step `upTo` as [step, rate] points, with the bends where the schedule has them. */
+function ratePoints(upTo) {
+  const { STEPS, DECAY, lrAt } = RUN;
+  const keys = [1, 500, DECAY];
+  for (let k = 1; k <= 32; k++) keys.push(DECAY + ((STEPS - DECAY) * k) / 32);
+  return [...keys.filter((s) => s < upTo), upTo].map((s) => [s, lrAt(s)]);
+}
+
+/** A learning-rate strip: the line with a faint fill under it, between the baseline s1 and the top s0. */
+function rateStrip(ctx, pts, X, sy, s1) {
+  if (pts.length < 2) return;
+  ctx.beginPath();
+  pts.forEach(([s, v], i) => (i ? ctx.lineTo(X(s), sy(v)) : ctx.moveTo(X(s), sy(v))));
+  ctx.strokeStyle = ink(0.6);
+  ctx.lineWidth = 1.2;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  ctx.lineTo(X(pts[pts.length - 1][0]), s1);
+  ctx.lineTo(X(pts[0][0]), s1);
+  ctx.closePath();
+  ctx.fillStyle = ink(0.06);
+  ctx.fill();
+}
+
+/* ───────────── Loss ───────────── */
+
+function createLoss(W, H, dpr) {
+  const narrow = W < 520;
+  const PAGE = pageColor();
+  const backdrop = makeBackdrop(W, H, dpr);
+  const { STEPS, B, DECAY, train, mtp, val, first, uniform } = RUN;
+  // x0..x1, y0..y1: the loss plot. s0..s1: the learning-rate strip. legend: [right edge, y in the opening view, y in the full view, row height]
+  const L = narrow
+    ? { x0: 40, x1: 330, y0: 76, y1: 300, s0: 346, s1: 390, ticks: 408, readout: [330, 50], legend: [324, 130, 92, 17], xa: [0, 0.5, 1], xb: [0, 5, 10] }
+    : { x0: 64, x1: 632, y0: 46, y1: 246, s0: 282, s1: 324, ticks: 342, readout: [632, 30], legend: [624, 96, 62, 18], xa: [0, 0.25, 0.5, 0.75, 1], xb: [0, 2, 4, 6, 8, 10] };
+  // The opening view is the first billion tokens at full height; the full view is the whole run, close in on the loss
+  const OPEN = { x1: 1, y0: 3.4, y1: 11.4 };
+  const FULL = { x1: STEPS * B, y0: 2.9, y1: 3.9 };
+  const Y_OPEN = [4, 6, 8, 10];
+  const Y_FULL = [3, 3.2, 3.4, 3.6, 3.8];
+  const S_OPEN = Math.round(1 / B); // the step that reaches a billion tokens
+
+  const T_DRAW = 600;    // the first billion tokens draw in, slowly at first
+  const T_OPEN = 3900;
+  const T_PULL = 4700;   // the view pulls back
+  const T_FULL = 6300;   // the rest of the run draws in
+  const T_END = 11500;
+  const T_DONE = 12200;
+  const LOOP = 16200;
+  const stepsAt = (t) => (t < T_OPEN ? S_OPEN * span(t, T_DRAW, T_OPEN) ** 2.2 : lerp(S_OPEN, STEPS, span(t, T_FULL, T_END)));
+
+  return looping(LOOP, (ctx, t) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(backdrop, 0, 0, W, H);
+    ctx.save();
+    ctx.globalAlpha = loopAlpha(t, LOOP, 400, 700);
+    const intro = span(t, 200, 700);
+    const c = ease(span(t, T_PULL, T_FULL));
+    const opening = (1 - span(c, 0, 0.3)) * intro; // the opening view's marks leave first, the full view's arrive last
+    const full = span(c, 0.7, 1) * intro;
+    const win = { x1: lerp(OPEN.x1, FULL.x1, c), y0: lerp(OPEN.y0, FULL.y0, c), y1: lerp(OPEN.y1, FULL.y1, c) };
+    const X = (step) => L.x0 + ((step * B) / win.x1) * (L.x1 - L.x0);
+    const Y = (v) => L.y1 - ((v - win.y0) / (win.y1 - win.y0)) * (L.y1 - L.y0);
+    const sy = (v) => L.s1 - (v / 3.3e-4) * (L.s1 - L.s0);
+    const S = Math.max(1, stepsAt(t));
+    const done = span(t, T_END, T_DONE);
+    const num = `400 10px ${SANS}`;
+    const lab = `italic 400 ${narrow ? 12 : 13}px ${SERIF}`;
+
+    // The stretch where the learning rate decays, tying the strip below to the dip above
+    const band = span(S, DECAY, DECAY + 1200) * c;
+    if (band > 0) {
+      ctx.fillStyle = ink(0.045 * band);
+      ctx.fillRect(X(DECAY), L.y0, L.x1 - X(DECAY), L.s1 - L.y0);
+    }
+
+    // Axes: the opening view's ticks leave as the view starts to pull back, and the full view's arrive as it settles
+    const yTicks = (vals, a, digits) => {
+      for (const v of vals) {
+        const y = Y(v);
+        if (a <= 0 || y < L.y0 - 1 || y > L.y1 + 1) continue;
+        hline(ctx, L.x0, L.x1, y, ink(0.08 * a));
+        text(ctx, v.toFixed(digits), L.x0 - 8, y + 3.5, { font: num, color: ink(0.45 * a), align: 'right' });
+      }
+    };
+    const xTicks = (vals, a) => {
+      for (const v of vals) {
+        const x = L.x0 + (v / win.x1) * (L.x1 - L.x0);
+        if (a <= 0 || x > L.x1 + 1) continue;
+        text(ctx, v ? `${v}B` : '0', x, L.ticks, { font: num, color: ink(0.45 * a), align: 'center' });
+      }
+    };
+    yTicks(Y_OPEN, opening, 0);
+    yTicks(Y_FULL, full, 1);
+    xTicks(L.xa, opening);
+    xTicks(L.xb, full);
+    hline(ctx, L.x0 - 4, L.x1 + 4, L.y1, ink(0.25 * intro));
+    hline(ctx, L.x0 - 4, L.x1 + 4, L.s1, ink(0.16 * intro));
+
+    // Where a uniform guess would score, and where the run starts
+    const guide = opening;
+    if (guide > 0) {
+      hline(ctx, L.x0, L.x1, Y(uniform), ink(0.4 * guide), [2, 4]);
+      text(ctx, narrow ? 'a uniform guess, 10.80' : 'a uniform guess over 49,152 tokens, 10.80', L.x1, Y(uniform) - 6, { font: lab, color: ink(0.55 * guide), align: 'right' });
+      const started = span(t, T_DRAW + 300, T_DRAW + 800) * opening;
+      text(ctx, 'starts at 10.98', X(1) + 14, Y(first) + 20, { font: lab, color: ink(0.7 * started) });
+    }
+
+    // The curves
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(L.x0 - 3, L.y0 - 6, L.x1 - L.x0 + 6, L.y1 - L.y0 + 7);
+    ctx.clip();
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = blue(0.9);
+    ctx.lineWidth = 1.3;
+    trace(ctx, mtp, X, Y, S);
+    ctx.strokeStyle = ink(0.42);
+    ctx.lineWidth = 1.1;
+    trace(ctx, train, X, Y, S);
+    const r = lerp(2.3, 1.6, c);
+    for (const [s, v] of val) {
+      if (s > S) break;
+      dot(ctx, X(s), Y(v), r, ink(0.88));
+    }
+    if (guide > 0) dot(ctx, X(1), Y(first), 2.6, ink(0.88 * guide));
+    ctx.restore();
+
+    // Where each ends
+    if (done > 0) {
+      const vEnd = val[val.length - 1][1];
+      const mEnd = mtp[mtp.length - 2][1];
+      const f = `500 11px ${SANS}`;
+      if (narrow) {
+        text(ctx, vEnd.toFixed(2), L.x1 - 2, Y(vEnd) + 17, { font: f, color: ink(0.85 * done), align: 'right', halo: PAGE });
+        text(ctx, mEnd.toFixed(2), L.x1 - 2, Y(mEnd) + 17, { font: f, color: blue(0.95 * done), align: 'right', halo: PAGE });
+      } else {
+        text(ctx, vEnd.toFixed(2), L.x1 + 7, Y(vEnd) + 4, { font: f, color: ink(0.85 * done) });
+        text(ctx, mEnd.toFixed(2), L.x1 + 7, Y(mEnd) + 4, { font: f, color: blue(0.95 * done) });
+      }
+    }
+
+    // Legend, in the empty corner of whichever view is showing
+    const [lx, lyOpen, lyFull, lh] = L.legend;
+    const ly = lerp(lyOpen, lyFull, c);
+    const rows = [
+      ['training loss', ink(0.55 * intro), 'line', ink(0.42 * intro)],
+      ['validation loss', ink(0.8 * intro), 'dot', ink(0.88 * intro)],
+      [narrow ? 'the token after next' : 'the token after next (MTP)', blue(0.9 * intro), 'line', blue(0.9 * intro)]
+    ];
+    rows.forEach(([str, color, mark, markColor], i) => {
+      const y = ly + i * lh;
+      text(ctx, str, lx, y, { font: lab, color, align: 'right' });
+      ctx.font = lab;
+      const left = lx - ctx.measureText(str).width;
+      if (mark === 'dot') dot(ctx, left - 15, y - 4, 2, markColor);
+      else {
+        ctx.strokeStyle = markColor;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(left - 24, y - 4);
+        ctx.lineTo(left - 7, y - 4);
+        ctx.stroke();
+      }
+    });
+
+    // The learning rate under it
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(L.x0 - 1, L.s0 - 6, L.x1 - L.x0 + 2, L.s1 - L.s0 + 6);
+    ctx.clip();
+    rateStrip(ctx, ratePoints(S), X, sy, L.s1);
+    ctx.restore();
+    text(ctx, 'learning rate', L.x1, L.s0 - 7, { font: lab, color: ink(0.6 * intro), align: 'right' });
+    text(ctx, '0.0003', L.x0, L.s0 - 7, { font: num, color: ink(0.5 * span(S, 420, 700)) });
+    if (band > 0) text(ctx, narrow ? 'decay' : 'cosine decay', X(DECAY) + 6, L.s1 - 6, { font: `italic 400 12px ${SERIF}`, color: ink(0.55 * band) });
+
+    if (t >= T_DRAW) {
+      const tokens = S * B;
+      text(ctx, `step ${commas(S)} · ${tokens.toFixed(tokens < 1 ? 2 : 1)}B tokens`, L.readout[0], L.readout[1], { font: `500 11px ${SANS}`, color: ink(0.55), align: 'right' });
+    }
+    ctx.restore();
+  }, { still: T_DONE + 800 });
+}
+
+/* ───────────── Fine-tuning ───────────── */
+
+// 3,124 optimizer steps of 262,144 tokens, two passes over smol-smoltalk: 819 million tokens.
+const SFT = (() => {
+  const STEPS = 3124;
+  const M = 262144 / 1e6;   // millions of tokens per step
+  const PASS = 1562;        // the last step of the first pass over the data
+  const WARMUP = 100;
+  const DECAY = 500;        // the step the cosine decay starts at
+  const LR_MIN = 3e-5;
+  const PEAK = 3e-4;        // the learning rate after warm-up
+  /** The schedule in the fine-tuning config: linear warm-up, constant, cosine decay to the minimum */
+  const lrAt = (step) => (step <= WARMUP
+    ? LR_MIN + ((PEAK - LR_MIN) * (step - 1)) / WARMUP
+    : step <= DECAY
+      ? PEAK
+      : LR_MIN + (PEAK - LR_MIN) * 0.5 * (1 + Math.cos((Math.PI * (step - DECAY)) / (STEPS - DECAY))));
+
+  // Loss × 1000. EARLY and EARLY_MTP: means over 10 steps, steps 1 to 400.
+  // TRAIN and MTP: means over 50 steps. VAL: every 250 steps, and once more at the last step.
+  const EARLY = [
+    2710, 2444, 2256, 2220, 2161, 2087, 2061, 2014, 2034, 1971, 1956, 1932, 1950, 1983, 1955, 1954, 1953, 1884, 1921, 1890, 1851, 1817,
+    1882, 1839, 1882, 1788, 1844, 1819, 1818, 1819, 1863, 1850, 1767, 1807, 1812, 1828, 1771, 1816, 1802, 1873
+  ];
+  const EARLY_MTP = [
+    3112, 2827, 2636, 2577, 2497, 2418, 2378, 2328, 2349, 2287, 2254, 2226, 2245, 2276, 2250, 2244, 2243, 2165, 2201, 2170, 2131, 2094,
+    2162, 2114, 2158, 2060, 2117, 2094, 2093, 2086, 2134, 2119, 2034, 2078, 2081, 2101, 2034, 2083, 2069, 2141
+  ];
+  const TRAIN = [
+    2358, 2034, 1955, 1920, 1854, 1818, 1820, 1818, 1794, 1759, 1776, 1749, 1771, 1717, 1734, 1750, 1728, 1710, 1703, 1705, 1716, 1686,
+    1676, 1673, 1684, 1683, 1674, 1647, 1667, 1664, 1672, 1637, 1617, 1596, 1617, 1570, 1558, 1569, 1565, 1581, 1545, 1549, 1555, 1550,
+    1523, 1531, 1564, 1532, 1527, 1521, 1521, 1533, 1512, 1505, 1497, 1519, 1522, 1535, 1490, 1504, 1526, 1531, 1496
+  ];
+  const MTP = [
+    2730, 2352, 2250, 2205, 2132, 2090, 2089, 2086, 2060, 2020, 2038, 2006, 2030, 1973, 1991, 2006, 1982, 1962, 1956, 1958, 1967, 1936,
+    1926, 1923, 1935, 1935, 1923, 1894, 1913, 1911, 1920, 1885, 1867, 1850, 1872, 1824, 1811, 1822, 1821, 1839, 1800, 1804, 1811, 1806,
+    1779, 1787, 1822, 1788, 1781, 1780, 1776, 1791, 1768, 1763, 1756, 1779, 1782, 1795, 1745, 1761, 1786, 1791, 1752
+  ];
+  const VAL = [
+    1850, 1771, 1724, 1697, 1664, 1640, 1616, 1599, 1583, 1570, 1562, 1556, 1554
+  ];
+
+  const mid10 = (i) => i * 10 + 5.5;
+  const mid50 = (i) => i * 50 + Math.min(50, STEPS - i * 50) / 2 + 0.5;
+  const coarse = (vals, from = 0) => vals.slice(from).map((v, i) => [mid50(from + i), v / 1000]);
+  const fine = (vals) => vals.map((v, i) => [mid10(i), v / 1000]);
+  const evals = (vals) => vals.map((v, i) => [i < vals.length - 1 ? (i + 1) * 250 : STEPS, v / 1000]);
+
+  return {
+    STEPS,
+    M,
+    PASS,
+    WARMUP,
+    DECAY,
+    lrAt,
+    first: 2.982,                  // the loss at step 1, from the pretrained weights
+    // the opening view's lines, 10-step means for the first 400 steps, and the full view's, 50-step means throughout
+    train: [[1, 2.982], ...fine(EARLY), ...coarse(TRAIN, 8)],
+    mtp: [[1, 3.283], ...fine(EARLY_MTP), ...coarse(MTP, 8)],
+    trainFull: [[1, 2.982], ...coarse(TRAIN)],
+    mtpFull: [[1, 3.283], ...coarse(MTP)],
+    val: evals(VAL)
+  };
+})();
+
+/** The fine-tuning learning rate up to step `upTo` as [step, rate] points. */
+function sftRatePoints(upTo) {
+  const { STEPS, WARMUP, DECAY, lrAt } = SFT;
+  const keys = [1, WARMUP + 1, DECAY];
+  for (let k = 1; k <= 32; k++) keys.push(DECAY + ((STEPS - DECAY) * k) / 32);
+  return [...keys.filter((s) => s < upTo), upTo].map((s) => [s, lrAt(s)]);
+}
+
+function createSft(W, H, dpr) {
+  const narrow = W < 520;
+  const PAGE = pageColor();
+  const backdrop = makeBackdrop(W, H, dpr);
+  const { STEPS, M, PASS, DECAY, train, mtp, trainFull, mtpFull, val, first } = SFT;
+  // x0..x1, y0..y1: the loss plot. s0..s1: the learning-rate strip. legend: [right edge, y in the opening view, y in the full view, row height]
+  const L = narrow
+    ? { x0: 40, x1: 330, y0: 76, y1: 300, s0: 346, s1: 390, ticks: 408, readout: [330, 50], legend: [324, 130, 92, 17], xa: [0, 50, 100], xb: [0, 400, 800] }
+    : { x0: 64, x1: 632, y0: 46, y1: 246, s0: 282, s1: 324, ticks: 342, readout: [632, 30], legend: [624, 96, 62, 18], xa: [0, 25, 50, 75, 100], xb: [0, 200, 400, 600, 800] };
+  // The opening view is the first 400 steps at full height; the full view is the whole run, close in on the loss
+  const S_OPEN = 400;
+  const OPEN = { x1: S_OPEN * M, y0: 1.6, y1: 3.4 };
+  const FULL = { x1: STEPS * M, y0: 1.35, y1: 2.2 };
+  const Y_OPEN = [2, 2.5, 3];
+  const Y_FULL = [1.4, 1.6, 1.8, 2];
+
+  const T_DRAW = 600;    // the first 400 steps draw in, slowly at first
+  const T_OPEN = 3600;
+  const T_PULL = 4400;   // the view pulls back
+  const T_FULL = 6000;   // the rest of the run draws in
+  const T_END = 10800;
+  const T_DONE = 11500;
+  const LOOP = 15500;
+  const stepsAt = (t) => (t < T_OPEN ? S_OPEN * span(t, T_DRAW, T_OPEN) ** 2.2 : lerp(S_OPEN, STEPS, span(t, T_FULL, T_END)));
+
+  return looping(LOOP, (ctx, t) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(backdrop, 0, 0, W, H);
+    ctx.save();
+    ctx.globalAlpha = loopAlpha(t, LOOP, 400, 700);
+    const intro = span(t, 200, 700);
+    const c = ease(span(t, T_PULL, T_FULL));
+    const opening = (1 - span(c, 0, 0.3)) * intro; // the opening view's marks leave first, the full view's arrive last
+    const full = span(c, 0.7, 1) * intro;
+    const win = { x1: lerp(OPEN.x1, FULL.x1, c), y0: lerp(OPEN.y0, FULL.y0, c), y1: lerp(OPEN.y1, FULL.y1, c) };
+    const X = (step) => L.x0 + ((step * M) / win.x1) * (L.x1 - L.x0);
+    const Y = (v) => L.y1 - ((v - win.y0) / (win.y1 - win.y0)) * (L.y1 - L.y0);
+    const sy = (v) => L.s1 - (v / 3.3e-4) * (L.s1 - L.s0);
+    const S = Math.max(1, stepsAt(t));
+    const done = span(t, T_END, T_DONE);
+    const num = `400 10px ${SANS}`;
+    const lab = `italic 400 ${narrow ? 12 : 13}px ${SERIF}`;
+
+    // Axes: the opening view's ticks leave as the view starts to pull back, and the full view's arrive as it settles
+    const yTicks = (vals, a) => {
+      for (const v of vals) {
+        const y = Y(v);
+        if (a <= 0 || y < L.y0 - 1 || y > L.y1 + 1) continue;
+        hline(ctx, L.x0, L.x1, y, ink(0.08 * a));
+        text(ctx, v.toFixed(1), L.x0 - 8, y + 3.5, { font: num, color: ink(0.45 * a), align: 'right' });
+      }
+    };
+    const xTicks = (vals, a) => {
+      for (const v of vals) {
+        const x = L.x0 + (v / win.x1) * (L.x1 - L.x0);
+        if (a <= 0 || x > L.x1 + 1) continue;
+        text(ctx, v ? `${v}M` : '0', x, L.ticks, { font: num, color: ink(0.45 * a), align: 'center' });
+      }
+    };
+    yTicks(Y_OPEN, opening);
+    yTicks(Y_FULL, full);
+    xTicks(L.xa, opening);
+    xTicks(L.xb, full);
+    hline(ctx, L.x0 - 4, L.x1 + 4, L.y1, ink(0.25 * intro));
+    hline(ctx, L.x0 - 4, L.x1 + 4, L.s1, ink(0.16 * intro));
+
+    // Where the second pass over the same conversations starts
+    const pass = span(S, PASS - 60, PASS + 140) * c;
+    if (pass > 0) {
+      const x = Math.round(X(PASS)) + 0.5;
+      ctx.strokeStyle = ink(0.32 * pass);
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 4]);
+      ctx.beginPath();
+      ctx.moveTo(x, L.y0);
+      ctx.lineTo(x, L.y1);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      text(ctx, 'first pass', x - 8, L.y1 - 9, { font: lab, color: ink(0.55 * pass), align: 'right' });
+      text(ctx, 'second pass', x + 8, L.y1 - 9, { font: lab, color: ink(0.55 * pass) });
+    }
+
+    // Where the run starts: the pretrained model, on conversations it has never seen
+    if (opening > 0) {
+      const started = span(t, T_DRAW + 300, T_DRAW + 800) * opening;
+      text(ctx, 'starts at 2.98', X(1) + (narrow ? 44 : 64), Y(first) - 2, { font: lab, color: ink(0.7 * started) });
+    }
+
+    // The curves
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(L.x0 - 3, L.y0 - 6, L.x1 - L.x0 + 6, L.y1 - L.y0 + 7);
+    ctx.clip();
+    ctx.lineJoin = 'round';
+    // The finer lines hand over to the coarser ones as the view pulls back, where 10-step means would only add jitter
+    const coarser = span(c, 0.25, 0.75);
+    const line = (pts, color, width) => {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      trace(ctx, pts, X, Y, S);
+    };
+    if (coarser < 1) {
+      line(mtp, blue(0.9 * (1 - coarser)), 1.3);
+      line(train, ink(0.42 * (1 - coarser)), 1.1);
+    }
+    if (coarser > 0) {
+      line(mtpFull, blue(0.9 * coarser), 1.3);
+      line(trainFull, ink(0.42 * coarser), 1.1);
+    }
+    const r = lerp(2.3, 2, c);
+    for (const [s, v] of val) {
+      if (s > S) break;
+      dot(ctx, X(s), Y(v), r, ink(0.88));
+    }
+    if (opening > 0) dot(ctx, X(1), Y(first), 2.6, ink(0.88 * opening));
+    ctx.restore();
+
+    // Where validation ends
+    if (done > 0) {
+      const vEnd = val[val.length - 1][1];
+      const f = `500 11px ${SANS}`;
+      if (narrow) text(ctx, vEnd.toFixed(2), L.x1 - 2, Y(vEnd) - 9, { font: f, color: ink(0.85 * done), align: 'right', halo: PAGE });
+      else text(ctx, vEnd.toFixed(2), L.x1 + 7, Y(vEnd) + 4, { font: f, color: ink(0.85 * done) });
+    }
+
+    // Legend, in the empty corner of whichever view is showing
+    const [lx, lyOpen, lyFull, lh] = L.legend;
+    const ly = lerp(lyOpen, lyFull, c);
+    const rows = [
+      ['training loss', ink(0.55 * intro), 'line', ink(0.42 * intro)],
+      ['validation loss', ink(0.8 * intro), 'dot', ink(0.88 * intro)],
+      [narrow ? 'the token after next' : 'the token after next (MTP)', blue(0.9 * intro), 'line', blue(0.9 * intro)]
+    ];
+    rows.forEach(([str, color, mark, markColor], i) => {
+      const y = ly + i * lh;
+      text(ctx, str, lx, y, { font: lab, color, align: 'right' });
+      ctx.font = lab;
+      const left = lx - ctx.measureText(str).width;
+      if (mark === 'dot') dot(ctx, left - 15, y - 4, 2, markColor);
+      else {
+        ctx.strokeStyle = markColor;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(left - 24, y - 4);
+        ctx.lineTo(left - 7, y - 4);
+        ctx.stroke();
+      }
+    });
+
+    // The learning rate under it
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(L.x0 - 1, L.s0 - 6, L.x1 - L.x0 + 2, L.s1 - L.s0 + 6);
+    ctx.clip();
+    rateStrip(ctx, sftRatePoints(S), X, sy, L.s1);
+    ctx.restore();
+    text(ctx, 'learning rate', L.x1, L.s0 - 7, { font: lab, color: ink(0.6 * intro), align: 'right' });
+    text(ctx, '0.0003', L.x0, L.s0 - 7, { font: num, color: ink(0.5 * span(S, 90, 150)) });
+    const decay = span(S, DECAY + 150, DECAY + 500) * full;
+    if (decay > 0) text(ctx, narrow ? 'decay' : 'cosine decay', X(DECAY) + 8, L.s1 - 6, { font: `italic 400 12px ${SERIF}`, color: ink(0.55 * decay) });
+
+    if (t >= T_DRAW) text(ctx, `step ${commas(S)} · ${commas(S * M)}M tokens`, L.readout[0], L.readout[1], { font: `500 11px ${SANS}`, color: ink(0.55), align: 'right' });
+    ctx.restore();
+  }, { still: T_DONE + 800 });
+}
+
+/* ───────────── Sizing ───────────── */
+
+/**
+ * Each sketch has two layouts, drawn at a design width: 680 px across for wide frames, 360
+ * for phones and other tall frames. This scales whichever one applies to the real frame,
+ * so a 600 px or a 414 px figure gets the same composition as the one checked here.
+ */
+function fitted(create) {
+  return (W, H, dpr) => {
+    const tall = W < 520 || H > W * 0.9;
+    const vw = tall ? 360 : 680;
+    const s = W / vw;
+    const inner = create(vw, H / s, dpr * s);
+    return {
+      ...inner,
+      draw(ctx) {
+        ctx.save();
+        ctx.scale(s, s);
+        inner.draw(ctx);
+        ctx.restore();
+      }
+    };
+  };
+}
+
+  return { loss: fitted(createLoss), sft: fitted(createSft) };
+})();
+
+/* ───────────── Multi-token prediction: the MTP module beside the main model ───────────── */
+
+// towers · the paper's Figure 3 with DeepSeek-V3's depth, D = 1. The main model reads t1..t4 and
+//          predicts t2..t5. The MTP module takes the main model's final hidden state at each
+//          position, joins it with the embedding of the next true token (RMSNorm both,
+//          concatenate, project), runs one transformer block and predicts t3..t6, through the
+//          same embedding and output head. The two losses add (the MTP one weighted by λ), and
+//          at inference the module is dropped. The words are the section's own example sentence.
+// Its helpers and fitted() (a 680-wide design, or 360-wide on phones) stay inside this scope.
+const DS_MTP = (() => {
+const INK = '28, 25, 23';
+
+const BLUE = '77, 107, 254'; // DeepSeek's blue, as on the title card
+
+const SERIF = 'Newsreader, Georgia, serif';
+
+const SANS = 'Inter, sans-serif';
+
+const FEATHER = 28;
+
+const TAU = Math.PI * 2;
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+const lerp = (a, b, k) => a + (b - a) * k;
+
+const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
+
+const span = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+/** Rise over [a, a + inMs], hold, fall over [b - outMs, b] */
+
+const pulse = (t, a, b, inMs = 300, outMs = 300) => Math.min(span(t, a, a + inMs), 1 - span(t, b - outMs, b));
+
+const ink = (a) => `rgba(${INK}, ${a})`;
+
+const blue = (a = 1) => `rgba(${BLUE}, ${a})`;
+
+const INK_RGB = INK.split(',').map(Number);
+
+const BLUE_RGB = BLUE.split(',').map(Number);
+/** Ink turning blue as k goes 0 → 1 */
+
+const inkToBlue = (k, a) => `rgba(${INK_RGB.map((v, i) => Math.round(lerp(v, BLUE_RGB[i], k))).join(', ')}, ${a})`;
+
+function pageColor() {
+  return getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() || '#fdfaf6';
+}
+
+function makeLayer(W, H, dpr) {
+  const c = document.createElement('canvas');
+  c.width = Math.round(W * dpr);
+  c.height = Math.round(H * dpr);
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { canvas: c, ctx: g };
+}
+
+/** Erase toward each edge of a layer, so whatever it holds fades out there. */
+function featherEdges(g, W, H, size, sides = 'tblr') {
+  g.save();
+  g.globalCompositeOperation = 'destination-out';
+  const edges = {
+    t: [0, 0, 0, size, 0, 0, W, size],
+    b: [0, H, 0, H - size, 0, H - size, W, size],
+    l: [0, 0, size, 0, 0, 0, size, H],
+    r: [W, 0, W - size, 0, W - size, 0, size, H]
+  };
+  for (const side of sides) {
+    const [x0, y0, x1, y1, rx, ry, rw, rh] = edges[side];
+    const grad = g.createLinearGradient(x0, y0, x1, y1);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.35)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = grad;
+    g.fillRect(rx, ry, rw, rh);
+  }
+  g.restore();
+}
+
+/** The page colour, opaque in the middle and dissolving at the edges. */
+function makeBackdrop(W, H, dpr) {
+  const layer = makeLayer(W, H, dpr);
+  layer.ctx.fillStyle = pageColor();
+  layer.ctx.fillRect(0, 0, W, H);
+  featherEdges(layer.ctx, W, H, FEATHER);
+  return layer.canvas;
+}
+
+/** Fade in as a loop starts and out as it ends */
+const loopAlpha = (clock, loop, inMs = 400, outMs = 600) => Math.min(span(clock, 0, inMs), 1 - span(clock, loop - outMs, loop));
+
+function looping(LOOP, draw, extra = {}) {
+  let clock = 0;
+  return {
+    loopMs: LOOP,
+    prewarm: 0,
+    ...extra,
+    step(dt) {
+      clock = (clock + dt) % LOOP;
+    },
+    draw(ctx) {
+      draw(ctx, clock);
+    }
+  };
+}
+
+function text(ctx, str, x, y, { font = `400 11px ${SANS}`, color = ink(0.5), align = 'left', baseline = 'alphabetic', halo = null } = {}) {
+  ctx.font = font;
+  ctx.textAlign = align;
+  ctx.textBaseline = baseline;
+  if (halo) {
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = halo;
+    ctx.strokeText(str, x, y);
+  }
+  ctx.fillStyle = color;
+  ctx.fillText(str, x, y);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+function rrect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
+}
+
+const bezPoint = ([a, b, c, d], t) => {
+  const u = 1 - t;
+  return {
+    x: u * u * u * a.x + 3 * u * u * t * b.x + 3 * u * t * t * c.x + t * t * t * d.x,
+    y: u * u * u * a.y + 3 * u * u * t * b.y + 3 * u * t * t * c.y + t * t * t * d.y
+  };
+};
+
+/** Stroke a cubic from k0 to k1 of the way along */
+function strokeCurve(ctx, p, k0 = 0, k1 = 1, n = 32) {
+  if (k1 <= k0) return;
+  ctx.beginPath();
+  for (let j = 0; j <= n; j++) {
+    const q = bezPoint(p, lerp(k0, k1, j / n));
+    if (j) ctx.lineTo(q.x, q.y);
+    else ctx.moveTo(q.x, q.y);
+  }
+  ctx.stroke();
+}
+
+/** A small open arrowhead at (x, y) pointing along angle a */
+function arrowHead(ctx, x, y, a, size, color, width = 1.2) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x - size * Math.cos(a - 0.5), y - size * Math.sin(a - 0.5));
+  ctx.lineTo(x, y);
+  ctx.lineTo(x - size * Math.cos(a + 0.5), y - size * Math.sin(a + 0.5));
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+}
+
+function dot(ctx, x, y, r, color) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, TAU);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+const MTP_WORDS = ['the', 'cat', 'sat', 'on', 'the', 'mat'];
+
+function createTowers(W, H, dpr) {
+  const narrow = W < 520;
+  const PAGE = pageColor();
+  const backdrop = makeBackdrop(W, H, dpr);
+  const words = MTP_WORDS;
+  let L;
+  if (!narrow) {
+    const pitch = 52;
+    L = {
+      pitch,
+      A: 190,
+      B: 490,
+      half: 2 * pitch + 6,
+      title: 36,
+      sub: 53,
+      loss: 78,
+      target: 104,
+      head: [140, 20],
+      stack: [196, 92],
+      combine: [258, 28],
+      block: [200, 40],
+      emb: [314, 20],
+      input: 356,
+      pad: 10,
+      wordPx: 15,
+      boxPx: 12.5
+    };
+  } else {
+    const pitch = 32;
+    L = {
+      pitch,
+      A: 88,
+      B: 272,
+      half: 2 * pitch + 2,
+      pad: 5,
+      title: 36,
+      sub: 52,
+      loss: 80,
+      target: 110,
+      head: [146, 20],
+      stack: [208, 120],
+      combine: [286, 32],
+      block: [212, 48],
+      emb: [382, 20],
+      input: 430,
+      wordPx: 12,
+      boxPx: 11.5
+    };
+  }
+  const colX = (cx, j) => cx + (j - 1.5) * L.pitch;
+  const box = (cx, [y, h]) => ({ x: cx - L.half, y, w: 2 * L.half, h });
+  const BX = {
+    embA: box(L.A, L.emb),
+    embB: box(L.B, L.emb),
+    stack: box(L.A, L.stack),
+    combine: box(L.B, L.combine),
+    block: box(L.B, L.block),
+    headA: box(L.A, L.head),
+    headB: box(L.B, L.head)
+  };
+  const gapX = (L.A + L.half + L.B - L.half) / 2;
+
+  // Timeline (ms)
+  const M = { inA: [500, 900], embA: [900, 1300], stack: [1300, 2300], up: [2300, 2700], tgtA: [2700, 3000], bus: [2300, 3400], inB: [2100, 2500], embB: [2500, 2900], comb: [3400, 3700], toBlock: [3700, 4000], block: [4000, 4500], upB: [4500, 4900], tgtB: [4900, 5200], loss: [5500, 6000], drop: [8000, 8700], infer: [8900, 11400] };
+  const LOOP = 13200;
+
+  function boxDraw(ctx, b, label, { color = ink, lit = 0, alpha = 1, dashed = false, stack = false } = {}) {
+    if (alpha <= 0) return;
+    ctx.save();
+    ctx.globalAlpha *= alpha;
+    if (stack) {
+      for (let j = 2; j >= 1; j--) {
+        rrect(ctx, b.x + 0.5 + j * 4, b.y + 0.5 - j * 4, b.w - 1, b.h - 1, 5);
+        ctx.fillStyle = PAGE;
+        ctx.fill();
+        ctx.strokeStyle = color(0.22);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+    rrect(ctx, b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1, 5);
+    ctx.fillStyle = PAGE;
+    ctx.fill();
+    if (lit > 0) {
+      ctx.fillStyle = color(0.035 * lit);
+      ctx.fill();
+    }
+    ctx.setLineDash(dashed ? [3, 3] : []);
+    ctx.strokeStyle = color(0.42 + 0.22 * Math.min(1, lit));
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    text(ctx, label, b.x + b.w / 2, b.y + b.h / 2 + 0.5, { font: `italic 400 ${L.boxPx}px ${SERIF}`, color: color(0.7), align: 'center', baseline: 'middle' });
+    ctx.restore();
+  }
+
+  /** Dots rising (or falling) in each column between two heights */
+  function columns(ctx, cx, y0, y1, k, color, only = null) {
+    if (k <= 0 || k >= 1) return;
+    for (let j = 0; j < 4; j++) {
+      if (only !== null && j !== only) continue;
+      const x = colX(cx, j);
+      const y = lerp(y0, y1, ease(k));
+      const yt = lerp(y0, y1, ease(Math.max(0, k - 0.12)));
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.6;
+      ctx.lineCap = 'round';
+      ctx.globalAlpha *= 0.45;
+      ctx.beginPath();
+      ctx.moveTo(x, yt);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.globalAlpha /= 0.45;
+      ctx.lineCap = 'butt';
+      dot(ctx, x, y, 2.6, color);
+    }
+  }
+
+  function arrows(ctx, cx, y0, y1, color, k = 1, only = null) {
+    if (k <= 0) return;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    for (let j = 0; j < 4; j++) {
+      if (only !== null && j !== only) continue;
+      const x = colX(cx, j);
+      ctx.beginPath();
+      ctx.moveTo(x, y0);
+      ctx.lineTo(x, lerp(y0, y1, k));
+      ctx.stroke();
+    }
+  }
+
+  // The main model's last hidden states, to the module: right across the gap, then down into "combine"
+  const busY = L.head[0] + L.head[1] + (L.stack[0] - 8 - (L.head[0] + L.head[1])) / 2;
+  const busPath = [
+    { x: L.A + L.half - 8, y: busY },
+    { x: gapX + 30, y: busY },
+    { x: gapX - 10, y: BX.combine.y + BX.combine.h / 2 },
+    { x: BX.combine.x, y: BX.combine.y + BX.combine.h / 2 }
+  ];
+
+  return looping(LOOP, (ctx, t) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(backdrop, 0, 0, W, H);
+    const a = loopAlpha(t, LOOP, 400, 700);
+    ctx.save();
+    ctx.globalAlpha = a;
+    const sp = (n) => span(t, M[n][0], M[n][1]);
+    const drop = ease(sp('drop'));
+    const mtpA = 1 - 0.82 * drop;       // the module, fading at inference
+    const train = 1 - drop;              // training-only marks
+    const titleF = `500 ${narrow ? 14 : 15}px ${SERIF}`;
+    const subF = `italic 400 ${narrow ? 11.5 : 12.5}px ${SERIF}`;
+
+    // Shared links between the twin embeddings and the twin heads
+    for (const [p, q] of [[BX.embA, BX.embB], [BX.headA, BX.headB]]) {
+      const y = p.y + p.h / 2;
+      ctx.setLineDash([2, 3]);
+      ctx.strokeStyle = ink(0.4 * mtpA);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(p.x + p.w, y + 0.5);
+      ctx.lineTo(q.x, y + 0.5);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      text(ctx, 'shared', gapX, y - 6, { font: `italic 400 ${narrow ? 10.5 : 11.5}px ${SERIF}`, color: ink(0.5 * mtpA), align: 'center' });
+    }
+
+    // Static linework: input → embedding, embedding → stack/combine, stack → head, block → head
+    const yIn = L.input - L.wordPx - 2;
+    arrows(ctx, L.A, yIn, BX.embA.y + BX.embA.h + 3, ink(0.2));
+    arrows(ctx, L.A, BX.embA.y - 2, BX.stack.y + BX.stack.h + 2, ink(0.2));
+    arrows(ctx, L.A, BX.stack.y - 8, BX.headA.y + BX.headA.h + 2, ink(0.2));
+    arrows(ctx, L.A, BX.headA.y - 2, L.target + 6, ink(0.2));
+    ctx.save();
+    ctx.globalAlpha *= mtpA;
+    arrows(ctx, L.B, yIn, BX.embB.y + BX.embB.h + 3, ink(0.2));
+    arrows(ctx, L.B, BX.embB.y - 2, BX.combine.y + BX.combine.h + 2, ink(0.2));
+    arrows(ctx, L.B, BX.combine.y - 2, BX.block.y + BX.block.h + 2, blue(0.3));
+    arrows(ctx, L.B, BX.block.y - 2, BX.headB.y + BX.headB.h + 2, blue(0.3));
+    arrows(ctx, L.B, BX.headB.y - 2, L.target + 6, ink(0.2));
+    ctx.strokeStyle = blue(0.45);
+    ctx.lineWidth = 1.2;
+    strokeCurve(ctx, busPath);
+    arrowHead(ctx, busPath[3].x - 1, busPath[3].y, 0, 5, blue(0.6));
+    ctx.restore();
+
+    // Frames around each tower, as in the paper
+    const frame = (cx, color, alpha, dashed) => {
+      ctx.save();
+      ctx.globalAlpha *= alpha;
+      rrect(ctx, cx - L.half - L.pad + 0.5, L.head[0] - 14 + 0.5, 2 * L.half + 2 * L.pad, L.emb[0] + L.emb[1] + 10 - (L.head[0] - 14), 8);
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    };
+    frame(L.A, ink(0.16), 1);
+    frame(L.B, blue(0.45), mtpA);
+
+    // Boxes
+    const litStack = pulse(t, M.stack[0], M.stack[1], 200, 300);
+    boxDraw(ctx, BX.embA, 'embedding', { lit: pulse(t, M.embA[0], M.embA[1] + 200, 150, 250) });
+    boxDraw(ctx, BX.stack, '61 transformer blocks', { lit: litStack, stack: true });
+    boxDraw(ctx, BX.headA, 'output head', { lit: pulse(t, M.up[0] + 200, M.tgtA[1], 150, 250) + pulse(t, M.infer[0] + 1500, M.infer[0] + 2100, 150, 250) });
+    boxDraw(ctx, BX.embB, 'embedding', { lit: pulse(t, M.embB[0], M.embB[1] + 200, 150, 250), alpha: mtpA, dashed: drop > 0.5 });
+    boxDraw(ctx, BX.combine, 'combine', { color: blue, lit: pulse(t, M.comb[0], M.comb[1] + 200, 150, 250), alpha: mtpA, dashed: drop > 0.5 });
+    boxDraw(ctx, BX.block, '1 transformer block', { color: blue, lit: pulse(t, M.block[0], M.block[1], 150, 250), alpha: mtpA, dashed: drop > 0.5 });
+    boxDraw(ctx, BX.headB, 'output head', { lit: pulse(t, M.upB[0] + 200, M.tgtB[1], 150, 250), alpha: mtpA, dashed: drop > 0.5 });
+
+    // A band of light climbing the 61 blocks
+    if (litStack > 0) {
+      const k = span(t, M.stack[0], M.stack[1]);
+      const y = lerp(BX.stack.y + BX.stack.h - 6, BX.stack.y + 6, ease(k));
+      ctx.fillStyle = ink(0.035 * litStack);
+      ctx.fillRect(BX.stack.x + 2, y - 6, BX.stack.w - 4, 12);
+    }
+
+    // Inputs and targets
+    const wF = `400 ${L.wordPx}px ${SERIF}`;
+    for (let j = 0; j < 4; j++) {
+      const inA = 0.3 + 0.55 * span(t, M.inA[0] - 300, M.inA[0]);
+      text(ctx, words[j], colX(L.A, j), L.input, { font: wF, color: ink(inA), align: 'center' });
+      text(ctx, words[j + 1], colX(L.B, j), L.input, { font: wF, color: ink((0.3 + 0.55 * span(t, M.inB[0] - 300, M.inB[0])) * mtpA), align: 'center' });
+      // Targets: shown faintly, and lit when a prediction lands on them
+      const ta = lerp(0.22, 0.85, span(t, M.tgtA[0], M.tgtA[1]));
+      text(ctx, words[j + 1], colX(L.A, j), L.target, { font: wF, color: ink(ta * train), align: 'center' });
+      const tb = span(t, M.tgtB[0], M.tgtB[1]);
+      text(ctx, words[j + 2], colX(L.B, j), L.target, { font: wF, color: inkToBlue(tb, lerp(0.22, 0.95, tb) * train), align: 'center' });
+    }
+
+    // Inference: the main model alone predicts the next token
+    if (drop > 0) {
+      const inf = span(t, M.infer[0], M.infer[1]);
+      const ia = (1 - span(t, LOOP - 1200, LOOP - 700)) * span(t, M.infer[0] + 1900, M.infer[0] + 2300);
+      text(ctx, words[4], colX(L.A, 3), L.target, { font: wF, color: ink(0.85 * ia), align: 'center' });
+      text(ctx, 'dropped at inference', L.B, BX.block.y - 14, { font: subF, color: ink(0.6 * drop), align: 'center', halo: PAGE });
+      void inf;
+    }
+
+    // Pulses
+    columns(ctx, L.A, yIn, BX.embA.y + BX.embA.h, sp('inA'), ink(0.75));
+    columns(ctx, L.A, BX.embA.y, BX.stack.y + BX.stack.h, sp('embA'), ink(0.75));
+    columns(ctx, L.A, BX.stack.y - 8, L.target + 6, sp('up'), ink(0.75));
+    columns(ctx, L.B, yIn, BX.embB.y + BX.embB.h, sp('inB'), ink(0.75));
+    columns(ctx, L.B, BX.embB.y, BX.combine.y + BX.combine.h, sp('embB'), ink(0.75));
+    columns(ctx, L.B, BX.combine.y, BX.block.y + BX.block.h, sp('toBlock'), blue(0.95));
+    columns(ctx, L.B, BX.block.y, L.target + 6, sp('upB'), blue(0.95));
+    // The hidden states cross as a short train of four
+    const busK = sp('bus');
+    if (busK > 0 && busK < 1) {
+      for (let j = 0; j < 4; j++) {
+        const kk = clamp(busK * 1.3 - j * 0.1, 0, 1);
+        if (kk > 0 && kk < 1) {
+          const q = bezPoint(busPath, ease(kk));
+          dot(ctx, q.x, q.y, 2.3, blue(0.95));
+        }
+      }
+    }
+    // Inference pass: up the main tower, and only the last position goes on to the head
+    const inf0 = M.infer[0];
+    columns(ctx, L.A, yIn, BX.embA.y + BX.embA.h, span(t, inf0, inf0 + 400), ink(0.75));
+    columns(ctx, L.A, BX.embA.y, BX.stack.y + BX.stack.h, span(t, inf0 + 400, inf0 + 800), ink(0.75));
+    if (t > inf0 + 800 && t < inf0 + 1500) {
+      const k = span(t, inf0 + 800, inf0 + 1500);
+      const y = lerp(BX.stack.y + BX.stack.h - 6, BX.stack.y + 6, ease(k));
+      ctx.fillStyle = ink(0.035);
+      ctx.fillRect(BX.stack.x + 2, y - 6, BX.stack.w - 4, 12);
+    }
+    columns(ctx, L.A, BX.stack.y - 8, L.target + 6, span(t, inf0 + 1500, inf0 + 1950), ink(0.75), 3);
+
+    // Titles
+    text(ctx, 'main model', L.A, L.title, { font: titleF, color: ink(0.85), align: 'center' });
+    text(ctx, narrow ? 'the next token' : 'predicts the next token', L.A, L.sub, { font: subF, color: ink(0.5), align: 'center' });
+    text(ctx, 'MTP module', L.B, L.title, { font: titleF, color: blue(0.95 * mtpA), align: 'center' });
+    text(ctx, narrow ? 'one token further' : 'predicts one token further', L.B, L.sub, { font: subF, color: ink(0.5 * mtpA), align: 'center' });
+
+    // The losses add
+    const lk = sp('loss') * train;
+    if (lk > 0) {
+      const ly = L.target - L.wordPx - 2;
+      const pa = [{ x: colX(L.A, 3) + 16, y: ly + 6 }, { x: gapX - 14, y: ly + 6 }, { x: gapX - 4, y: L.loss + 10 }, { x: gapX - 2, y: L.loss + 4 }];
+      const pb = [{ x: colX(L.B, 0) - 16, y: ly + 6 }, { x: gapX + 14, y: ly + 6 }, { x: gapX + 4, y: L.loss + 10 }, { x: gapX + 2, y: L.loss + 4 }];
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = ink(0.45);
+      strokeCurve(ctx, pa, 0, ease(lk));
+      ctx.strokeStyle = blue(0.6);
+      strokeCurve(ctx, pb, 0, ease(lk));
+      text(ctx, 'loss', gapX, L.loss - 2, { font: subF, color: ink(0.7 * span(lk, 0.6, 1)), align: 'center' });
+    }
+    ctx.restore();
+  }, { still: 6800 });
+}
+
+function fitted(create) {
+  return (W, H, dpr) => {
+    const tall = W < 520 || H > W * 0.9;
+    const vw = tall ? 360 : 680;
+    const s = W / vw;
+    const inner = create(vw, H / s, dpr * s);
+    return {
+      ...inner,
+      draw(ctx) {
+        ctx.save();
+        ctx.scale(s, s);
+        inner.draw(ctx);
+        ctx.restore();
+      }
+    };
+  };
+}
+
+  return { towers: fitted(createTowers) };
+})();
+
+/* ───────────── RoPE: the rotating pairs, and a score that only sees the offset ───────────── */
+
+// dials · DeepSeek-V3's 32 rotating pairs as dials (θ_i = 10000^(−2i/64)), a position track and
+//         the score against the offset m − n. The same vector is the query and the key (unit
+//         length in every pair, an illustrative choice), so the angle between the hands in pair
+//         i is exactly (m − n)·θ_i and the score is (1/32) Σ cos((m − n)·θ_i). Both tokens slide
+//         along the sequence together, then the key falls back so the offset grows, they slide
+//         again, and the offset closes back to where it began.
+// Its helpers and fitted() (a 680-wide design, or 360-wide on phones) stay inside this scope.
+const DS_ROPE = (() => {
+const INK = '28, 25, 23';
+
+const BLUE = '77, 107, 254';     // DeepSeek's blue, as on the title card
+
+const SERIF = 'Newsreader, Georgia, serif';
+
+const SANS = 'Inter, sans-serif';
+
+const FEATHER = 28;
+
+const TAU = Math.PI * 2;
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+const lerp = (a, b, k) => a + (b - a) * k;
+/** How far t is through [a, b], from 0 to 1 */
+
+const span = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+
+const easeSine = (k) => 0.5 - 0.5 * Math.cos(Math.PI * k);
+
+const ink = (a) => `rgba(${INK}, ${a})`;
+
+const blue = (a = 1) => `rgba(${BLUE}, ${a})`;
+/** An angle folded into (−π, π] */
+
+const wrap = (a) => a - TAU * Math.floor((a + Math.PI) / TAU);
+
+// RoFormer: θ_i = base^(−2i/d) for the d/2 pairs. DeepSeek-V3 rotates a 64-d part of each
+// query and key (d_h^R = 64, section 4.2 of the report), and its released config sets
+// rope_theta to 10000, so there are 32 pairs and θ_0 = 1 rad per token down to θ_31 ≈ 1.3e-4.
+const ROPE_D = 64;
+
+const ROPE_BASE = 10000;
+
+const THETA = Array.from({ length: ROPE_D / 2 }, (_, i) => ROPE_BASE ** (-2 * i / ROPE_D));
+
+function seeded(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function pageColor() {
+  return getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() || '#fdfaf6';
+}
+
+function makeLayer(W, H, dpr) {
+  const c = document.createElement('canvas');
+  c.width = Math.round(W * dpr);
+  c.height = Math.round(H * dpr);
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { canvas: c, ctx: g };
+}
+
+/** Erase toward each edge of a layer, so whatever it holds fades out there. */
+function featherEdges(g, W, H, size, sides = 'tblr') {
+  g.save();
+  g.globalCompositeOperation = 'destination-out';
+  const edges = {
+    t: [0, 0, 0, size, 0, 0, W, size],
+    b: [0, H, 0, H - size, 0, H - size, W, size],
+    l: [0, 0, size, 0, 0, 0, size, H],
+    r: [W, 0, W - size, 0, W - size, 0, size, H]
+  };
+  for (const side of sides) {
+    const [x0, y0, x1, y1, rx, ry, rw, rh] = edges[side];
+    const grad = g.createLinearGradient(x0, y0, x1, y1);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.35)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = grad;
+    g.fillRect(rx, ry, rw, rh);
+  }
+  g.restore();
+}
+
+/** The page colour (plus any static linework), opaque in the middle and dissolving at the edges. */
+function makeBackdrop(W, H, dpr, paint) {
+  const layer = makeLayer(W, H, dpr);
+  layer.ctx.fillStyle = pageColor();
+  layer.ctx.fillRect(0, 0, W, H);
+  if (paint) paint(layer.ctx);
+  featherEdges(layer.ctx, W, H, FEATHER);
+  return layer.canvas;
+}
+
+function looping(LOOP, draw, extra = {}) {
+  let clock = 0;
+  return {
+    loopMs: LOOP,
+    prewarm: 0,
+    ...extra,
+    step(dt) {
+      clock = (clock + dt) % LOOP;
+    },
+    draw(ctx) {
+      draw(ctx, clock);
+    }
+  };
+}
+
+function text(ctx, str, x, y, { font = `400 11px ${SANS}`, color = ink(0.5), align = 'left', halo = null } = {}) {
+  ctx.font = font;
+  ctx.textAlign = align;
+  if (halo) {
+    ctx.lineWidth = 4;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = halo;
+    ctx.strokeText(str, x, y);
+  }
+  ctx.fillStyle = color;
+  ctx.fillText(str, x, y);
+  ctx.textAlign = 'left';
+}
+
+function textWidth(ctx, str, font) {
+  ctx.font = font;
+  return ctx.measureText(str).width;
+}
+
+/**
+ * A symbol in italic serif with TeX-style scripts: "k^R", "W^{UK}", "q^C_{t,i}". Runs in
+ * backticks are set upright ("`=` 3"). Returns the width.
+ */
+function parseMath(str) {
+  const out = [];
+  let i = 0;
+  const group = () => {
+    if (str[i] === '{') {
+      const j = str.indexOf('}', i);
+      const g = str.slice(i + 1, j);
+      i = j + 1;
+      return g;
+    }
+    return str[i++];
+  };
+  let base = '';
+  let upright = false;
+  const flush = () => {
+    if (base) out.push({ kind: 'base', text: base, upright });
+    base = '';
+  };
+  while (i < str.length) {
+    const ch = str[i];
+    if (ch === '`') {
+      flush();
+      upright = !upright;
+      i++;
+    } else if (ch === '^' || ch === '_') {
+      flush();
+      i++;
+      out.push({ kind: ch === '^' ? 'sup' : 'sub', text: group() });
+    } else {
+      base += ch;
+      i++;
+    }
+  }
+  flush();
+  return out;
+}
+
+function mathText(ctx, str, x, y, { size = 14, color = ink(0.8), align = 'left', weight = 400, halo = null, measure = false } = {}) {
+  const parts = parseMath(str);
+  const fb = (p) => `${p.upright ? '' : 'italic '}${weight} ${size}px ${SERIF}`;
+  const fs = `italic ${weight} ${size * 0.66}px ${SERIF}`;
+  // Lay out: a sup and a sub after the same base share an x
+  const items = [];
+  let cx = 0;
+  let scriptX = null;
+  let scriptW = 0;
+  for (const p of parts) {
+    if (p.kind === 'base') {
+      if (scriptX !== null) {
+        cx = scriptX + scriptW;
+        scriptX = null;
+        scriptW = 0;
+      }
+      const w = textWidth(ctx, p.text, fb(p));
+      items.push({ ...p, x: cx, dy: 0, font: fb(p) });
+      cx += w;
+    } else {
+      if (scriptX === null) scriptX = cx + size * 0.04;
+      const w = textWidth(ctx, p.text, fs);
+      items.push({ ...p, x: scriptX, dy: p.kind === 'sup' ? -size * 0.38 : size * 0.22, font: fs });
+      scriptW = Math.max(scriptW, w);
+    }
+  }
+  if (scriptX !== null) cx = scriptX + scriptW;
+  const width = cx;
+  if (measure) return width;
+  const x0 = align === 'right' ? x - width : align === 'center' ? x - width / 2 : x;
+  ctx.textAlign = 'left';
+  for (const it of items) {
+    ctx.font = it.font;
+    if (halo) {
+      ctx.lineWidth = 4;
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = halo;
+      ctx.strokeText(it.text, x0 + it.x, y + it.dy);
+    }
+    ctx.fillStyle = color;
+    ctx.fillText(it.text, x0 + it.x, y + it.dy);
+  }
+  return width;
+}
+
+/** Canvas angle for a maths angle (counter-clockwise, y up) */
+const px = (x, r, a) => x + r * Math.cos(a);
+
+const py = (y, r, a) => y - r * Math.sin(a);
+
+/**
+ * One rotating pair as a clock face: the key's hand in ink, the query's in blue, and the
+ * angle between them as a short arc.
+ */
+function dial(ctx, x, y, r, aq, ak, { alpha = 1, arc = true, face = 0.16, lw = 1 } = {}) {
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, TAU);
+  ctx.strokeStyle = ink(face);
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  if (arc) {
+    const d = wrap(aq - ak);
+    if (Math.abs(d) > 0.01) {
+      ctx.beginPath();
+      ctx.arc(x, y, r * 0.5, -ak, -(ak + d), d > 0);
+      ctx.strokeStyle = blue(0.45);
+      ctx.lineWidth = 1.5 * lw;
+      ctx.stroke();
+    }
+  }
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(px(x, r * 0.84, ak), py(y, r * 0.84, ak));
+  ctx.strokeStyle = ink(0.72);
+  ctx.lineWidth = 1.3 * lw;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(px(x, r * 0.84, aq), py(y, r * 0.84, aq));
+  ctx.strokeStyle = blue(0.95);
+  ctx.lineWidth = 1.6 * lw;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x, y, 1.6 * lw, 0, TAU);
+  ctx.fillStyle = ink(0.75);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Piecewise keyframes [t, ...values], eased between */
+function keyed(KEYS, t, easing = easeSine) {
+  for (let j = 1; j < KEYS.length; j++) {
+    const [t1, ...b] = KEYS[j];
+    if (t <= t1) {
+      const [t0, ...a] = KEYS[j - 1];
+      const k = easing(span(t, t0, t1));
+      return a.map((v, q) => lerp(v, b[q], k));
+    }
+  }
+  return KEYS[KEYS.length - 1].slice(1);
+}
+
+function createDials(W, H, dpr) {
+  const narrow = W < 520;
+  const POS = 64;
+  const KEYS = [
+    [0, 6, 3], [900, 6, 3], [6900, 54, 51], [7800, 54, 51], [9700, 54, 31],
+    [10600, 54, 31], [16600, 26, 3], [17500, 26, 3], [19400, 6, 3], [20000, 6, 3]
+  ];
+  const LOOP = 20000;
+  const rnd = seeded(7);
+  const PHI = THETA.map(() => rnd() * TAU);
+  const score = (D) => THETA.reduce((s, th) => s + Math.cos(D * th), 0) / THETA.length;
+
+  const L = narrow
+    ? { tx0: 26, tx1: 334, ty: 64, gx: 44, gy: 128, gap: 39, r: 14, cx0: 52, cx1: 328, cy0: 314, cy1: 432, cols: 8 }
+    : { tx0: 44, tx1: 636, ty: 76, gx: 74, gy: 156, gap: 46, r: 17, cx0: 462, cx1: 636, cy0: 158, cy1: 316, cols: 8 };
+  const X = (p) => lerp(L.tx0, L.tx1, p / (POS - 1));
+  const dialAt = (i) => ({ x: L.gx + (i % L.cols) * L.gap, y: L.gy + Math.floor(i / L.cols) * L.gap });
+  const S0 = 0.4;
+  const S1 = 1.0;
+  const CX = (d) => lerp(L.cx0, L.cx1, d / (POS - 1));
+  const CY = (s) => lerp(L.cy1, L.cy0, (s - S0) / (S1 - S0));
+
+  const backdrop = makeBackdrop(W, H, dpr, (g) => {
+    // The track: one tick per position
+    g.lineWidth = 1;
+    g.strokeStyle = ink(0.22);
+    g.beginPath();
+    g.moveTo(L.tx0, L.ty + 0.5);
+    g.lineTo(L.tx1, L.ty + 0.5);
+    g.stroke();
+    for (let p = 0; p < POS; p++) {
+      const x = Math.round(X(p)) + 0.5;
+      const major = p % 8 === 0;
+      g.strokeStyle = ink(major ? 0.3 : 0.13);
+      g.beginPath();
+      g.moveTo(x, L.ty - (major ? 4 : 2.5));
+      g.lineTo(x, L.ty + (major ? 4 : 2.5));
+      g.stroke();
+    }
+    text(g, '0', L.tx0, L.ty + 18, { font: `400 10px ${SANS}`, color: ink(0.4), align: 'center' });
+    text(g, '63', L.tx1, L.ty + 18, { font: `400 10px ${SANS}`, color: ink(0.4), align: 'center' });
+    text(g, 'position', L.tx1, L.ty - 14, { font: `italic 400 ${narrow ? 12 : 12.5}px ${SERIF}`, color: ink(0.45), align: 'right' });
+
+    // The score against the offset: axes and the curve
+    g.strokeStyle = ink(0.22);
+    g.beginPath();
+    g.moveTo(L.cx0, L.cy1 + 0.5);
+    g.lineTo(L.cx1, L.cy1 + 0.5);
+    g.moveTo(L.cx0 - 0.5, L.cy1);
+    g.lineTo(L.cx0 - 0.5, L.cy0 - 6);
+    g.stroke();
+    g.strokeStyle = ink(0.07);
+    g.beginPath();
+    for (const s of [0.6, 0.8, 1.0]) {
+      g.moveTo(L.cx0, Math.round(CY(s)) + 0.5);
+      g.lineTo(L.cx1, Math.round(CY(s)) + 0.5);
+    }
+    g.stroke();
+    g.strokeStyle = ink(0.55);
+    g.lineWidth = 1.25;
+    g.lineJoin = 'round';
+    g.beginPath();
+    for (let d = 0; d <= POS - 1; d += 0.25) {
+      const x = CX(d);
+      const y = CY(score(d));
+      if (d) g.lineTo(x, y);
+      else g.moveTo(x, y);
+    }
+    g.stroke();
+    const f10 = `400 10px ${SANS}`;
+    text(g, '0', L.cx0, L.cy1 + 15, { font: f10, color: ink(0.4), align: 'center' });
+    text(g, '63', L.cx1, L.cy1 + 15, { font: f10, color: ink(0.4), align: 'center' });
+    text(g, '1', L.cx0 - 7, CY(1) + 3.5, { font: f10, color: ink(0.4), align: 'right' });
+    text(g, '0.6', L.cx0 - 7, CY(0.6) + 3.5, { font: f10, color: ink(0.4), align: 'right' });
+    mathText(g, 'm − n', (L.cx0 + L.cx1) / 2, L.cy1 + 17, { size: 13, color: ink(0.55), align: 'center' });
+    mathText(g, 'q · k', L.cx0 + 8, L.cy0 - 10, { size: 13, color: ink(0.55) });
+
+    // Which pair is which
+    const last = dialAt(31);
+    const first = dialAt(0);
+    text(g, 'pair 0', first.x - L.r, first.y - L.r - 8, { font: `400 10px ${SANS}`, color: ink(0.42) });
+    text(g, 'pair 31', last.x + L.r, last.y + L.r + 15, { font: `400 10px ${SANS}`, color: ink(0.42), align: 'right' });
+    text(g, 'fast', first.x + L.r + 2 + textWidth(g, 'pair 0 ', `400 10px ${SANS}`) - L.r - 2, first.y - L.r - 8, { font: `italic 400 11px ${SERIF}`, color: ink(0.4) });
+    text(g, 'slow', last.x - L.r - 2 - textWidth(g, 'pair 31 ', `400 10px ${SANS}`) + L.r + 2, last.y + L.r + 15, { font: `italic 400 11px ${SERIF}`, color: ink(0.4), align: 'right' });
+  });
+
+  return looping(LOOP, (ctx, t) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(backdrop, 0, 0, W, H);
+    const [m, n] = keyed(KEYS, t);
+    const D = m - n;
+
+    // The two tokens on the track, and the offset between them
+    const xm = X(m);
+    const xn = X(n);
+    const by = L.ty - 13;
+    ctx.strokeStyle = ink(0.35);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(xn, by + 4);
+    ctx.lineTo(xn, by);
+    ctx.lineTo(xm, by);
+    ctx.lineTo(xm, by + 4);
+    ctx.stroke();
+    mathText(ctx, `m − n \`=\` ${Math.round(D)}`, (xm + xn) / 2, by - 7, { size: 13, color: ink(0.7), align: 'center' });
+    ctx.beginPath();
+    ctx.arc(xn, L.ty + 0.5, 4, 0, TAU);
+    ctx.fillStyle = ink(0.8);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(xm, L.ty + 0.5, 4.5, 0, TAU);
+    ctx.fillStyle = blue(1);
+    ctx.fill();
+    mathText(ctx, 'n', xn, L.ty + 19, { size: 14, color: ink(0.8), align: 'center', halo: pageColor() });
+    mathText(ctx, 'm', xm, L.ty + 19, { size: 14, color: blue(1), align: 'center', halo: pageColor() });
+
+    // The 32 pairs: query hand at φ + mθ, key hand at φ + nθ
+    for (let i = 0; i < THETA.length; i++) {
+      const { x, y } = dialAt(i);
+      dial(ctx, x, y, L.r, PHI[i] + m * THETA[i], PHI[i] + n * THETA[i]);
+    }
+
+    // Where the pair is on the score curve
+    const sx = CX(D);
+    const sy = CY(score(D));
+    ctx.setLineDash([2, 3]);
+    ctx.strokeStyle = blue(0.5);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy + 6);
+    ctx.lineTo(sx, L.cy1);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(sx, sy, 4.5, 0, TAU);
+    ctx.fillStyle = blue(1);
+    ctx.fill();
+    text(ctx, score(D).toFixed(3), sx + 8, sy - 8, { font: `500 11px ${SANS}`, color: blue(1), halo: pageColor() });
+  }, { still: 4200 });
+}
+
+function fitted(create) {
+  return (W, H, dpr) => {
+    const tall = W < 520 || H > W * 0.9;
+    const vw = tall ? 360 : 680;
+    const s = W / vw;
+    const inner = create(vw, H / s, dpr * s);
+    return {
+      ...inner,
+      draw(ctx) {
+        ctx.save();
+        ctx.scale(s, s);
+        inner.draw(ctx);
+        ctx.restore();
+      }
+    };
+  };
+}
+
+  return { dials: fitted(createDials) };
+})();
+
+/* ───────────── The mini model: its parameters to scale, and twelve questions ───────────── */
+
+// stack · Mini DeepSeek-V3 drawn to scale, with one square for each routed expert (1,376,256
+//         parameters). The embedding table, the dense block, eleven MoE blocks, the LM head and
+//         the MTP module stack up while the count runs to 212.6M. Then the MTP module is set
+//         aside and a token goes up: what it uses turns blue, two routed experts in each MoE
+//         block, 108.2M in all. A second token picks other experts and the count stays put.
+//         The counts are the model's own, summed from its parameters. Which experts light up
+//         is made up.
+// dots ·  twelve easy questions, twenty replies each, from the pretrained and from the
+//         fine-tuned checkpoint. A blue dot is a right answer: 33 of 240, then 78 of 240.
+//         The counts were graded by reading the replies (drafts/deepseek-animations/results).
+// Helpers and fitted() (a 680-wide design, or 360-wide on phones) stay inside this scope.
+const DS_MINI = (() => {
+const INK = '28, 25, 23';
+const BLUE = '77, 107, 254';
+const SERIF = 'Newsreader, Georgia, serif';
+const SANS = 'Inter, sans-serif';
+const FEATHER = 28;
+const TAU = Math.PI * 2;
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
+const easeOut = (k) => 1 - (1 - k) ** 3;
+/** How far t is through [a, b], from 0 to 1 */
+const span = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+const ink = (a) => `rgba(${INK}, ${a})`;
+const blue = (a = 1) => `rgba(${BLUE}, ${a})`;
+const INK_RGB = INK.split(',').map(Number);
+const BLUE_RGB = BLUE.split(',').map(Number);
+/** Ink turning blue as k goes from 0 to 1, at the given opacity */
+const toBlue = (k, alpha) => `rgba(${INK_RGB.map((v, i) => Math.round(lerp(v, BLUE_RGB[i], k))).join(', ')}, ${alpha})`;
+const millions = (n) => `${(n / 1e6).toFixed(1)}M`;
+
+function seeded(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function pageColor() {
+  return getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() || '#fdfaf6';
+}
+
+function makeLayer(W, H, dpr) {
+  const c = document.createElement('canvas');
+  c.width = Math.round(W * dpr);
+  c.height = Math.round(H * dpr);
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { canvas: c, ctx: g };
+}
+
+/** Erase toward each edge of a layer, so whatever it holds fades out there. */
+function featherEdges(g, W, H, size, sides = 'tblr') {
+  g.save();
+  g.globalCompositeOperation = 'destination-out';
+  const edges = {
+    t: [0, 0, 0, size, 0, 0, W, size],
+    b: [0, H, 0, H - size, 0, H - size, W, size],
+    l: [0, 0, size, 0, 0, 0, size, H],
+    r: [W, 0, W - size, 0, W - size, 0, size, H]
+  };
+  for (const side of sides) {
+    const [x0, y0, x1, y1, rx, ry, rw, rh] = edges[side];
+    const grad = g.createLinearGradient(x0, y0, x1, y1);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.35)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = grad;
+    g.fillRect(rx, ry, rw, rh);
+  }
+  g.restore();
+}
+
+/** The page colour, opaque in the middle and dissolving at the edges. */
+function makeBackdrop(W, H, dpr) {
+  const layer = makeLayer(W, H, dpr);
+  layer.ctx.fillStyle = pageColor();
+  layer.ctx.fillRect(0, 0, W, H);
+  featherEdges(layer.ctx, W, H, FEATHER);
+  return layer.canvas;
+}
+
+/** Fade in as a loop starts and out as it ends */
+const loopAlpha = (clock, loop, inMs = 400, outMs = 600) => Math.min(span(clock, 0, inMs), 1 - span(clock, loop - outMs, loop));
+
+function looping(LOOP, draw, extra = {}) {
+  let clock = 0;
+  return {
+    loopMs: LOOP,
+    prewarm: 0,
+    ...extra,
+    step(dt) {
+      clock = (clock + dt) % LOOP;
+    },
+    draw(ctx) {
+      draw(ctx, clock);
+    }
+  };
+}
+
+function text(ctx, str, x, y, { font = `400 11px ${SANS}`, color = ink(0.5), align = 'left', baseline = 'alphabetic' } = {}) {
+  ctx.font = font;
+  ctx.textAlign = align;
+  ctx.textBaseline = baseline;
+  ctx.fillStyle = color;
+  ctx.fillText(str, x, y);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+function rrect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
+}
+
+function dot(ctx, x, y, r, color) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, TAU);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+/* ───────────── The stack, to scale ───────────── */
+
+// Parameter counts, summed from the model's own tensors
+const P = { embed: 25165824, head: 25165824, mla: 639232, dense: 4718592, expert: 1376256, router: 4096, norms: 1024, finalNorm: 512, combine: 525312 };
+const DENSE_BLOCK = P.mla + P.dense + P.norms;                    //   5,358,848
+const MOE_BLOCK = P.mla + 9 * P.expert + P.router + P.norms;      //  13,030,656
+const MOE_USED = P.mla + 3 * P.expert + P.router + P.norms;       //   4,773,120: the shared expert and two of the eight routed
+const MTP_MODULE = MOE_BLOCK + P.combine;                         //  13,555,968
+const MOE_BLOCKS = 11;
+const MAIN = P.embed + DENSE_BLOCK + MOE_BLOCKS * MOE_BLOCK + P.finalNorm + P.head;   // 199,028,224
+const USED = P.embed + DENSE_BLOCK + MOE_BLOCKS * MOE_USED + P.finalNorm + P.head;    // 108,195,328
+
+function createStack(W, H, dpr) {
+  const narrow = W < 520;
+  const PAGE = pageColor();
+  const backdrop = makeBackdrop(W, H, dpr);
+
+  // One routed expert is a square of side s, and every other piece has the area its parameters give it
+  const s = narrow ? 16 : 22;
+  const g = narrow ? 2 : 2.5;
+  const gg = narrow ? 5 : 6;
+  const pitch = s + (narrow ? 3 : 4);
+  const rowW = 2 * (s + gg) + 8 * s + 7 * g;
+  const barH = ((P.embed / P.expert) * s * s) / rowW;
+  const x0 = narrow ? 104 : 80;
+  const top = narrow ? 146 : 58;
+  const yRows = top + barH + (narrow ? 21 : 26);
+  const rowY = (i) => yRows + (11 - i) * pitch;        // block i + 1, counted from the bottom
+  const yEmbed = rowY(0) + s + 8;
+  const xShared = x0 + s + gg;
+  const xRouted = xShared + s + gg;
+  const mlaH = (P.mla / P.expert) * s;
+  const denseW = (P.dense / P.expert) * s;
+  const combineW = (P.combine / P.expert) * s;
+  const M = narrow ? { x: x0, y: 108 } : { x: 372, y: 70 };   // where the MTP module's row sits
+  const R = 372;                                              // the wide layout's column of numbers
+  const rad = narrow ? 1.5 : 2;
+
+  // Which two routed experts each of the two tokens gets, block by block (for show)
+  const rand = seeded(11);
+  const pickTwo = () => {
+    const a = Math.floor(rand() * 8);
+    let b = Math.floor(rand() * 7);
+    if (b >= a) b += 1;
+    return [a, b];
+  };
+  const PICKS = [0, 1].map(() => Array.from({ length: MOE_BLOCKS }, pickTwo));
+
+  const T = { embed: 700, dense: 1500, moe: 2200, each: 300, head: 5600, mtp: 6900, aside: 8900 };
+  // A token's way up: stage 0 is the embedding table, 1 to 12 the blocks, 13 the LM head
+  const PASS = [{ at: 9800, lead: 450, dt: 230 }, { at: 14400, lead: 320, dt: 150 }];
+  const stageAt = (p, k) => PASS[p].at + (k ? PASS[p].lead + (k - 1) * PASS[p].dt : 0);
+  const passEnd = (p) => stageAt(p, 13) + 420;
+  const LOOP = 19800;
+  const stageY = (k) => (k === 0 ? yEmbed + barH / 2 : k === 13 ? top + barH / 2 : rowY(k - 1) + s / 2);
+
+  return looping(LOOP, (ctx, t) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(backdrop, 0, 0, W, H);
+    ctx.save();
+    ctx.globalAlpha = loopAlpha(t, LOOP, 400, 700);
+
+    const lit = (p, k) => ease(span(t, stageAt(p, k), stageAt(p, k) + 280));
+    const built = (at, ms = 520) => easeOut(span(t, at, at + ms));
+    const aside = ease(span(t, T.aside, T.aside + 700));
+    const serif = (px) => `italic 400 ${px}px ${SERIF}`;
+    const small = `400 ${narrow ? 9.5 : 10}px ${SANS}`;
+
+    /** One piece: it rises into place as k goes to 1, and turns blue with b */
+    const piece = (x, y, w, h, k, b = 0, idle = 0.13, on = 0.92) => {
+      if (k <= 0) return;
+      rrect(ctx, x, y + (1 - k) * 7, w, h, rad);
+      if (b < 1) {
+        ctx.fillStyle = ink(idle * (1 - b) * k);
+        ctx.fill();
+      }
+      if (b > 0) {
+        ctx.fillStyle = blue(on * b * k);
+        ctx.fill();
+      }
+    };
+
+    /** The embedding table or the LM head: a bar with its name and its count inside */
+    const bar = (y, name, k, b) => {
+      piece(x0, y, rowW, barH, k, b);
+      if (k <= 0) return;
+      const ty = y + (1 - k) * 7 + barH / 2 + 4;
+      for (const [color, a] of [[ink(0.62), 1 - b], [PAGE, b]]) {
+        if (a <= 0) continue;
+        ctx.save();
+        ctx.globalAlpha *= a * k;
+        text(ctx, name, x0 + 10, ty, { font: serif(narrow ? 12 : 13), color });
+        text(ctx, millions(P.embed), x0 + rowW - 10, ty - 0.5, { font: small, color, align: 'right' });
+        ctx.restore();
+      }
+    };
+
+    /** A MoE block's row at (x, y): MLA, the shared expert, the eight routed experts */
+    const moeRow = (x, y, at, colorOf) => {
+      piece(x, y + (s - mlaH) / 2, s, mlaH, built(at, 260), colorOf('mla').b, colorOf('mla').idle);
+      piece(x + s + gg, y, s, s, built(at + 40, 260), colorOf('shared').b, colorOf('shared').idle);
+      for (let j = 0; j < 8; j++) {
+        const c = colorOf(j);
+        piece(x + 2 * (s + gg) + j * (s + g), y, s, s, built(at + 80 + j * 22, 260), c.b, c.idle, c.on ?? 0.92);
+      }
+    };
+
+    // The main model, from the bottom up
+    const kEmbed = built(T.embed);
+    const kDense = built(T.dense);
+    const kHead = built(T.head);
+    bar(yEmbed, 'embedding table', kEmbed, lit(0, 0));
+    piece(x0, rowY(0) + (s - mlaH) / 2, s, mlaH, kDense, lit(0, 1));
+    piece(xShared, rowY(0), denseW, s, built(T.dense + 60), lit(0, 1));
+    let total = P.embed * kEmbed + DENSE_BLOCK * kDense + (P.finalNorm + P.head) * kHead;
+    let used = P.embed * lit(0, 0) + DENSE_BLOCK * lit(0, 1) + (P.finalNorm + P.head) * lit(0, 13);
+    for (let i = 0; i < MOE_BLOCKS; i++) {
+      const at = T.moe + i * T.each;
+      const a1 = lit(0, i + 2);
+      const a2 = lit(1, i + 2);
+      const idle = lerp(0.13, 0.06, a1);
+      moeRow(x0, rowY(i + 1), at, (j) => {
+        if (typeof j !== 'number') return { b: a1, idle: 0.13 };
+        const first = PICKS[0][i].includes(j);
+        const second = PICKS[1][i].includes(j);
+        if (first && second) return { b: a1, idle };
+        // The first token's experts stay faintly blue once the second token has picked its own
+        if (first) return { b: a1, idle, on: lerp(0.92, 0.24, a2) };
+        if (second) return { b: a2, idle };
+        return { b: 0, idle };
+      });
+      total += MOE_BLOCK * built(at, T.each);
+      used += MOE_USED * a1;
+    }
+    bar(top, 'LM head', kHead, lit(0, 13));
+
+    // What the rows hold, over the top block
+    const heads = span(t, T.moe + 10 * T.each, T.moe + 11 * T.each + 300);
+    if (heads > 0) {
+      const y = yRows - 8;
+      text(ctx, 'MLA', x0 + s, y, { font: small, color: ink(0.5 * heads), align: 'right' });
+      text(ctx, 'shared', xShared, y, { font: small, color: ink(0.5 * heads) });
+      text(ctx, '8 routed experts', xRouted + (8 * s + 7 * g) / 2, y, { font: small, color: ink(0.5 * heads), align: 'center' });
+    }
+    if (kDense > 0) {
+      const x = xShared + denseW + 9;
+      const y = rowY(0) + s / 2 + 4;
+      text(ctx, 'dense FFN', x, y, { font: serif(12), color: ink(0.55 * kDense) });
+      ctx.font = serif(12);
+      text(ctx, millions(P.dense), x + ctx.measureText('dense FFN').width + 7, y - 0.5, { font: small, color: ink(0.42 * kDense) });
+      text(ctx, 'block 1', x0 - 16, y - 0.5, { font: small, color: ink(0.42 * kDense), align: 'right' });
+    }
+    const k12 = built(T.moe + 10 * T.each);
+    if (k12 > 0) text(ctx, 'block 12', x0 - 16, rowY(11) + s / 2 + 3.5, { font: small, color: ink(0.42 * k12), align: 'right' });
+
+    // The MTP module: one more MoE block and the projection that joins its two inputs
+    const kMtp = built(T.mtp, 700);
+    if (kMtp > 0) {
+      ctx.save();
+      ctx.globalAlpha *= lerp(1, 0.42, aside);
+      moeRow(M.x, M.y, T.mtp + 100, () => ({ b: 0, idle: 0.13 }));
+      piece(M.x + rowW + gg, M.y, combineW, s, built(T.mtp + 400, 260));
+      rrect(ctx, M.x - 7, M.y - 7, rowW + gg + combineW + 14, s + 14, 5);
+      ctx.strokeStyle = ink(0.3 * kMtp);
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+      const right = M.x + rowW + gg + combineW + 7;
+      text(ctx, 'MTP module', M.x - 7, M.y - 14, { font: serif(13), color: ink(lerp(0.7, 0.45, aside) * kMtp) });
+      text(ctx, millions(MTP_MODULE), right, M.y - 14, { font: small, color: ink(0.45 * kMtp * (1 - aside)), align: 'right' });
+      text(ctx, 'skipped at inference', right, M.y - 14, { font: serif(12), color: ink(0.6 * aside), align: 'right' });
+      total += MTP_MODULE * kMtp;
+    }
+
+    // The token on its way up, beside the stack
+    for (let p = 0; p < 2; p++) {
+      if (t < PASS[p].at - 300 || t > passEnd(p) + 200) continue;
+      let y = yEmbed + barH + 16;
+      let a = span(t, PASS[p].at - 300, PASS[p].at);
+      for (let k = 0; k <= 13; k++) {
+        const from = k ? stageY(k - 1) : yEmbed + barH + 16;
+        const start = k ? stageAt(p, k - 1) + 60 : PASS[p].at - 300;
+        const end = stageAt(p, k) + 60;
+        if (t >= start) y = lerp(from, stageY(k), ease(span(t, start, end)));
+      }
+      if (t > stageAt(p, 13) + 60) {
+        const out = span(t, stageAt(p, 13) + 60, passEnd(p) + 200);
+        y = lerp(stageY(13), top - 14, out);
+        a = 1 - out;
+      }
+      dot(ctx, x0 - 8, y, 2.8, ink(0.8 * a));
+    }
+
+    // The two counts
+    const shown = span(t, T.embed, T.embed + 300);
+    const usedShown = span(t, T.aside + 300, T.aside + 800);
+    if (narrow) {
+      text(ctx, millions(total), 34, 54, { font: `500 22px ${SANS}`, color: ink(0.8 * shown) });
+      text(ctx, 'parameters', 34, 72, { font: serif(13), color: ink(0.6 * shown) });
+      text(ctx, millions(used), 190, 54, { font: `500 22px ${SANS}`, color: blue(0.95 * usedShown) });
+      text(ctx, 'active per token', 190, 72, { font: serif(13), color: ink(0.6 * usedShown) });
+    } else {
+      text(ctx, millions(total), R, 224, { font: `500 28px ${SANS}`, color: ink(0.8 * shown) });
+      text(ctx, 'parameters', R, 245, { font: serif(14), color: ink(0.6 * shown) });
+      const main = span(t, T.head + 500, T.head + 900);
+      const plus = span(t, T.mtp + 700, T.mtp + 1100);
+      text(ctx, `${millions(MAIN)} in the main model`, R, 268, { font: `400 10.5px ${SANS}`, color: ink(0.5 * main) });
+      text(ctx, `${millions(MTP_MODULE)} in the MTP module`, R, 284, { font: `400 10.5px ${SANS}`, color: ink(0.5 * plus) });
+      text(ctx, millions(used), R, 352, { font: `500 28px ${SANS}`, color: blue(0.95 * usedShown) });
+      text(ctx, 'active per token', R, 373, { font: serif(14), color: ink(0.6 * usedShown) });
+      const two = span(t, stageAt(0, 2) + 200, stageAt(0, 2) + 700);
+      text(ctx, '2 of the 8 routed experts in each MoE block', R, 396, { font: `400 10.5px ${SANS}`, color: ink(0.5 * two) });
+    }
+
+    // One square, for scale
+    const key = span(t, T.moe, T.moe + 500);
+    if (key > 0) {
+      const kx = narrow ? 126 : R;
+      const ky = narrow ? 464 : 452;
+      rrect(ctx, kx, ky - 8.5, 9, 9, 1.5);
+      ctx.fillStyle = ink(0.3 * key);
+      ctx.fill();
+      text(ctx, `= ${millions(P.expert)} parameters`, kx + 15, ky, { font: `400 10.5px ${SANS}`, color: ink(0.5 * key) });
+    }
+    ctx.restore();
+  }, { still: passEnd(0) + 500 });
+}
+
+/* ───────────── Twelve questions, twenty replies each ───────────── */
+
+// [question, right answers of 20 from the pretrained checkpoint, from the fine-tuned one]
+const FACTS = [
+  ['capital of France', 10, 20],
+  ['capital of Japan', 9, 18],
+  ['capital of Italy', 2, 14],
+  ['largest planet', 1, 9],
+  ['formula for water', 3, 4],
+  ['opposite of hot', 1, 3],
+  ['2 + 2', 0, 3],
+  ['days in a week', 0, 2],
+  ['planet we live on', 3, 2],
+  ['who wrote Romeo and Juliet', 3, 1],
+  ['blue + yellow', 0, 1],
+  ['legs on a spider', 1, 1]
+];
+const REPLIES = 20;
+
+function createDots(W, H, dpr) {
+  const narrow = W < 520;
+  const backdrop = makeBackdrop(W, H, dpr);
+  // xs: where each checkpoint's dots start. label: the questions' right edge (left edge on phones)
+  const L = narrow
+    ? { xs: [36, 196], pitch: 7, r: 2.6, y0: 70, row: 31.5, label: 36, head: 44, total: 456 }
+    : { xs: [218, 438], pitch: 9.6, r: 3.3, y0: 76, row: 21.5, label: 198, head: 48, total: 348 };
+  const NAMES = ['pretrained', 'after SFT'];
+  const T = [900, 4300];      // when each checkpoint's dots start to fill
+  const ROW = 170;            // from one question to the next
+  const DOT = 22;             // from one reply to the next
+  const T_DONE = T[1] + 11 * ROW + REPLIES * DOT;
+  const LOOP = 12400;
+  const width = (REPLIES - 1) * L.pitch;
+  const dotsY = (q) => L.y0 + q * L.row + (narrow ? 13 : 0);
+
+  return looping(LOOP, (ctx, t) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(backdrop, 0, 0, W, H);
+    ctx.save();
+    ctx.globalAlpha = loopAlpha(t, LOOP, 400, 700);
+    const intro = span(t, 150, 650);
+    const serif = (px) => `italic 400 ${px}px ${SERIF}`;
+    const num = `400 ${narrow ? 9 : 9.5}px ${SANS}`;
+
+    FACTS.forEach(([question], q) => {
+      if (narrow) text(ctx, question, L.label - 2.5, L.y0 + q * L.row, { font: serif(12), color: ink(0.62 * intro) });
+      else text(ctx, question, L.label, dotsY(q) + 4, { font: serif(12.5), color: ink(0.62 * intro), align: 'right' });
+    });
+
+    for (let c = 0; c < 2; c++) {
+      const x = L.xs[c];
+      const started = span(t, T[c] - 300, T[c]);
+      text(ctx, NAMES[c], narrow ? x - 2.5 : x + width / 2, L.head, { font: `500 ${narrow ? 12 : 12.5}px ${SANS}`, color: ink(lerp(0.4, 0.75, started) * intro), align: narrow ? 'left' : 'center' });
+      let right = 0;
+      FACTS.forEach((fact, q) => {
+        const count = fact[c + 1];
+        const at = T[c] + q * ROW;
+        for (let j = 0; j < REPLIES; j++) {
+          const k = j < count ? easeOut(span(t, at + j * DOT, at + j * DOT + 200)) : 0;
+          const pop = 1 + 0.45 * Math.sin(Math.PI * k) * (k < 1 ? 1 : 0);
+          if (k < 1) dot(ctx, x + j * L.pitch, dotsY(q), L.r, ink(0.11 * (1 - k) * intro));
+          if (k > 0) dot(ctx, x + j * L.pitch, dotsY(q), L.r * pop, blue(0.92 * k * intro));
+          right += k >= 0.5 ? 1 : 0;
+        }
+        const counted = span(t, at + Math.max(count, 3) * DOT, at + Math.max(count, 3) * DOT + 250);
+        if (counted > 0) text(ctx, String(count), x + width + (narrow ? 7 : 10), dotsY(q) + 3.2, { font: num, color: ink(0.42 * counted) });
+      });
+      if (started > 0) {
+        const tx = narrow ? x - 2.5 : x + width / 2;
+        const label = `${right} of ${FACTS.length * REPLIES}`;
+        ctx.font = `500 ${narrow ? 12 : 12.5}px ${SANS}`;
+        const w = ctx.measureText(label).width;
+        ctx.font = serif(12.5);
+        const w2 = ctx.measureText(' right').width;
+        const left = narrow ? tx : tx - (w + w2) / 2;
+        text(ctx, label, left, L.total, { font: `500 ${narrow ? 12 : 12.5}px ${SANS}`, color: toBlue(right ? 1 : 0, 0.9 * started) });
+        text(ctx, ' right', left + w, L.total, { font: serif(12.5), color: ink(0.6 * started) });
+      }
+    }
+
+    if (!narrow) text(ctx, '20 replies to each question', L.label, L.total, { font: serif(12.5), color: ink(0.5 * intro), align: 'right' });
+    ctx.restore();
+  }, { still: T_DONE + 600 });
+}
+
+/* ───────────── Sizing ───────────── */
+
+/**
+ * Each sketch has two layouts, drawn at a design width: 680 px across for wide frames, 360
+ * for phones and other tall frames. This scales whichever one applies to the real frame,
+ * so a 600 px or a 414 px figure gets the same composition as the one checked here.
+ */
+function fitted(create) {
+  return (W, H, dpr) => {
+    const tall = W < 520 || H > W * 0.9;
+    const vw = tall ? 360 : 680;
+    const s = W / vw;
+    const inner = create(vw, H / s, dpr * s);
+    return {
+      ...inner,
+      draw(ctx) {
+        ctx.save();
+        ctx.scale(s, s);
+        inner.draw(ctx);
+        ctx.restore();
+      }
+    };
+  };
+}
+
+  return { stack: fitted(createStack), dots: fitted(createDots) };
+})();
+
 const FIGURES = {
   climb: createClimb,
   generation: createGeneration,
@@ -5440,7 +10853,20 @@ const FIGURES = {
   methods: createPackingMethods,
   islands: createIslands,
   reading: createReading,
-  'research-map': createResearchMap
+  'research-map': createResearchMap,
+  'ds-architecture': createDeepSeekArchitecture,
+  'ds-moe-route': DS_MOE.route,
+  'ds-moe-balance': DS_MOE.balance,
+  'ds-rmsnorm': DS_BLOCK.rmsnorm,
+  'ds-swiglu': DS_BLOCK.swiglu,
+  'ds-mla-squares': DS_MLA.squares,
+  'ds-cache-memory': DS_MLA.memory,
+  'ds-rope-dials': DS_ROPE.dials,
+  'ds-mtp-towers': DS_MTP.towers,
+  'ds-train-loss': DS_TRAIN.loss,
+  'ds-sft-loss': DS_TRAIN.sft,
+  'ds-mini-stack': DS_MINI.stack,
+  'ds-fact-dots': DS_MINI.dots
 };
 
 /* ───────────── Charts that draw in ───────────── */

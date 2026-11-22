@@ -38,10 +38,11 @@ function renderHero(hero) {
 /** Details beside an Overview paragraph, under the hero. */
 function renderOverview(overview) {
   if (!overview) return '';
-  const details = overview.details.map(({ label, value, note }) => `
+  const linked = (url, html) => (url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${html}</a>` : html);
+  const details = overview.details.map(({ label, value, note, url }) => `
     <div>
       <dt>${escapeHtml(label)}</dt>
-      <dd>${keepParensTogether(escapeHtml(value))}${note ? `<span class="post-overview-note">${escapeHtml(note)}</span>` : ''}</dd>
+      <dd>${linked(url, keepParensTogether(escapeHtml(value)))}${note ? `<span class="post-overview-note">${escapeHtml(note)}</span>` : ''}</dd>
     </div>`).join('');
   return `
     <section class="post-overview" aria-label="Overview">
