@@ -69,6 +69,14 @@ export const SITE = {
   // video (its poster shows until it plays), a logo on a background, or a chat
   projects: [
     {
+      title: 'DeepSeek-V3 From Scratch',
+      url: 'https://github.com/willcagas/mini-deepseek',
+      year: '2026',
+      detail: 'A miniature DeepSeek-V3 built in PyTorch, pretrained on 10B tokens and fine-tuned to chat.',
+      stat: '212.6M params, MLA + MoE + MTP',
+      media: { video: '/assets/projects/deepseek-v3.mp4', poster: '/assets/projects/deepseek-v3.jpg' }
+    },
+    {
       title: 'Zentro',
       url: 'https://joinzentro.com',
       year: '2026',
