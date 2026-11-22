@@ -55,8 +55,8 @@ export function renderHome() {
     <section class="panel panel-meta page-content">
       <p class="section-kicker">ABOUT</p>
       <div class="meta-section">
-        <p class="about-bio">I'm a Software Engineering student at the <a href="${university.url}" target="_blank" rel="noopener noreferrer">${university.name}</a> interested in applied ML, healthtech, agentic AI, evolutionary search, and full-stack development.</p>
-        <p class="about-bio">Previously, I worked on autonomous AI R&D for scientific discovery at ${darwinLink()} as a Member of Technical Staff in San Francisco.</p>
+        <p class="about-bio">I'm a Software Engineering student at the <a href="${university.url}" target="_blank" rel="noopener noreferrer">${university.name}</a> interested in agentic AI, healthtech, and consumer software.</p>
+        <p class="about-bio">Previously, I worked on autoresearch for scientific discovery at ${darwinLink()} as a Member of Technical Staff (Intern) in San Francisco.</p>
       </div>
     </section>
 

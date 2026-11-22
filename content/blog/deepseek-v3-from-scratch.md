@@ -24,7 +24,7 @@ title: "DeepSeek-V3 From Scratch"
 
 ## Introduction
 
-It's 2026, and with all of the *attention* on agentic AI, lots of the conversation around AI has become high-level and more abstract. I wanted to get into the nitty-gritty and learn more about some of the modern LLM architecture that powers these systems underneath.
+It's 2026, and with all of the *attention* on agentic AI, lots of the conversation around AI has become high-level and more abstract. I wanted to get back into the nitty-gritty and further my learning about some of the modern LLM architecture that powers these systems underneath.
 
 [DeepSeek-V3](https://arxiv.org/abs/2412.19437) is an open-source Mixture of Experts (MoE) language model with 671B total parameters, with 37B activated per token. It incorporates many interesting architectural innovations and tricks that are still relevant to modern LLMs today such as multi-head latent attention (MLA), DeepSeekMoE, and multi-token prediction (MTP).
 

@@ -7,9 +7,9 @@ summary: "My work, thoughts, and learnings during my internship at Darwin (YC F2
 
 ### Introduction
 
-At Darwin, my main focus was building systems that could conduct AI research autonomously for scientific discovery. The core idea is to take a research objective, say creating a model to predict how proteins fold, and instead of coming up with the architecture, tuning hyperparameters, running ablations, debugging training runs, and iterating on it by hand, you let AI agents propose ideas, write programs, run experiments, and read the results to try and solve it. 
+At Darwin, my focus was building autoresearch systems to accelerate scientific discovery for the benefit of humanity. The core idea is to take a research objective, say creating a model to predict how proteins fold, and instead of coming up with the architecture, tuning hyperparameters, running ablations, debugging training runs, and iterating on it by hand, you let AI agents propose ideas, write programs, run experiments, and read the results to try and solve that specific task.
 
-Each experiment builds on the best one so far, eventually **“hillclimbing”** towards a model that reaches the frontier. Untraditionally, this is not gradient descent but [gradient-free optimization](https://en.wikipedia.org/wiki/Derivative-free_optimization), where no gradient can be calculated to point toward an optimum.
+Each experiment builds on the best one so far, eventually **hillclimbing** towards a model that reaches the frontier. Untraditionally, this is not gradient descent but [gradient-free optimization](https://en.wikipedia.org/wiki/Derivative-free_optimization), where no gradient can be calculated to point toward an optimum.
 
 <figure class="blog-figure" data-figure="climb">
 <div class="live-figure"><canvas aria-label="Experiments land one at a time and most score below the best so far. A gold line steps up each time one beats it, until it crosses the frontier"></canvas></div>
@@ -17,7 +17,7 @@ Each experiment builds on the best one so far, eventually **“hillclimbing”**
 
 This can have numerous implications such as accelerated drug discovery or solving hard computational biology problems like [RNA folding](https://www.sciencedirect.com/topics/neuroscience/rna-folding) or the [virtual cell](https://virtualcellchallenge.org/), potentially resulting in the next AlphaFold. In theory, with an autonomous AI R&D system, you could be automating parts of scientific discovery itself.
 
-Keep in mind, before this internship, I had no experience with autonomous AI research or gradient-free optimization using LLMs!
+Keep in mind, before this internship, I had no experience with autoresearch at all!
 
 ### Background
 
@@ -343,9 +343,9 @@ I also built parts of the pipeline that packaged the engine's solutions and subm
 
 Along the way I checked runs against the contest rules, like the limits on external data and pretrained weights, and audited results to tell progress apart from infrastructure failures. The track requires that all training code be written and submitted by the AI agents autonomously, with no human in the loop. You can read the rules on the [official IOAI AI Models Track page](https://ioai-official.org/ai-models-track/rules-format/).
 
-### What I Read
+### Papers I've Read
 
-These are the papers I kept coming back to. I didn't read most of them cover to cover. I'd skim one for the main idea, then go deep on the one section that mattered when we needed the feature it described.
+These are the papers I kept coming back to. I didn't read all of them down to the exact implementation details. Instead, I would start to skim one for the main idea, then go deep on the sections that mattered when we needed the feature it described. In other cases, I read these papers to grow my knowledge in the domain.
 
 <div class="reading-chips" data-reading-chips>
 <div class="favourites-chips">
@@ -429,11 +429,11 @@ Generating ideas is the easy part of an automated researcher, but whether good o
 
 The team is more important than what is being built. Building and researching with the right team go a long way. Having those around you who are ambitious, laser-focused, and like-minded in contributing to the same cause is what makes 996 hours of work feel like a passion project.
 
-Brevity in direct communication with others is a sign of intelligence. No one likes paragraph slop or rambling thoughts in text, especially when everyone has other tasks on their plate. Be concise in what you want to explain and to the point. If you cannot condense without leaving important information, it's almost always better to show and explain what you mean.
+Brevity in direct communication with others is a sign of intelligence. No one likes paragraph slop or rambling thoughts in text, especially when everyone has other tasks on their plate. Be concise in what you want to explain and to the point. If you cannot condense without leaving out important information, it's almost always better to show and explain what you mean.
 
-If you point the same space at the training algorithms, architectures, and AI agents that build these systems, and you get AI improving AI itself, which is called **recursive self-improvement (RSI)**. This is an exciting yet very dangerous direction. The only positive upside seems to be accelerated scientific progress. However, the less the human oversight for building AI, the more it needs to be very carefully dealt with and the more that AI safety and alignment need to be prioritized. Fully autonomous, unrestricted RSI is frankly not a good thing. However, I am very convinced that it's possible for parts of this technology to be used for the good of humanity. 
+If you point the same space at the training algorithms, architectures, and AI agents that build these systems, you get AI improving AI itself, which is called **recursive self-improvement (RSI)**. This is a very dangerous direction. The only positive upside seems to be the potential for accelerated scientific progress. However, the less the human oversight for building AI, the more it needs to be very carefully dealt with and the more that AI safety and alignment need to be prioritized. **Fully autonomous, unrestricted RSI is not a good thing whatsoever.** However, I am very convinced that parts of this technology can be safely used for the good of humanity.
 
-Thank you to the Darwin team for taking me in, trusting me, and letting me take ownership of what I was building. I'm excited to see what they build next in robotics. Go check them out!
+Thank you to the Darwin team for taking me in, trusting me, and letting me take ownership of what I was building.
 
 ### References
 

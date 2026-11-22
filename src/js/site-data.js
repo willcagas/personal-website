@@ -28,7 +28,7 @@ export const SITE = {
       company: 'Darwin (YC F25)',
       url: 'https://darwinrobotics.ai/',
       role: 'Member of Technical Staff (Intern)',
-      detail: 'δ Helped develop an autonomous AI R&D system that hillclimbs to the frontier (formerly Thesis).'
+      detail: 'δ Helped develop an autoresearch system that hillclimbs to the frontier for scientific discovery.'
     },
     {
       company: 'WAT.ai',
