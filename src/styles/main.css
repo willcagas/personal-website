@@ -685,6 +685,12 @@ a:hover {
     width: clamp(80px, 100vw - 280px, 96px);
   }
 
+  /* Sized by the smaller card, so a long word like "DeepSeek-V3" keeps the same
+     side margin it has on desktop instead of touching the edges */
+  .latest-thumb .title-card-word {
+    font-size: 13cqi;
+  }
+
   .latest-title {
     font-size: 14.5px;
     text-wrap: balance;
