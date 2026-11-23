@@ -11,6 +11,7 @@ import { initReadingChips } from './reading-chips.js';
 import { initModelDemo } from './model-demo.js';
 import { initCoverFollow } from './cover-follow.js';
 import { escapeHtml } from './pages/shared.js';
+import { stopGlide } from './smooth-scroll.js';
 
 let tocCleanup = null;
 let tocFocus = null;
@@ -42,6 +43,7 @@ function smoothAnchors(root) {
       e.preventDefault();
       history.replaceState(null, '', `#${id}`);
       tocFocus?.(id);
+      stopGlide();
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });

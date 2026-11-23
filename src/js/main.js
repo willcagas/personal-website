@@ -16,6 +16,7 @@ import { initPostPreviews } from './post-preview.js';
 import { initCoverFollow } from './cover-follow.js';
 import { initVideoLightbox } from './video-lightbox.js';
 import { initPlacesMap } from './places-map.js';
+import { initSmoothScroll, stopGlide } from './smooth-scroll.js';
 import { renderNav } from './pages/shared.js';
 import { renderHome } from './pages/home.js';
 import { renderWork } from './pages/work.js';
@@ -52,6 +53,7 @@ function init() {
 
   initGameOfLife();
   initRangeFooter();
+  initSmoothScroll();
 
   const header = document.createElement('div');
   header.id = 'site-header-wrapper';
@@ -74,7 +76,10 @@ function init() {
     root.classList.add('page-fade-in');
 
     // Hash links scroll once the post has rendered
-    if (!location.hash) window.scrollTo(0, 0);
+    if (!location.hash) {
+      window.scrollTo(0, 0);
+      stopGlide();
+    }
 
     initPhotoCarousel(root);
     initTitleCards(root);

@@ -30,8 +30,20 @@
 }
 
 html {
-  /* Keep native wheel/trackpad scrolling; TOC/hash jumps use JS smooth scroll. */
+  /* Wheel and trackpad scrolling eases through Lenis (src/js/smooth-scroll.js), so no
+     scroll-behavior here; TOC/hash jumps use JS smooth scroll. */
   scrollbar-gutter: stable;
+}
+
+/* Lenis's recommended styles: the page measures its full height, and an embedded
+   video doesn't catch the wheel mid-glide */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
 }
 
 body {
