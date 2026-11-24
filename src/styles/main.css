@@ -891,7 +891,8 @@ a:hover {
   .blog-post-body [data-figure="ds-train-loss"] .live-figure,
   .blog-post-body [data-figure="ds-sft-loss"] .live-figure,
   .blog-post-body [data-figure="ds-mini-stack"] .live-figure,
-  .blog-post-body [data-figure="ds-fact-dots"] .live-figure {
+  .blog-post-body [data-figure="ds-fact-dots"] .live-figure,
+  .blog-post-body [data-figure="ds-mtp-draft"] .live-figure {
     aspect-ratio: 3 / 4;
   }
 

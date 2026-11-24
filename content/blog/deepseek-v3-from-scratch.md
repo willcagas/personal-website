@@ -948,6 +948,15 @@ For multi-turn conversations, the model could sometimes recall information from 
 
 One trade-off of scaling down DeepSeek-V3 is that my model activates a whopping 54% of its main-model parameters per token, compared to just 5.5% in the original. This means that much of MoE's parameter sparsity was arguably lost at this scale. However, expert routing didn't show any signs of collapse. Across approximately 12,000–13,000 tokens of demo text from each checkpoint, all 88 routed experts were used, with individual selection rates ranging from 12% to 33%, compared with 25% for perfectly balanced routing.
 
+Other parts of DeepSeek-V3 really only have significant impact at a larger scale. In the original model, MLA cuts what would be 524 GB of KV cache with standard attention down to 9 GB for a single 128K-token context. In my model, the same kind of compression only takes the cache from about 63 MB to 8 MB at its full 2,048-token context. I'd assume this is why similar sized models like [SmolLM2-135M](https://huggingface.co/HuggingFaceTB/SmolLM2-135M) are dense and use grouped-query attention instead.
+
+Similarly, [Gloeckle et al.](https://arxiv.org/abs/2404.19737) concludes that training with MTP makes smaller models worse at coding and only paid off with larger models. However, even though DeepSeek-V3 drops their MTP at inference by default, it turned out to be useful for my model. After [someone on X](https://x.com/MythomancerX/status/2124960495841231229) suggested testing it as a draft for speculative decoding against a simple n-gram draft, I tried it out. At temperature 0.7, 71% of the MTP module's guesses were accepted across the demo prompts, compared to 8% for the n-gram draft and 85–90% reported for DeepSeek-V3. Here's one reply written with MTP drafting:
+
+<figure class="blog-figure" data-figure="ds-mtp-draft">
+<div class="live-figure"><canvas aria-label="The fine-tuned model writes a short story about a dragon while its MTP module guesses each next token. Most guesses are kept, and the 43-token reply takes 24 passes through the model instead of 43"></canvas></div>
+<figcaption>A recorded greedy reply. Blue tokens are kept guesses, so 43 tokens took 24 passes instead of 43.</figcaption>
+</figure>
+
 A lot of these limitations could be improved upon with more pretraining data, longer training runs, and better post-training techniques. However, the model's small parameter count also limits its learning capabilities. A next step would be to conduct ablations, such as removing MTP or replacing MLA with standard attention. With this, I could determine specific improvements that came from specific DeepSeek components.
 
 But ultimately, to reiterate, my goal was to understand and implement DeepSeek-V3's architecture from scratch. Training it was only a secondary goal to see whether it could actually learn to generate coherent English and follow basic instructions at a much smaller scale, rather than building a highly intelligent model. As such, I think the project was very successful.

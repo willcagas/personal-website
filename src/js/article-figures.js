@@ -38,6 +38,8 @@
  * ds-mini-stack — the mini model drawn to scale, one square per routed expert: it stacks up to
  *           212.6M parameters, then a token goes up and lights the 108.2M it uses
  * ds-fact-dots — twelve easy questions, twenty replies each, before and after fine-tuning
+ * ds-mtp-draft — a recorded reply written with the MTP module drafting: each pass checks its
+ *           guess, keeps it on a match, and the passes are counted against one per token
  *
  * A <figure data-grow> around an inline SVG chart draws its bars in on first view.
  *
@@ -10813,6 +10815,221 @@ function createDots(W, H, dpr) {
   }, { still: T_DONE + 600 });
 }
 
+/* ───────────── MTP as a draft model ───────────── */
+
+// A greedy reply from the fine-tuned model and, for every token after the first, the MTP
+// module's guess for it (made from the hidden state two tokens back and the token just before).
+// Recorded from the published weights. Greedy speculative decoding keeps a guess exactly when it
+// matches, so the reply is the same one the model writes without drafting.
+const DRAFT_PROMPT = 'Tell me a short story about a dragon.';
+const DRAFT_TOKENS = ['In', ' the', ' heart', ' of', ' the', ' forest', ',', ' where', ' the', ' trees', ' whispered', ' secrets', ' to', ' the', ' wind', ',', ' stood', ' a', ' dragon', ' named', ' E', 'ira', '.', ' She', ' was', ' a', ' fierce', ' and', ' powerful', ' creature', ',', ' with', ' scales', ' that', ' shone', ' like', ' the', ' stars', ' on', ' a', ' clear', ' night', '.'];
+const DRAFT_GUESSES = ['', ' the', ' depths', ' of', ' the', ' mist', ',', ' where', ' the', ' mist', ' seemed', ' secrets', ' to', ' the', ' wind', ',', ' the', ' a', ' dragon', ',', ' A', 'ira', '.', ' She', ' was', ' a', ' fierce', ' and', ' fearless', ' creature', ',', ' with', ' scales', ' that', ' shimmer', ' like', ' the', ' stars', ' above', ' a', ' clear', ' night', '.'];
+
+/**
+ * The passes of greedy speculative decoding over that reply. The first pass (the prompt) writes
+ * the first token. Each pass after checks the pending guess for the next token: on a match it
+ * keeps the guess and the main model's following token, on a miss it writes its own token.
+ */
+const DRAFT_PASSES = (() => {
+  const n = DRAFT_TOKENS.length;
+  const passes = [{ tokens: [0], guess: -1, hit: false }];
+  let last = 0;
+  while (last < n - 1) {
+    const j = last + 1;
+    const hit = DRAFT_GUESSES[j] === DRAFT_TOKENS[j];
+    const tokens = hit && j + 1 < n ? [j, j + 1] : [j];
+    passes.push({ tokens, guess: j, hit });
+    last = tokens[tokens.length - 1];
+  }
+  return passes;
+})();
+
+function createDraft(W, H, dpr) {
+  const narrow = W < 520;
+  const backdrop = makeBackdrop(W, H, dpr);
+  const L = narrow
+    ? { x0: 22, maxW: 316, promptY: 66, textY: 112, size: 17, lead: 27, row1: 300, row2: 352, pitch: 7.35, cell: 5.6 }
+    : { x0: 64, maxW: 552, promptY: 62, textY: 110, size: 19, lead: 30, row1: 246, row2: 296, pitch: 12.8, cell: 10 };
+  const font = `400 ${L.size}px ${SERIF}`;
+  const label = `italic 400 ${narrow ? 12 : 12.5}px ${SERIF}`;
+  const num = `500 ${narrow ? 11.5 : 12}px ${SANS}`;
+
+  const N = DRAFT_TOKENS.length;
+  const P = DRAFT_PASSES.length;
+  const T0 = 700;             // the first pass
+  const STEP = 560;           // one pass
+  const T_END = T0 + P * STEP;
+  const LOOP = T_END + 3200;
+  const passOf = [];
+  DRAFT_PASSES.forEach((p, k) => p.tokens.forEach((j) => { passOf[j] = k; }));
+  const guessed = DRAFT_PASSES.filter((p) => p.guess >= 0);
+
+  // Words start at a token with a leading space, and wrap as a whole
+  const words = [];
+  DRAFT_TOKENS.forEach((tk, j) => {
+    if (j === 0 || tk.startsWith(' ')) words.push([j]);
+    else words[words.length - 1].push(j);
+  });
+
+  function layout(ctx) {
+    ctx.font = font;
+    const pos = [];
+    let x = 0;
+    let line = 0;
+    for (const w of words) {
+      const full = w.reduce((s, j) => s + ctx.measureText(DRAFT_TOKENS[j]).width, 0);
+      if (x > 0 && x + full > L.maxW) {
+        line += 1;
+        x = 0;
+      }
+      w.forEach((j, i) => {
+        const start = i === 0 && x === 0;
+        const str = start ? DRAFT_TOKENS[j].trimStart() : DRAFT_TOKENS[j];
+        pos[j] = { x: L.x0 + x, y: L.textY + line * L.lead, str, start };
+        x += ctx.measureText(str).width;
+      });
+    }
+    return pos;
+  }
+
+  return looping(LOOP, (ctx, t) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(backdrop, 0, 0, W, H);
+    ctx.save();
+    ctx.globalAlpha = loopAlpha(t, LOOP, 400, 700);
+    const intro = span(t, 100, 600);
+    const pos = layout(ctx);
+    const space = ctx.measureText(' ').width;
+
+    text(ctx, DRAFT_PROMPT, L.x0, L.promptY, { font: `italic 400 ${narrow ? 13 : 14}px ${SERIF}`, color: ink(0.5 * intro) });
+
+    // Where the replay is: the current pass and how far through it
+    const at = (t - T0) / STEP;
+    const cur = Math.floor(at);
+    const u = at - cur;
+
+    // The reply so far. A kept guess is blue: the main model got that token for free
+    for (let j = 0; j < N; j++) {
+      const k = passOf[j];
+      if (k > cur) continue;
+      const p = DRAFT_PASSES[k];
+      const kept = p.hit && j === p.guess;
+      let a = 1;
+      if (k === cur) {
+        if (p.guess < 0) a = easeOut(span(u, 0, 0.5));
+        else if (kept) a = easeOut(span(u, 0, 0.28));
+        else if (j === p.guess) a = easeOut(span(u, 0.58, 0.88));
+        else a = easeOut(span(u, 0.62, 0.95));
+      }
+      if (a <= 0) continue;
+      text(ctx, pos[j].str, pos[j].x, pos[j].y, { font, color: kept ? blue(0.95 * a) : ink(0.82 * a) });
+    }
+
+    // The pending guess, in a dashed box where the next token goes
+    const p = DRAFT_PASSES[cur];
+    if (p && p.guess >= 0 && cur >= 0 && cur < P) {
+      const j = p.guess;
+      const at0 = pos[j];
+      const g = at0.start ? DRAFT_GUESSES[j].trimStart() : DRAFT_GUESSES[j];
+      const lead = g.startsWith(' ') ? space : 0;
+      const gw = ctx.measureText(g.trimStart()).width;
+      const appear = easeOut(span(u, 0, 0.28));
+      // A kept guess settles in place; a missed one is struck through and lifts away first
+      const resolve = p.hit ? easeOut(span(u, 0.42, 0.75)) : easeOut(span(u, 0.44, 0.66));
+      const lift = p.hit ? 0 : 12 * resolve;
+      const boxA = appear * (1 - resolve);
+      const bx = at0.x + lead - 3;
+      const by = at0.y - L.size * 0.82 - lift;
+      if (boxA > 0) {
+        ctx.save();
+        ctx.setLineDash([3, 2.5]);
+        rrect(ctx, bx, by, gw + 6, L.size * 1.12, 3);
+        ctx.fillStyle = blue(0.07 * boxA);
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = blue(0.6 * boxA);
+        ctx.stroke();
+        ctx.restore();
+      }
+      if (!p.hit) {
+        const ghost = appear * (1 - resolve);
+        if (ghost > 0) text(ctx, g, at0.x, at0.y - lift, { font, color: blue(0.85 * ghost) });
+        const strike = span(u, 0.36, 0.5);
+        if (strike > 0 && ghost > 0) {
+          ctx.beginPath();
+          ctx.moveTo(at0.x + lead - 1, at0.y - L.size * 0.3 - lift);
+          ctx.lineTo(at0.x + lead - 1 + (gw + 2) * strike, at0.y - L.size * 0.3 - lift);
+          ctx.strokeStyle = ink(0.6 * ghost);
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+        }
+      }
+    }
+
+    // One cell per pass through the model: without drafting, one per token
+    const cellY = (y) => y + 8;
+    text(ctx, 'without drafting', L.x0, L.row1, { font: label, color: ink(0.55 * intro) });
+    text(ctx, `${N} passes`, L.x0 + L.maxW, L.row1, { font: num, color: ink(0.45 * intro), align: 'right' });
+    for (let i = 0; i < N; i++) {
+      rrect(ctx, L.x0 + i * L.pitch, cellY(L.row1), L.cell, L.cell, 1.5);
+      ctx.fillStyle = ink(0.13 * intro);
+      ctx.fill();
+    }
+
+    let shown = 0;
+    let kept = 0;
+    let checked = 0;
+    for (let k = 0; k < P; k++) {
+      const c = easeOut(span(t, T0 + k * STEP + 0.42 * STEP, T0 + k * STEP + 0.62 * STEP));
+      if (k === 0 && t >= T0 + 0.3 * STEP) shown = 1;
+      if (c <= 0) continue;
+      shown = k + 1;
+      const pk = DRAFT_PASSES[k];
+      if (pk.guess >= 0) {
+        checked += 1;
+        kept += pk.hit ? 1 : 0;
+      }
+      const two = pk.tokens.length === 2;
+      const s = L.cell * (0.6 + 0.4 * c);
+      const cx = L.x0 + k * L.pitch + L.cell / 2;
+      const cy = cellY(L.row2) + L.cell / 2;
+      rrect(ctx, cx - s / 2, cy - s / 2, s, s, 1.5);
+      ctx.fillStyle = two ? blue(0.9 * c) : ink(0.4 * c);
+      ctx.fill();
+    }
+    text(ctx, 'with MTP drafting', L.x0, L.row2, { font: label, color: ink(0.55 * intro) });
+    if (shown > 0) text(ctx, `${shown} passes`, L.x0 + L.maxW, L.row2, { font: num, color: ink(0.7), align: 'right' });
+
+    // Once the reply is done, mark the passes it saved
+    const done = easeOut(span(t, T_END - 200, T_END + 500));
+    if (done > 0) {
+      const xa = L.x0 + P * L.pitch + 3;
+      const xb = L.x0 + (N - 1) * L.pitch + L.cell;
+      const y = cellY(L.row2) + L.cell / 2;
+      ctx.save();
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(xa, y);
+      ctx.lineTo(lerp(xa, xb, done), y);
+      ctx.strokeStyle = blue(0.55);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+      text(ctx, `${N - P} fewer passes`, (xa + xb) / 2, y + 18, { font: label, color: blue(0.9 * done), align: 'center' });
+    }
+
+    if (checked > 0) {
+      const y = cellY(L.row2) + L.cell + (narrow ? 42 : 32);
+      ctx.font = num;
+      const tally = `${kept} of ${checked}`;
+      const w = ctx.measureText(tally).width;
+      text(ctx, tally, L.x0, y, { font: num, color: blue(0.95) });
+      text(ctx, ' guesses kept, blue passes wrote two tokens', L.x0 + w, y, { font: label, color: ink(0.55) });
+    }
+    ctx.restore();
+  }, { still: T_END + 400 });
+}
+
 /* ───────────── Sizing ───────────── */
 
 /**
@@ -10838,7 +11055,7 @@ function fitted(create) {
   };
 }
 
-  return { stack: fitted(createStack), dots: fitted(createDots) };
+  return { stack: fitted(createStack), dots: fitted(createDots), draft: fitted(createDraft) };
 })();
 
 const FIGURES = {
@@ -10866,7 +11083,8 @@ const FIGURES = {
   'ds-train-loss': DS_TRAIN.loss,
   'ds-sft-loss': DS_TRAIN.sft,
   'ds-mini-stack': DS_MINI.stack,
-  'ds-fact-dots': DS_MINI.dots
+  'ds-fact-dots': DS_MINI.dots,
+  'ds-mtp-draft': DS_MINI.draft
 };
 
 /* ───────────── Charts that draw in ───────────── */
